@@ -470,7 +470,7 @@ const ProjectDatasheet = ({ project, packages, isAdmin, onAdd, onSave, onDelete,
 
 // ─── Main Page ───────────────────────────────────────────────────────────────
 const BiddingPlan = () => {
-  const { projects, userRole, biddingPackages = [], addBiddingPackage, editBiddingPackage, deleteBiddingPackage, reorderBiddingPackages, addListItem } = useContext(DocumentContext);
+  const { projects, userRole, biddingPackages = [], addBiddingPackage, editBiddingPackage, deleteBiddingPackage, reorderBiddingPackages, addListItem, globalLists } = useContext(DocumentContext);
   const isAdmin = userRole === 'Admin';
   const [editingData, setEditingData] = useState(null); // { project, pkg }
   const didFixCodes = useRef(false);
@@ -478,6 +478,16 @@ const BiddingPlan = () => {
   const getPackages = (projectId) =>
     [...biddingPackages.filter(p => String(p.projectId) === String(projectId))]
       .sort((a, b) => (a.order ?? 999) - (b.order ?? 999) || (a.createdAt || '').localeCompare(b.createdAt || ''));
+
+  // Migration script to populate packageNames from existing packages if empty
+  useEffect(() => {
+    if (biddingPackages.length > 0 && globalLists && globalLists.packageNames?.length === 0 && isAdmin) {
+      const uniqueNames = [...new Set(biddingPackages.map(p => p.name).filter(Boolean))];
+      uniqueNames.forEach(name => {
+        addListItem('packageNames', name).catch(e => console.error(e));
+      });
+    }
+  }, [biddingPackages, globalLists, isAdmin, addListItem]);
 
   // Migration script to fix missing/wrong codes
   useEffect(() => {
