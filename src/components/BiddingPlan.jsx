@@ -55,6 +55,10 @@ const PackageModal = ({ pkg, project, onClose, onSave }) => {
   const [form, setForm] = useState(pkg || EMPTY_PACKAGE());
   const set = (field, val) => setForm(f => ({ ...f, [field]: val }));
 
+  const tdLabel = { padding: '10px 14px', fontWeight: '600', color: 'var(--color-text-main)', backgroundColor: 'var(--color-bg-surface-hover)', width: '42%', verticalAlign: 'middle', borderRight: '1px solid var(--color-border)', fontSize: '0.82rem', lineHeight: '1.4' };
+  const tdInput = { padding: '6px 10px', verticalAlign: 'middle' };
+  const inlineInput = { margin: 0, width: '100%' };
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '680px', padding: '2rem', overflowY: 'auto', maxHeight: '90vh' }}>
@@ -73,90 +77,110 @@ const PackageModal = ({ pkg, project, onClose, onSave }) => {
           </div>
         )}
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {/* Tên gói thầu */}
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label">Tên gói thầu <span style={{ color: 'var(--color-danger)' }}>*</span></label>
-            <input className="input-field" value={form.name} onChange={e => set('name', e.target.value)} placeholder="Nhập tên gói thầu..." />
-          </div>
+        {/* Bảng nhập liệu */}
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+          <tbody>
+            {/* Tên gói thầu */}
+            <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
+              <td style={tdLabel}>Tên gói thầu <span style={{ color: 'var(--color-danger)' }}>*</span></td>
+              <td style={tdInput}>
+                <input className="input-field" style={inlineInput} value={form.name} onChange={e => set('name', e.target.value)} placeholder="Nhập tên gói thầu..." />
+              </td>
+            </tr>
 
-          {/* Tóm tắt công việc */}
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label">Tóm tắt công việc chính của gói thầu</label>
-            <textarea className="input-field" rows={2} value={form.summary} onChange={e => set('summary', e.target.value)} placeholder="Mô tả ngắn gọn..." style={{ resize: 'vertical' }} />
-          </div>
+            {/* Tóm tắt */}
+            <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
+              <td style={tdLabel}>Tóm tắt công việc chính</td>
+              <td style={tdInput}>
+                <textarea className="input-field" rows={2} style={{ ...inlineInput, resize: 'vertical' }} value={form.summary} onChange={e => set('summary', e.target.value)} placeholder="Mô tả ngắn gọn..." />
+              </td>
+            </tr>
 
-          {/* Giá & Nguồn vốn */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-            <div className="form-group" style={{ marginBottom: 0 }}>
-              <label className="form-label">Giá gói thầu (VNĐ)</label>
-              <input
-                className="input-field"
-                value={formatPrice(form.price)}
-                onChange={e => set('price', unformatPrice(e.target.value))}
-                placeholder="VD: 5.000.000.000"
-              />
-            </div>
-            <div className="form-group" style={{ marginBottom: 0 }}>
-              <label className="form-label">Nguồn vốn</label>
-              <select className="input-field" value={form.fundSource} onChange={e => set('fundSource', e.target.value)}>
-                <option value="">-- Chọn --</option>
-                {FUND_SOURCE_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
-              </select>
-            </div>
-          </div>
+            {/* Giá gói thầu */}
+            <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
+              <td style={tdLabel}>Giá gói thầu (VNĐ)</td>
+              <td style={tdInput}>
+                <input className="input-field" style={inlineInput} value={formatPrice(form.price)} onChange={e => set('price', unformatPrice(e.target.value))} placeholder="VD: 5.000.000.000" />
+              </td>
+            </tr>
 
-          {/* Hình thức & Phương thức */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-            <div className="form-group" style={{ marginBottom: 0 }}>
-              <label className="form-label">Hình thức lựa chọn nhà thầu</label>
-              <select className="input-field" value={form.selectionMethod} onChange={e => set('selectionMethod', e.target.value)}>
-                <option value="">-- Chọn --</option>
-                {METHOD_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
-              </select>
-            </div>
-            <div className="form-group" style={{ marginBottom: 0 }}>
-              <label className="form-label">Phương thức lựa chọn nhà thầu</label>
-              <select className="input-field" value={form.procurementMethod} onChange={e => set('procurementMethod', e.target.value)}>
-                <option value="">-- Chọn --</option>
-                {PROCUREMENT_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
-              </select>
-            </div>
-          </div>
+            {/* Nguồn vốn */}
+            <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
+              <td style={tdLabel}>Nguồn vốn</td>
+              <td style={tdInput}>
+                <select className="input-field" style={inlineInput} value={form.fundSource} onChange={e => set('fundSource', e.target.value)}>
+                  <option value="">-- Chọn --</option>
+                  {FUND_SOURCE_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+                </select>
+              </td>
+            </tr>
 
-          {/* Thời gian tổ chức & Ngày bắt đầu */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-            <div className="form-group" style={{ marginBottom: 0 }}>
-              <label className="form-label">Thời gian tổ chức LCNT <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}>(ngày)</span></label>
-              <input type="number" min="0" className="input-field" value={form.organizationTime} onChange={e => set('organizationTime', e.target.value)} placeholder="VD: 30" />
-            </div>
-            <div className="form-group" style={{ marginBottom: 0 }}>
-              <label className="form-label">Ngày bắt đầu tổ chức LCNT</label>
-              <input type="date" className="input-field" value={form.startTime} onChange={e => set('startTime', e.target.value)} />
-            </div>
-          </div>
+            {/* Hình thức LCNT */}
+            <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
+              <td style={tdLabel}>Hình thức lựa chọn nhà thầu</td>
+              <td style={tdInput}>
+                <select className="input-field" style={inlineInput} value={form.selectionMethod} onChange={e => set('selectionMethod', e.target.value)}>
+                  <option value="">-- Chọn --</option>
+                  {METHOD_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+                </select>
+              </td>
+            </tr>
 
-          {/* Loại HĐ & Thời gian thực hiện */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-            <div className="form-group" style={{ marginBottom: 0 }}>
-              <label className="form-label">Loại hợp đồng</label>
-              <select className="input-field" value={form.contractType} onChange={e => set('contractType', e.target.value)}>
-                <option value="">-- Chọn --</option>
-                {CONTRACT_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
-              </select>
-            </div>
-            <div className="form-group" style={{ marginBottom: 0 }}>
-              <label className="form-label">Thời gian thực hiện gói thầu <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}>(ngày)</span></label>
-              <input type="number" min="0" className="input-field" value={form.implementationTime} onChange={e => set('implementationTime', e.target.value)} placeholder="VD: 180" />
-            </div>
-          </div>
+            {/* Phương thức LCNT */}
+            <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
+              <td style={tdLabel}>Phương thức lựa chọn nhà thầu</td>
+              <td style={tdInput}>
+                <select className="input-field" style={inlineInput} value={form.procurementMethod} onChange={e => set('procurementMethod', e.target.value)}>
+                  <option value="">-- Chọn --</option>
+                  {PROCUREMENT_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+                </select>
+              </td>
+            </tr>
 
-          {/* Tùy chọn mua thêm */}
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label">Tùy chọn mua thêm</label>
-            <input className="input-field" value={form.optionToBuy} onChange={e => set('optionToBuy', e.target.value)} placeholder="VD: Có / Không" />
-          </div>
-        </div>
+            {/* Thời gian tổ chức */}
+            <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
+              <td style={tdLabel}>Thời gian tổ chức LCNT <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}>(ngày)</span></td>
+              <td style={tdInput}>
+                <input type="number" min="0" className="input-field" style={inlineInput} value={form.organizationTime} onChange={e => set('organizationTime', e.target.value)} placeholder="VD: 30" />
+              </td>
+            </tr>
+
+            {/* Ngày bắt đầu */}
+            <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
+              <td style={tdLabel}>Ngày bắt đầu tổ chức LCNT</td>
+              <td style={tdInput}>
+                <input type="date" className="input-field" style={inlineInput} value={form.startTime} onChange={e => set('startTime', e.target.value)} />
+              </td>
+            </tr>
+
+            {/* Loại hợp đồng */}
+            <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
+              <td style={tdLabel}>Loại hợp đồng</td>
+              <td style={tdInput}>
+                <select className="input-field" style={inlineInput} value={form.contractType} onChange={e => set('contractType', e.target.value)}>
+                  <option value="">-- Chọn --</option>
+                  {CONTRACT_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+                </select>
+              </td>
+            </tr>
+
+            {/* Thời gian thực hiện */}
+            <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
+              <td style={tdLabel}>Thời gian thực hiện gói thầu <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}>(ngày)</span></td>
+              <td style={tdInput}>
+                <input type="number" min="0" className="input-field" style={inlineInput} value={form.implementationTime} onChange={e => set('implementationTime', e.target.value)} placeholder="VD: 180" />
+              </td>
+            </tr>
+
+            {/* Tùy chọn mua thêm */}
+            <tr>
+              <td style={tdLabel}>Tùy chọn mua thêm</td>
+              <td style={tdInput}>
+                <input className="input-field" style={inlineInput} value={form.optionToBuy} onChange={e => set('optionToBuy', e.target.value)} placeholder="VD: Có / Không" />
+              </td>
+            </tr>
+          </tbody>
+        </table>
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid var(--color-border)' }}>
           <button className="btn btn-outline" onClick={onClose}>Hủy</button>
