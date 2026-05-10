@@ -73,15 +73,40 @@ const CellInput = ({ col, value, onChange, isNew, projectCode }) => {
     placeholder={isNew && col.required ? 'Bắt buộc *' : (isNew ? '...' : '')} style={{ ...base }} />;
 };
 
+// ─── Edit Modal ────────────────────────────────────────────────────────────────
+const EditPackageModal = ({ pkg, onSave, onClose, projectCode }) => {
+  const [formData, setFormData] = useState({ ...pkg });
+  const handleChange = (key, value) => setFormData(prev => ({ ...prev, [key]: value }));
+
+  return (
+    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div className="card fade-in" style={{ width: '500px', maxWidth: '90vw', maxHeight: '90vh', overflowY: 'auto', backgroundColor: 'var(--color-bg-surface)', padding: 0 }}>
+        <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f8fafc' }}>
+          <h3 style={{ margin: 0, fontSize: '1rem', color: 'var(--color-text-main)', fontWeight: '700' }}>Chỉnh sửa gói thầu</h3>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer', color: 'var(--color-text-muted)' }}>&times;</button>
+        </div>
+        <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          {COLUMNS.map(col => (
+            <div key={col.key}>
+              <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.8rem', fontWeight: '600', color: 'var(--color-text-main)' }}>{col.label} {col.required && <span style={{color:'red'}}>*</span>}</label>
+              <div style={{ border: '1px solid var(--color-border)', borderRadius: '4px', backgroundColor: '#fff' }}>
+                <CellInput col={col} value={formData[col.key] ?? ''} onChange={v => handleChange(col.key, v)} projectCode={projectCode} />
+              </div>
+            </div>
+          ))}
+        </div>
+        <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', backgroundColor: '#f8fafc' }}>
+          <button onClick={onClose} style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid var(--color-border)', background: '#fff', cursor: 'pointer', fontWeight: '600', fontSize: '0.85rem' }}>Hủy</button>
+          <button onClick={() => { if(formData.name.trim()) onSave(formData); }} disabled={!formData.name.trim()} style={{ padding: '6px 12px', borderRadius: '6px', border: 'none', background: 'var(--color-primary)', color: '#fff', cursor: formData.name.trim() ? 'pointer' : 'not-allowed', fontWeight: '600', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '4px' }}><Save size={14}/> Lưu thay đổi</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ─── Datasheet row (existing package) ────────────────────────────────────────
-const DataRow = ({ pkg, idx, total, isAdmin, onSave, onDelete, onMoveUp, onMoveDown, visibleCols, colWidths }) => {
-  const [editing, setEditing] = useState(false);
-  const [row, setRow] = useState({ ...pkg });
-  const setField = (k, v) => setRow(r => ({ ...r, [k]: v }));
-
-  const handleSave = () => { onSave(row); setEditing(false); };
-
-  const bg = editing ? '#fffbea' : (idx % 2 === 0 ? '#ffffff' : 'var(--color-bg-surface)');
+const DataRow = ({ pkg, idx, total, isAdmin, onEdit, onDelete, onMoveUp, onMoveDown, visibleCols, colWidths }) => {
+  const bg = idx % 2 === 0 ? '#ffffff' : 'var(--color-bg-surface)';
   const cell = (w) => ({
     padding: 0, minWidth: w, maxWidth: w,
     borderRight: '1px solid var(--color-border)',
@@ -91,32 +116,23 @@ const DataRow = ({ pkg, idx, total, isAdmin, onSave, onDelete, onMoveUp, onMoveD
   const btn = { background: 'none', border: 'none', cursor: 'pointer', padding: '3px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '4px' };
 
   return (
-    <tr onClick={() => isAdmin && !editing && setEditing(true)}
-      style={{ cursor: isAdmin && !editing ? 'pointer' : 'default' }}>
+    <tr onDoubleClick={() => isAdmin && onEdit(pkg)}
+      style={{ cursor: isAdmin ? 'pointer' : 'default' }}>
 
-      {/* LEFT: Up/Down + Save */}
+      {/* LEFT: Up/Down */}
       {isAdmin && (
         <td style={{ ...cell(72), padding: '3px 4px', textAlign: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '2px' }}>
-            {editing ? (
-              <button onClick={e => { e.stopPropagation(); handleSave(); }}
-                style={{ background: 'var(--color-primary)', color: '#fff', border: 'none', borderRadius: '4px', padding: '3px 8px', cursor: 'pointer', fontSize: '0.68rem', display: 'flex', alignItems: 'center', gap: '2px' }}>
-                <Check size={10} /> Lưu
-              </button>
-            ) : (
-              <>
-                <button onClick={e => { e.stopPropagation(); onMoveUp(); }} disabled={idx === 0}
-                  style={{ ...btn, color: idx === 0 ? '#cbd5e1' : 'var(--color-primary)', cursor: idx === 0 ? 'default' : 'pointer' }}
-                  title="Di chuyển lên">
-                  <ArrowUp size={13} />
-                </button>
-                <button onClick={e => { e.stopPropagation(); onMoveDown(); }} disabled={idx === total - 1}
-                  style={{ ...btn, color: idx === total - 1 ? '#cbd5e1' : 'var(--color-primary)', cursor: idx === total - 1 ? 'default' : 'pointer' }}
-                  title="Di chuyển xuống">
-                  <ArrowDown size={13} />
-                </button>
-              </>
-            )}
+            <button onClick={e => { e.stopPropagation(); onMoveUp(); }} disabled={idx === 0}
+              style={{ ...btn, color: idx === 0 ? '#cbd5e1' : 'var(--color-primary)', cursor: idx === 0 ? 'default' : 'pointer' }}
+              title="Di chuyển lên">
+              <ArrowUp size={13} />
+            </button>
+            <button onClick={e => { e.stopPropagation(); onMoveDown(); }} disabled={idx === total - 1}
+              style={{ ...btn, color: idx === total - 1 ? '#cbd5e1' : 'var(--color-primary)', cursor: idx === total - 1 ? 'default' : 'pointer' }}
+              title="Di chuyển xuống">
+              <ArrowDown size={13} />
+            </button>
           </div>
         </td>
       )}
@@ -133,19 +149,15 @@ const DataRow = ({ pkg, idx, total, isAdmin, onSave, onDelete, onMoveUp, onMoveD
                     : col.type === 'number' || col.type === 'checkbox' ? 'center' : 'left';
         return (
           <td key={col.key} style={{ ...cell(w), minWidth: w, maxWidth: w }}>
-            {editing ? (
-              <CellInput col={col} value={row[col.key] ?? ''} onChange={v => setField(col.key, v)} />
+            {col.type === 'checkbox' ? (
+              <div style={{ textAlign: 'center', padding: '4px' }}>
+                <input type="checkbox" checked={!!pkg[col.key]} readOnly
+                  style={{ width: '14px', height: '14px', accentColor: 'var(--color-primary)', cursor: 'default' }} />
+              </div>
             ) : (
-              col.type === 'checkbox' ? (
-                <div style={{ textAlign: 'center', padding: '4px' }}>
-                  <input type="checkbox" checked={!!row[col.key]} readOnly
-                    style={{ width: '14px', height: '14px', accentColor: 'var(--color-primary)', cursor: 'default' }} />
-                </div>
-              ) : (
-                <div style={{ padding: '6px 8px', fontSize: '0.78rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textAlign: align, color: row[col.key] ? 'var(--color-text-main)' : 'var(--color-text-muted)' }}>
-                  {col.type === 'price' ? formatPrice(row[col.key]) || '—' : (row[col.key] || '—')}
-                </div>
-              )
+              <div style={{ padding: '6px 8px', fontSize: '0.78rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textAlign: align, color: pkg[col.key] ? 'var(--color-text-main)' : 'var(--color-text-muted)' }}>
+                {col.type === 'price' ? formatPrice(pkg[col.key]) || '—' : (pkg[col.key] || '—')}
+              </div>
             )}
           </td>
         );
@@ -154,12 +166,10 @@ const DataRow = ({ pkg, idx, total, isAdmin, onSave, onDelete, onMoveUp, onMoveD
       {/* RIGHT: Delete */}
       {isAdmin && (
         <td style={{ ...cell(46), textAlign: 'center', padding: '3px' }}>
-          {!editing && (
-            <button onClick={e => { e.stopPropagation(); onDelete(pkg.id); }}
-              style={{ ...btn, color: 'var(--color-danger)' }} title="Xóa gói thầu này">
-              <Trash2 size={14} />
-            </button>
-          )}
+          <button onClick={e => { e.stopPropagation(); onDelete(pkg.id); }}
+            style={{ ...btn, color: 'var(--color-danger)', margin: '0 auto' }} title="Xóa gói thầu này">
+            <Trash2 size={14} />
+          </button>
         </td>
       )}
     </tr>
@@ -204,6 +214,7 @@ const ProjectDatasheet = ({ project, packages, isAdmin, onAdd, onSave, onDelete,
   const [hiddenCols, setHiddenCols] = useState(new Set());
   const [colWidths, setColWidths] = useState(() => Object.fromEntries(COLUMNS.map(c => [c.key, c.width])));
   const [showColPanel, setShowColPanel] = useState(false);
+  const [editingPkg, setEditingPkg] = useState(null);
   const panelRef = useRef(null);
   const visibleCols = COLUMNS.filter(c => !hiddenCols.has(c.key));
 
@@ -347,7 +358,7 @@ const ProjectDatasheet = ({ project, packages, isAdmin, onAdd, onSave, onDelete,
               {packages.map((pkg, idx) => (
                 <DataRow key={pkg.id} pkg={pkg} idx={idx} total={packages.length} isAdmin={isAdmin}
                   visibleCols={visibleCols} colWidths={colWidths}
-                  onSave={(updated) => onSave(project.id, pkg.id, updated)}
+                  onEdit={(pkg) => setEditingPkg(pkg)}
                   onDelete={(id) => onDelete(project, id)}
                   onMoveUp={() => onMoveUp(project.id, packages, idx)}
                   onMoveDown={() => onMoveDown(project.id, packages, idx)} />
@@ -383,6 +394,19 @@ const ProjectDatasheet = ({ project, packages, isAdmin, onAdd, onSave, onDelete,
             </tbody>
           </table>
         </div>
+      )}
+
+      {/* Edit Modal Overlay */}
+      {editingPkg && (
+        <EditPackageModal
+          pkg={editingPkg}
+          projectCode={project.code}
+          onClose={() => setEditingPkg(null)}
+          onSave={(updated) => {
+            onSave(project.id, editingPkg.id, updated);
+            setEditingPkg(null);
+          }}
+        />
       )}
     </div>
   );
