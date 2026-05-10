@@ -251,30 +251,24 @@ const PackageDatasheet = ({ pkg, project, isAdmin, onSave, partners, onEmailPrev
       {/* Header */}
       <div style={{ padding: '1.25rem 1.5rem', backgroundColor: '#fdfdfd', borderBottom: expanded ? '1px solid var(--color-border)' : 'none' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          <div style={{ display: 'flex', gap: '1rem', flex: 1 }}>
-            {/* Avatar Dự án */}
-            <div style={{ width: '50px', height: '50px', borderRadius: '12px', backgroundColor: color.bg, color: color.text, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.25rem', fontWeight: 'bold', flexShrink: 0, boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.05)' }}>
-              {project.name.charAt(0).toUpperCase()}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: 1, paddingRight: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: '700', padding: '3px 8px', backgroundColor: 'var(--color-bg-surface-hover)', color: 'var(--color-text-muted)', borderRadius: '6px', flexShrink: 0, marginTop: '2px' }}>
+                {pkg.code || 'Chưa có mã'}
+              </span>
+              <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--color-text-main)', fontWeight: '700', lineHeight: '1.3' }}>{pkg.name}</h3>
             </div>
-
-            <div style={{ flex: 1 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                <span style={{ fontSize: '0.75rem', fontWeight: '700', padding: '2px 8px', backgroundColor: 'var(--color-bg-surface-hover)', color: 'var(--color-text-muted)', borderRadius: '12px' }}>
-                  {pkg.code || 'Chưa có mã'}
-                </span>
-                <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--color-text-main)', fontWeight: '700' }}>{pkg.name}</h3>
+            
+            <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '12px', color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <Briefcase size={14} /> Dự án: {project.name}
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', color: 'var(--color-text-muted)', fontSize: '0.8rem', marginTop: '6px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <Briefcase size={14} /> Dự án: {project.name}
+              {pkg.nature && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ display: 'inline-block', width: '4px', height: '4px', borderRadius: '50%', backgroundColor: '#cbd5e1' }}></span>
+                  <span style={{ color: 'var(--color-primary)', fontWeight: '600' }}>{pkg.nature}</span>
                 </div>
-                {pkg.nature && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span style={{ display: 'inline-block', width: '4px', height: '4px', borderRadius: '50%', backgroundColor: '#cbd5e1' }}></span>
-                    <span style={{ color: 'var(--color-primary)', fontWeight: '600' }}>{pkg.nature}</span>
-                  </div>
-                )}
-              </div>
+              )}
             </div>
           </div>
 
