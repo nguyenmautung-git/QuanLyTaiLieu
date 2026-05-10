@@ -34,6 +34,7 @@ const EMPTY_ROW = () => ({
 // ─── Column definitions ──────────────────────────────────────────────────────
 const COLUMNS = [
   { key: 'code',               label: 'Mã gói thầu',           width: 140, type: 'code' },
+  { key: 'optionToBuy',        label: 'Tùy chọn mua thêm',     width: 90,  type: 'checkbox' },
   { key: 'name',               label: 'Tên gói thầu',          width: 180, required: true },
   { key: 'summary',            label: 'Tóm tắt CV chính',       width: 180 },
   { key: 'price',              label: 'Giá gói thầu (VNĐ)',     width: 150, type: 'price' },
@@ -44,7 +45,6 @@ const COLUMNS = [
   { key: 'startTime',          label: 'Ngày bắt đầu LCNT',      width: 140, type: 'date' },
   { key: 'contractType',       label: 'Loại hợp đồng',          width: 180, type: 'select', options: CONTRACT_OPTIONS },
   { key: 'implementationTime', label: 'TG thực hiện (ngày)',    width: 130, type: 'number' },
-  { key: 'optionToBuy',        label: 'Tùy chọn mua thêm',     width: 90,  type: 'checkbox' },
 ];
 
 
