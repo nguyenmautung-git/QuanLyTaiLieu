@@ -97,12 +97,18 @@ const StepRow = ({ step, index, total, onEdit, onDelete, onMoveUp, onMoveDown, i
           {step.name}
         </div>
 
-        {/* Row 2: Ngày hiệu lực | Trạng thái + Sửa/Xóa */}
+        {/* Row 2: Ngày mục tiêu, Ngày hoàn thành | Trạng thái + Tình trạng + Sửa/Xóa */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap' }}>
-          <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
-            {step.effectiveDate ? `📅 ${step.effectiveDate}` : ''}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
+            {step.targetDate && <div>🎯 Mục tiêu: {step.targetDate}</div>}
+            {step.effectiveDate && <div>📅 Hoàn thành: {step.effectiveDate}</div>}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+            {step.condition && (
+              <span style={{ fontSize: '0.7rem', padding: '2px 6px', borderRadius: '4px', border: '1px solid var(--color-border)', color: 'var(--color-text-muted)', backgroundColor: 'var(--color-bg-surface-hover)' }}>
+                {step.condition}
+              </span>
+            )}
             <StepBadge status={step.status} />
             {isAdmin && (
               <>
@@ -212,6 +218,8 @@ const StepFormModal = ({ project, editingStep, onClose, onSave, savedCount }) =>
     name: '',
     status: 'pending',
     effectiveDate: '',
+    targetDate: '',
+    condition: 'Bình thường',
     summary: '',
     order: 0,
     attachments: [],
@@ -223,6 +231,8 @@ const StepFormModal = ({ project, editingStep, onClose, onSave, savedCount }) =>
           name: editingStep.name || '',
           status: editingStep.status || 'pending',
           effectiveDate: editingStep.effectiveDate || editingStep.completedDate || '',
+          targetDate: editingStep.targetDate || '',
+          condition: editingStep.condition || 'Bình thường',
           summary: editingStep.summary || editingStep.note || '',
           order: editingStep.order ?? 0,
           attachments: editingStep.attachments || [],
@@ -314,14 +324,30 @@ const StepFormModal = ({ project, editingStep, onClose, onSave, savedCount }) =>
               </select>
             </div>
             <div className="form-group" style={{ marginBottom: 0 }}>
-              <label className="form-label">Ngày hiệu lực</label>
+              <label className="form-label">Ngày hoàn thành</label>
               <input type="date" className="input-field" value={form.effectiveDate} onChange={e => setForm({ ...form, effectiveDate: e.target.value })} />
             </div>
           </div>
 
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label">Tình trạng</label>
+              <select className="input-field" value={form.condition} onChange={e => setForm({ ...form, condition: e.target.value })}>
+                <option value="Bình thường">🔵 Bình thường</option>
+                <option value="Đúng hạn">🟢 Đúng hạn</option>
+                <option value="Trễ hạn">🔴 Trễ hạn</option>
+                <option value="Vượt tiến độ">🟣 Vượt tiến độ</option>
+              </select>
+            </div>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label">Ngày mục tiêu</label>
+              <input type="date" className="input-field" value={form.targetDate} onChange={e => setForm({ ...form, targetDate: e.target.value })} />
+            </div>
+          </div>
+
           <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label">Trích yếu</label>
-            <textarea rows={3} className="input-field" value={form.summary} onChange={e => setForm({ ...form, summary: e.target.value })} placeholder="Nội dung trích yếu của công việc này..." style={{ resize: 'vertical' }} />
+            <label className="form-label">Ghi chú</label>
+            <textarea rows={3} className="input-field" value={form.summary} onChange={e => setForm({ ...form, summary: e.target.value })} placeholder="Ghi chú về công việc này..." style={{ resize: 'vertical' }} />
           </div>
 
           {savedMsg && (
