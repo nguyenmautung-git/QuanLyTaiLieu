@@ -662,7 +662,8 @@ const BiddingPlan = () => {
 
   const getPackages = (projectId) =>
     [...biddingPackages.filter(p => String(p.projectId) === String(projectId))]
-      .sort((a, b) => (a.order ?? 999) - (b.order ?? 999) || (a.createdAt || '').localeCompare(b.createdAt || ''));
+      .sort((a, b) => (a.order ?? 999) - (b.order ?? 999) || (a.createdAt || '').localeCompare(b.createdAt || ''))
+      .map(p => ({ ...p, status: p.status || 'Đang soạn thảo' }));
 
   // Migration script to populate packageNames from existing packages if empty
   useEffect(() => {
