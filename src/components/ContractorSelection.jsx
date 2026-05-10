@@ -1,7 +1,7 @@
 import React, { useState, useContext } from 'react';
 import { DocumentContext } from '../context/DocumentContext';
 import { getPastelColor } from '../data';
-import { ChevronDown, ChevronUp, Plus, Trash2, ArrowUp, ArrowDown, Briefcase, Star } from 'lucide-react';
+import { ChevronDown, ChevronUp, Plus, Trash2, ArrowUp, ArrowDown, Briefcase, Star, X } from 'lucide-react';
 import Select, { components } from 'react-select';
 
 const STATUS_OPTIONS = ['Chưa mời thầu', 'Đã mời thầu', 'Đang làm thầu', 'Đã nộp thầu'];
@@ -401,27 +401,28 @@ const ContractorSelection = () => {
               {projects.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
             </select>
           </div>
-          <div className="form-group" style={{ marginBottom: 0, flex: '1 1 200px' }}>
-            <label className="form-label" style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Tính chất gói thầu</label>
-            <select name="nature" value={filters.nature} onChange={handleFilterChange} className="input-field">
-              <option value="">Tất cả tính chất</option>
-              {(globalLists?.packageNatures || []).map(n => <option key={n.id} value={n.name}>{n.name}</option>)}
-            </select>
-          </div>
-          {hasFilter && (
-            <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+          <div className="form-group" style={{ marginBottom: 0, flex: '1 1 200px', display: 'flex', alignItems: 'flex-end', gap: '8px' }}>
+            <div style={{ flex: 1 }}>
+              <label className="form-label" style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Tính chất gói thầu</label>
+              <select name="nature" value={filters.nature} onChange={handleFilterChange} className="input-field">
+                <option value="">Tất cả tính chất</option>
+                {(globalLists?.packageNatures || []).map(n => <option key={n.id} value={n.name}>{n.name}</option>)}
+              </select>
+            </div>
+            {hasFilter && (
               <button 
                 onClick={handleClearFilters}
+                title="Bỏ lọc"
                 style={{ 
-                  display: 'flex', alignItems: 'center', gap: '4px',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
                   backgroundColor: '#fef2f2', color: '#ef4444', border: '1px solid #fca5a5', 
-                  padding: '7px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.78rem', fontWeight: '600',
-                  height: '35px'
+                  width: '35px', height: '35px', borderRadius: '4px', cursor: 'pointer',
+                  flexShrink: 0
                 }}>
-                Hủy lọc
+                <X size={18} />
               </button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
 
