@@ -249,8 +249,11 @@ const ContractorSelection = () => {
 
   const [filters, setFilters] = useState({ keyword: '', project: '' });
 
-  // Lấy các package có dự án hợp lệ
-  let validPackages = biddingPackages.filter(p => projects.some(proj => String(proj.id) === String(p.projectId)));
+  // Lấy các package có dự án hợp lệ và đã được phê duyệt
+  let validPackages = biddingPackages.filter(p => 
+    projects.some(proj => String(proj.id) === String(p.projectId)) &&
+    (p.status === 'Đã phê duyệt' || p.status === '✅ Đã phê duyệt')
+  );
 
   // Áp dụng bộ lọc
   validPackages = validPackages.filter(pkg => {
