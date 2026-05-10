@@ -77,13 +77,30 @@ const NameCombobox = ({ value, onChange, isNew }) => {
   useEffect(() => {
     if (isOpen && containerRef.current) {
       const rect = containerRef.current.getBoundingClientRect();
-      setDropdownStyle({
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const spaceAbove = rect.top;
+      const maxH = 220; // Maximum desired height
+
+      let style = {
         position: 'fixed',
-        top: `${rect.bottom + 2}px`,
         left: `${rect.left}px`,
         width: `${rect.width}px`,
         zIndex: 999999,
-      });
+      };
+
+      if (spaceBelow < maxH && spaceAbove > spaceBelow) {
+        // Drop upwards
+        style.bottom = `${window.innerHeight - rect.top + 2}px`;
+        style.maxHeight = `${Math.min(spaceAbove - 10, maxH)}px`;
+        style.boxShadow = '0 -4px 12px rgba(0,0,0,0.15)'; // Shadow upwards
+      } else {
+        // Drop downwards
+        style.top = `${rect.bottom + 2}px`;
+        style.maxHeight = `${Math.min(spaceBelow - 10, maxH)}px`;
+        style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)'; // Shadow downwards
+      }
+
+      setDropdownStyle(style);
     }
   }, [isOpen, value, packageNames.length]);
 
@@ -101,7 +118,7 @@ const NameCombobox = ({ value, onChange, isNew }) => {
         style={base}
       />
       {isOpen && filtered.length > 0 && createPortal(
-        <div id="name-combobox-dropdown" style={{ ...dropdownStyle, background: '#fff', border: '1px solid var(--color-border)', borderRadius: '4px', maxHeight: '200px', overflowY: 'auto', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}>
+        <div id="name-combobox-dropdown" style={{ ...dropdownStyle, background: '#fff', border: '1px solid var(--color-border)', borderRadius: '4px', overflowY: 'auto' }}>
           {filtered.map(opt => (
             <div key={opt.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', cursor: 'pointer', borderBottom: '1px solid #f1f5f9' }}
               onMouseDown={(e) => {
