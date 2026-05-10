@@ -316,12 +316,8 @@ const StepFormModal = ({ project, editingStep, onClose, onSave, savedCount }) =>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <div className="form-group" style={{ marginBottom: 0 }}>
-              <label className="form-label">Trạng thái</label>
-              <select className="input-field" value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}>
-                <option value="pending">⚪ Chưa thực hiện</option>
-                <option value="inprogress">🟡 Đang thực hiện</option>
-                <option value="done">🟢 Hoàn thành</option>
-              </select>
+              <label className="form-label">Ngày mục tiêu</label>
+              <input type="date" className="input-field" value={form.targetDate} onChange={e => setForm({ ...form, targetDate: e.target.value })} />
             </div>
             <div className="form-group" style={{ marginBottom: 0 }}>
               <label className="form-label">Ngày hoàn thành</label>
@@ -331,6 +327,14 @@ const StepFormModal = ({ project, editingStep, onClose, onSave, savedCount }) =>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label">Trạng thái</label>
+              <select className="input-field" value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}>
+                <option value="pending">⚪ Chưa thực hiện</option>
+                <option value="inprogress">🟡 Đang thực hiện</option>
+                <option value="done">🟢 Hoàn thành</option>
+              </select>
+            </div>
+            <div className="form-group" style={{ marginBottom: 0 }}>
               <label className="form-label">Tình trạng</label>
               <select className="input-field" value={form.condition} onChange={e => setForm({ ...form, condition: e.target.value })}>
                 <option value="Bình thường">🔵 Bình thường</option>
@@ -338,10 +342,6 @@ const StepFormModal = ({ project, editingStep, onClose, onSave, savedCount }) =>
                 <option value="Trễ hạn">🔴 Trễ hạn</option>
                 <option value="Vượt tiến độ">🟣 Vượt tiến độ</option>
               </select>
-            </div>
-            <div className="form-group" style={{ marginBottom: 0 }}>
-              <label className="form-label">Ngày mục tiêu</label>
-              <input type="date" className="input-field" value={form.targetDate} onChange={e => setForm({ ...form, targetDate: e.target.value })} />
             </div>
           </div>
 
