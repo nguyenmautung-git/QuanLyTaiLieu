@@ -101,6 +101,12 @@ export const DocumentProvider = ({ children }) => {
       }
     });
 
+    // Theo dõi gói thầu
+    const unsubscribeBidding = onSnapshot(collection(db, 'biddingPackages'), (snapshot) => {
+      const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      setBiddingPackages(data);
+    });
+
     // Theo dõi bước pháp lý theo dự án
     const unsubscribeLegal = onSnapshot(collection(db, 'legalSteps'), (snapshot) => {
       const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -113,6 +119,7 @@ export const DocumentProvider = ({ children }) => {
       unsubscribeProjects();
       unsubscribeMembers();
       unsubscribePartners();
+      unsubscribeBidding();
       unsubscribeLegal();
     };
   }, []);
@@ -304,6 +311,18 @@ export const DocumentProvider = ({ children }) => {
     }
   };
 
+  // ==== Bidding Packages ====
+  const addBiddingPackage = async (projectId, pkgData) => {
+    await addDoc(collection(db, 'biddingPackages'), { projectId, ...pkgData, createdAt: new Date().toISOString() });
+  };
+  const editBiddingPackage = async (projectId, pkgId, pkgData) => {
+    const { id, ...data } = pkgData;
+    await updateDoc(doc(db, 'biddingPackages', pkgId), { ...data, updatedAt: new Date().toISOString() });
+  };
+  const deleteBiddingPackage = async (projectId, pkgId) => {
+    await deleteDoc(doc(db, 'biddingPackages', pkgId));
+  };
+
   // ==== Legal Steps ====
   const addLegalStep = async (projectId, stepData) => {
     await addDoc(collection(db, 'legalSteps'), { projectId, ...stepData, createdAt: new Date().toISOString() });
@@ -324,7 +343,7 @@ export const DocumentProvider = ({ children }) => {
       projects, addProject, editProject, deleteProject,
       members, addMember, editMember, deleteMember,
       partners, addPartner, editPartner, deletePartner,
-      biddingPackages, addBiddingPackage: async () => {}, editBiddingPackage: async () => {}, deleteBiddingPackage: async () => {},
+      biddingPackages, addBiddingPackage, editBiddingPackage, deleteBiddingPackage,
       legalSteps, addLegalStep, updateLegalStep, deleteLegalStep
     }}>
       {children}
