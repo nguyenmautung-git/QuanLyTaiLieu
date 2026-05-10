@@ -317,7 +317,9 @@ export const DocumentProvider = ({ children }) => {
   };
   const editBiddingPackage = async (projectId, pkgId, pkgData) => {
     const { id, ...data } = pkgData;
-    await updateDoc(doc(db, 'biddingPackages', pkgId), { ...data, updatedAt: new Date().toISOString() });
+    const cleanedData = {};
+    Object.entries(data).forEach(([k, v]) => { if (v !== undefined) cleanedData[k] = v; });
+    await updateDoc(doc(db, 'biddingPackages', pkgId), { ...cleanedData, updatedAt: new Date().toISOString() });
   };
   const deleteBiddingPackage = async (projectId, pkgId) => {
     await deleteDoc(doc(db, 'biddingPackages', pkgId));
@@ -328,7 +330,10 @@ export const DocumentProvider = ({ children }) => {
       const ref = doc(db, 'biddingPackages', pkg.id);
       const { id, ...data } = pkg;
       const computedCode = projectCode ? `${projectCode}.GT.${String(index + 1).padStart(2, '0')}` : data.code;
-      batch.update(ref, { ...data, order: index, code: computedCode, updatedAt: new Date().toISOString() });
+      const cleanedData = {};
+      Object.entries({ ...data, order: index, code: computedCode, updatedAt: new Date().toISOString() })
+        .forEach(([k, v]) => { if (v !== undefined) cleanedData[k] = v; });
+      batch.update(ref, cleanedData);
     });
     await batch.commit();
   };
