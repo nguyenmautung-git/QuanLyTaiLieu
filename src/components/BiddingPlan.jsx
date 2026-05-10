@@ -33,7 +33,7 @@ const EMPTY_ROW = () => ({
   procurementMethod: 'Một giai đoạn hai túi hồ sơ',
   startTime: '', closingTime: '', openingTime: '',
   contractType: 'Hợp đồng trọn gói',
-  implementationTime: '', optionToBuy: false,
+  optionToBuy: false,
   status: '📝 Đang soạn thảo',
   attachment: [],
 });
@@ -52,7 +52,6 @@ const COLUMNS = [
   { key: 'closingTime',        label: 'Ngày đóng thầu',         width: 140, type: 'date' },
   { key: 'openingTime',        label: 'Ngày mở thầu',           width: 140, type: 'date' },
   { key: 'contractType',       label: 'Loại hợp đồng',          width: 180, type: 'select', options: CONTRACT_OPTIONS },
-  { key: 'implementationTime', label: 'TG thực hiện (ngày)',    width: 130, type: 'number' },
   { key: 'optionToBuy',        label: 'Tùy chọn mua thêm',     width: 90,  type: 'checkbox' },
   { key: 'attachment',         label: 'Tệp đính kèm',           width: 180, type: 'file' },
 ];
