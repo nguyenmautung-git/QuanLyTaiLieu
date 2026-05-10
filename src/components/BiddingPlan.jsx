@@ -2,7 +2,7 @@ import React, { useState, useContext, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { DocumentContext } from '../context/DocumentContext';
 import { getPastelColor } from '../data';
-import { MapPin, Building, Plus, Trash2, Check, ChevronDown, ChevronUp, Briefcase, Save, ArrowUp, ArrowDown, Settings } from 'lucide-react';
+import { MapPin, Building, Plus, Trash2, Check, ChevronDown, ChevronUp, Briefcase, Save, ArrowUp, ArrowDown, Settings, Upload } from 'lucide-react';
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 const METHOD_OPTIONS = ['Đấu thầu rộng rãi', 'Đấu thầu hạn chế', 'Chỉ định thầu', 'Mua sắm trực tiếp', 'Chào hàng cạnh tranh', 'Tự thực hiện'];
@@ -33,7 +33,7 @@ const EMPTY_ROW = () => ({
   organizationTime: '', startTime: '',
   contractType: 'Hợp đồng trọn gói',
   implementationTime: '', optionToBuy: false,
-  attachment: '',
+  attachment: [],
 });
 
 // ─── Column definitions ──────────────────────────────────────────────────────
@@ -50,7 +50,7 @@ const COLUMNS = [
   { key: 'startTime',          label: 'Ngày bắt đầu LCNT',      width: 140, type: 'date' },
   { key: 'contractType',       label: 'Loại hợp đồng',          width: 180, type: 'select', options: CONTRACT_OPTIONS },
   { key: 'implementationTime', label: 'TG thực hiện (ngày)',    width: 130, type: 'number' },
-  { key: 'attachment',         label: 'Tệp đính kèm',           width: 150 },
+  { key: 'attachment',         label: 'Tệp đính kèm',           width: 180, type: 'file' },
 ];
 
 
@@ -148,6 +148,39 @@ const NameCombobox = ({ value, onChange, isNew }) => {
   );
 };
 
+// ─── Custom File Upload ──────────────────────────────────────────────────────
+const FileUploadCell = ({ value, onChange }) => {
+  const fileList = Array.isArray(value) ? value : [];
+  const handleUpload = (e) => {
+    const files = Array.from(e.target.files);
+    if (!files.length) return;
+    const newFiles = files.map(file => ({
+      name: file.name,
+      url: URL.createObjectURL(file)
+    }));
+    onChange([...fileList, ...newFiles]);
+  };
+  const handleRemove = (idx) => {
+    const next = [...fileList];
+    next.splice(idx, 1);
+    onChange(next);
+  };
+  return (
+    <div style={{ padding: '4px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+      {fileList.map((f, i) => (
+        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', backgroundColor: '#e2e8f0', padding: '2px 4px', borderRadius: '4px' }}>
+          <a href={f.url} target="_blank" rel="noreferrer" style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: '120px', color: 'var(--color-primary)', textDecoration: 'none' }} title={f.name}>{f.name}</a>
+          <button onClick={() => handleRemove(i)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: 0, display: 'flex', alignItems: 'center' }} title="Xóa file"><Trash2 size={12} /></button>
+        </div>
+      ))}
+      <label style={{ cursor: 'pointer', fontSize: '0.75rem', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 6px', backgroundColor: '#f0f9ff', borderRadius: '4px', alignSelf: 'flex-start', border: '1px dashed var(--color-primary)' }}>
+        <Upload size={12} /> Tải file
+        <input type="file" multiple style={{ display: 'none' }} onChange={handleUpload} />
+      </label>
+    </div>
+  );
+};
+
 // ─── Cell renderer ───────────────────────────────────────────────────────────
 const CellInput = ({ col, value, onChange, isNew, projectCode }) => {
   const base = { width: '100%', border: 'none', outline: 'none', padding: '5px 8px', fontSize: '0.78rem', backgroundColor: 'transparent', color: 'var(--color-text-main)', fontFamily: 'inherit' };
@@ -169,6 +202,7 @@ const CellInput = ({ col, value, onChange, isNew, projectCode }) => {
   if (col.type === 'price') return <input type="text" value={formatPrice(value)} onChange={e => onChange(unformatPrice(e.target.value))} placeholder={isNew ? 'Nhập số tiền' : ''} style={{ ...base, textAlign: 'right' }} />;
   if (col.type === 'number') return <input type="number" min="0" value={value} onChange={e => onChange(e.target.value)} placeholder={isNew ? '0' : ''} style={{ ...base, textAlign: 'center' }} />;
   if (col.type === 'date') return <input type="date" value={value} onChange={e => onChange(e.target.value)} style={{ ...base }} />;
+  if (col.type === 'file') return <FileUploadCell value={value} onChange={onChange} />;
   if (col.key === 'name') return <NameCombobox value={value} onChange={onChange} isNew={isNew && col.required} />;
   return <input type="text" value={value} onChange={e => onChange(e.target.value)}
     placeholder={isNew && col.required ? 'Bắt buộc *' : (isNew ? '...' : '')} style={{ ...base }} />;
@@ -253,6 +287,18 @@ const DataRow = ({ pkg, idx, total, isAdmin, onEdit, onDelete, onMoveUp, onMoveD
                 <input type="checkbox" checked={!!pkg[col.key]} readOnly
                   style={{ width: '14px', height: '14px', accentColor: 'var(--color-primary)', cursor: 'default' }} />
               </div>
+            ) : col.type === 'file' ? (
+              <div style={{ padding: '4px 6px', display: 'flex', flexDirection: 'column', gap: '3px', overflow: 'hidden' }}>
+                {Array.isArray(pkg[col.key]) && pkg[col.key].length > 0 ? (
+                  pkg[col.key].map((f, i) => (
+                    <a key={i} href={f.url} target="_blank" rel="noreferrer" style={{ fontSize: '0.72rem', color: 'var(--color-primary)', textDecoration: 'none', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden', display: 'block' }} title={f.name}>📎 {f.name}</a>
+                  ))
+                ) : pkg[col.key] && typeof pkg[col.key] === 'string' ? (
+                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-main)', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden', display: 'block' }}>{pkg[col.key]}</span>
+                ) : (
+                  <span style={{ color: 'var(--color-text-muted)', fontSize: '0.78rem', display: 'block', padding: '2px 4px' }}>—</span>
+                )}
+              </div>
             ) : (
               <div style={{ padding: '6px 8px', fontSize: '0.78rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textAlign: align, color: pkg[col.key] ? 'var(--color-text-main)' : 'var(--color-text-muted)' }}>
                 {col.type === 'price' ? formatPrice(pkg[col.key]) || '—' : (pkg[col.key] || '—')}
@@ -315,7 +361,16 @@ const NewRow = ({ onAdd, isAdmin, visibleCols, colWidths, projectCode, nextIdx }
 
 // ─── Datasheet Card ──────────────────────────────────────────────────────────
 const ProjectDatasheet = ({ project, packages, isAdmin, onAdd, onSave, onDelete, onMoveUp, onMoveDown, projects, onEdit }) => {
-  const [hiddenCols, setHiddenCols] = useState(new Set(['optionToBuy']));
+  const [hiddenCols, setHiddenCols] = useState(new Set([
+    'optionToBuy', 
+    'fundSource', 
+    'selectionMethod', 
+    'procurementMethod', 
+    'organizationTime', 
+    'startTime', 
+    'contractType', 
+    'implementationTime'
+  ]));
   const [colWidths, setColWidths] = useState(() => Object.fromEntries(COLUMNS.map(c => [c.key, c.width])));
   const [showColPanel, setShowColPanel] = useState(false);
   const panelRef = useRef(null);
