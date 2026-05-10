@@ -1,4 +1,5 @@
 import React, { useState, useContext, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { DocumentContext } from '../context/DocumentContext';
 import { getPastelColor } from '../data';
 import { MapPin, Building, Plus, Trash2, Check, ChevronDown, ChevronUp, Briefcase, Save, ArrowUp, ArrowDown, Settings } from 'lucide-react';
@@ -59,10 +60,13 @@ const NameCombobox = ({ value, onChange, isNew }) => {
   const packageNames = globalLists?.packageNames || [];
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef(null);
+  const [dropdownStyle, setDropdownStyle] = useState({});
 
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (containerRef.current && !containerRef.current.contains(e.target)) {
+        const dropdownElement = document.getElementById('name-combobox-dropdown');
+        if (dropdownElement && dropdownElement.contains(e.target)) return;
         setIsOpen(false);
       }
     };
@@ -70,7 +74,20 @@ const NameCombobox = ({ value, onChange, isNew }) => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const filtered = packageNames.filter(o => o.name.toLowerCase().includes(value.toLowerCase()));
+  useEffect(() => {
+    if (isOpen && containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      setDropdownStyle({
+        position: 'fixed',
+        top: `${rect.bottom + 2}px`,
+        left: `${rect.left}px`,
+        width: `${rect.width}px`,
+        zIndex: 999999,
+      });
+    }
+  }, [isOpen, value, packageNames.length]);
+
+  const filtered = packageNames.filter(o => o.name.toLowerCase().includes((value || '').toLowerCase()));
   const base = { width: '100%', border: 'none', outline: 'none', padding: '5px 8px', fontSize: '0.78rem', backgroundColor: 'transparent', color: 'var(--color-text-main)', fontFamily: 'inherit' };
 
   return (
@@ -83,10 +100,10 @@ const NameCombobox = ({ value, onChange, isNew }) => {
         placeholder={isNew ? 'Bắt buộc *' : '...'}
         style={base}
       />
-      {isOpen && filtered.length > 0 && (
-        <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 9999, background: '#fff', border: '1px solid var(--color-border)', borderRadius: '4px', maxHeight: '200px', overflowY: 'auto', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}>
+      {isOpen && filtered.length > 0 && createPortal(
+        <div id="name-combobox-dropdown" style={{ ...dropdownStyle, background: '#fff', border: '1px solid var(--color-border)', borderRadius: '4px', maxHeight: '200px', overflowY: 'auto', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}>
           {filtered.map(opt => (
-            <div key={opt.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 10px', cursor: 'pointer', borderBottom: '1px solid #f1f5f9' }}
+            <div key={opt.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', cursor: 'pointer', borderBottom: '1px solid #f1f5f9' }}
               onMouseDown={(e) => {
                 e.preventDefault(); // Prevent input blur
                 onChange(opt.name);
@@ -95,17 +112,20 @@ const NameCombobox = ({ value, onChange, isNew }) => {
               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'}
               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
             >
-              <span style={{ fontSize: '0.8rem', color: 'var(--color-text-main)' }}>{opt.name}</span>
+              <span style={{ fontSize: '0.8rem', color: 'var(--color-text-main)', fontWeight: '500' }}>{opt.name}</span>
               <button
                 onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); deleteListItem('packageNames', opt.id); }}
-                style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
+                style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', borderRadius: '4px' }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#fee2e2'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                 title="Xóa gợi ý này"
               >
                 <Trash2 size={13} />
               </button>
             </div>
           ))}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
