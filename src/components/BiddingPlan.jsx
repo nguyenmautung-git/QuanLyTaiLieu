@@ -74,21 +74,24 @@ const CellInput = ({ col, value, onChange, isNew, projectCode }) => {
 };
 
 // ─── Edit Modal ────────────────────────────────────────────────────────────────
-const EditPackageModal = ({ pkg, onSave, onClose, projectCode }) => {
+const EditPackageModal = ({ pkg, onSave, onClose, projectCode, projectName }) => {
   const [formData, setFormData] = useState({ ...pkg });
   const handleChange = (key, value) => setFormData(prev => ({ ...prev, [key]: value }));
 
   return (
     <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div className="card fade-in" style={{ width: '500px', maxWidth: '90vw', maxHeight: '90vh', overflowY: 'auto', backgroundColor: 'var(--color-bg-surface)', padding: 0 }}>
-        <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f8fafc' }}>
-          <h3 style={{ margin: 0, fontSize: '1rem', color: 'var(--color-text-main)', fontWeight: '700' }}>Chỉnh sửa gói thầu</h3>
+      <div className="card fade-in" style={{ width: '750px', maxWidth: '90vw', maxHeight: '90vh', overflowY: 'auto', backgroundColor: 'var(--color-bg-surface)', padding: 0 }}>
+        <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', backgroundColor: '#f8fafc' }}>
+          <div>
+            <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--color-text-main)', fontWeight: '700' }}>Chỉnh sửa gói thầu</h3>
+            <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginTop: '4px', fontWeight: '500' }}>Dự án: {projectName}</div>
+          </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer', color: 'var(--color-text-muted)' }}>&times;</button>
         </div>
-        <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <div style={{ padding: '1.5rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
           {COLUMNS.map(col => (
-            <div key={col.key}>
-              <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.8rem', fontWeight: '600', color: 'var(--color-text-main)' }}>{col.label} {col.required && <span style={{color:'red'}}>*</span>}</label>
+            <div key={col.key} style={{ gridColumn: col.key === 'summary' || col.key === 'name' ? '1 / -1' : 'auto' }}>
+              <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.8rem', fontWeight: '600', color: 'var(--color-text-main)' }}>{col.label} {col.required && <span style={{color:'red'}}>*</span>}</label>
               <div style={{ border: '1px solid var(--color-border)', borderRadius: '4px', backgroundColor: '#fff' }}>
                 <CellInput col={col} value={formData[col.key] ?? ''} onChange={v => handleChange(col.key, v)} projectCode={projectCode} />
               </div>
@@ -137,11 +140,6 @@ const DataRow = ({ pkg, idx, total, isAdmin, onEdit, onDelete, onMoveUp, onMoveD
         </td>
       )}
 
-      {/* STT */}
-      <td style={{ ...cell(38), textAlign: 'center', fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: '600', padding: '6px 4px' }}>
-        {idx + 1}
-      </td>
-
       {/* Data cells */}
       {visibleCols.map(col => {
         const w = colWidths[col.key] || col.width;
@@ -177,10 +175,18 @@ const DataRow = ({ pkg, idx, total, isAdmin, onEdit, onDelete, onMoveUp, onMoveD
 };
 
 // ─── New row at the bottom ────────────────────────────────────────────────────
-const NewRow = ({ onAdd, isAdmin, visibleCols, colWidths, projectCode }) => {
-  const [row, setRow] = useState(EMPTY_ROW());
+const NewRow = ({ onAdd, isAdmin, visibleCols, colWidths, projectCode, nextIdx }) => {
+  const getDefaultCode = (idx) => projectCode ? `${projectCode}.GT.${String(idx).padStart(2, '0')}` : '';
+  const [row, setRow] = useState({ ...EMPTY_ROW(), code: getDefaultCode(nextIdx) });
+  
+  useEffect(() => {
+    if (!row.code || row.code === getDefaultCode(nextIdx - 1)) {
+      setRow(r => ({ ...r, code: getDefaultCode(nextIdx) }));
+    }
+  }, [nextIdx, projectCode]);
+
   const setField = (k, v) => setRow(r => ({ ...r, [k]: v }));
-  const handleAdd = () => { if (!row.name.trim()) return; onAdd({ ...row }); setRow(EMPTY_ROW()); };
+  const handleAdd = () => { if (!row.name.trim()) return; onAdd({ ...row }); setRow({ ...EMPTY_ROW(), code: getDefaultCode(nextIdx + 1) }); };
   const cell = (w) => ({ padding: 0, minWidth: w, maxWidth: w, borderRight: '1px solid var(--color-border)', borderBottom: '1px solid var(--color-border)', backgroundColor: '#f0f9ff', overflow: 'hidden' });
 
   return (
@@ -189,13 +195,10 @@ const NewRow = ({ onAdd, isAdmin, visibleCols, colWidths, projectCode }) => {
         <td style={{ ...cell(72), textAlign: 'center', padding: '4px' }}>
           <button onClick={handleAdd} disabled={!row.name.trim()}
             style={{ background: row.name.trim() ? 'var(--color-primary)' : '#e2e8f0', color: row.name.trim() ? '#fff' : '#94a3b8', border: 'none', borderRadius: '4px', padding: '3px 8px', cursor: row.name.trim() ? 'pointer' : 'not-allowed', fontSize: '0.68rem', display: 'flex', alignItems: 'center', gap: '2px', margin: '0 auto' }}>
-            <Save size={10} /> Lưu
+            <Plus size={10} /> Thêm
           </button>
         </td>
       )}
-      <td style={{ ...cell(38), textAlign: 'center', color: 'var(--color-primary)', padding: '4px' }}>
-        <Plus size={13} style={{ display: 'block', margin: '0 auto' }} />
-      </td>
       {visibleCols.map(col => {
         const w = colWidths[col.key] || col.width;
         return (
@@ -327,7 +330,6 @@ const ProjectDatasheet = ({ project, packages, isAdmin, onAdd, onSave, onDelete,
             <thead>
               <tr>
                 {isAdmin && <th style={{ ...thStyle({ width: 72 }), minWidth: 72 }}>Di chuyển</th>}
-                <th style={{ ...thStyle({ width: 38 }), minWidth: 38 }}>STT</th>
                 {visibleCols.map(col => {
                   const w = colWidths[col.key] || col.width;
                   const align = col.type === 'price' || col.type === 'date' ? 'right'
@@ -367,8 +369,8 @@ const ProjectDatasheet = ({ project, packages, isAdmin, onAdd, onSave, onDelete,
                 // Đếm số cột trước cột "price" trong visibleCols
                 const priceIdx = visibleCols.findIndex(c => c.key === 'price');
                 const colsAfterPrice = priceIdx >= 0 ? visibleCols.length - priceIdx - 1 : 0;
-                // Cột cố định trái: Di chuyển(1) + STT(1) + các cột trước price
-                const fixedLeft = (isAdmin ? 1 : 0) + 1 + (priceIdx >= 0 ? priceIdx : visibleCols.length);
+                // Cột cố định trái: Di chuyển(1) + các cột trước price
+                const fixedLeft = (isAdmin ? 1 : 0) + (priceIdx >= 0 ? priceIdx : visibleCols.length);
                 const bdr = '1px solid var(--color-border)';
                 const bdrTop = '2px solid var(--color-border)';
                 const baseTd = { padding: '7px 10px', fontSize: '0.78rem', borderTop: bdrTop, backgroundColor: 'var(--color-bg-surface-hover)', fontWeight: '700' };
@@ -388,7 +390,7 @@ const ProjectDatasheet = ({ project, packages, isAdmin, onAdd, onSave, onDelete,
               })()}
               {/* New row */}
               {isAdmin && (
-                <NewRow onAdd={(row) => onAdd(project.id, row)} isAdmin={isAdmin} visibleCols={visibleCols} colWidths={colWidths} projectCode={project.code} />
+                <NewRow onAdd={(row) => onAdd(project.id, row)} isAdmin={isAdmin} visibleCols={visibleCols} colWidths={colWidths} projectCode={project.code} nextIdx={packages.length + 1} />
               )}
             </tbody>
           </table>
@@ -484,6 +486,7 @@ const BiddingPlan = () => {
         <EditPackageModal
           pkg={editingData.pkg}
           projectCode={editingData.project.code}
+          projectName={editingData.project.name}
           onClose={() => setEditingData(null)}
           onSave={(updated) => {
             handleSave(editingData.project.id, editingData.pkg.id, updated);
