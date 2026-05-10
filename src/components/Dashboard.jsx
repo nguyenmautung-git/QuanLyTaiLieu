@@ -22,14 +22,14 @@ const Dashboard = () => {
       if (filters.keyword) {
         const kw = filters.keyword.toLowerCase();
         const matchKeyword = 
-          doc.documentCode.toLowerCase().includes(kw) || 
-          doc.documentNumber.toLowerCase().includes(kw) || 
-          doc.summary.toLowerCase().includes(kw);
+          (doc.documentCode || '').toLowerCase().includes(kw) || 
+          (doc.documentNumber || '').toLowerCase().includes(kw) || 
+          (doc.summary || '').toLowerCase().includes(kw);
         if (!matchKeyword) return false;
       }
       
       // Filter by project
-      if (filters.project && !doc.relatedProjects.includes(filters.project)) {
+      if (filters.project && !(doc.relatedProjects || []).includes(filters.project)) {
         return false;
       }
 
@@ -60,7 +60,7 @@ const Dashboard = () => {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
         <div>
           <h1 style={{ fontSize: '1.5rem', fontWeight: '700', color: 'var(--color-text-main)', marginBottom: '0.25rem' }}>
-            Tài liệu dự án
+            Tài liệu
           </h1>
           <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
             Quản lý và tra cứu {documents.length} tài liệu trong hệ thống

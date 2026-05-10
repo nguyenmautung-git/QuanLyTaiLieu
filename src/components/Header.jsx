@@ -2,7 +2,7 @@ import React, { useContext, useState, useRef, useEffect } from 'react';
 import { Search, Bell, Plus, User } from 'lucide-react';
 import { DocumentContext } from '../context/DocumentContext';
 
-const Header = ({ onOpenForm }) => {
+const Header = ({ currentView, onOpenForm }) => {
   const { getNewCount, markAsRead, documents, userRole, toggleRole } = useContext(DocumentContext);
   const [showNoti, setShowNoti] = useState(false);
   const notiRef = useRef(null);
@@ -41,7 +41,7 @@ const Header = ({ onOpenForm }) => {
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-        {userRole === 'Admin' && (
+        {userRole === 'Admin' && currentView === 'dashboard' && (
           <button className="btn btn-primary" onClick={onOpenForm}>
             <Plus size={18} />
             <span>Tải lên tài liệu</span>
