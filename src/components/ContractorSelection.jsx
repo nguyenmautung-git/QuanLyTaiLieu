@@ -14,10 +14,10 @@ const inputBase = { width: '100%', border: 'none', outline: 'none', padding: '5p
 
 const filterPartnersByPackage = (partners, pkg) => {
   if (!pkg) return partners;
-  
+
   let requiredKeywords = [];
   const natureL = (pkg.nature || '').toLowerCase();
-  
+
   if (natureL) {
     if (natureL.includes('xây lắp')) requiredKeywords.push('thi công', 'xây dựng');
     if (natureL.includes('tư vấn')) requiredKeywords.push('tư vấn', 'giám sát');
@@ -46,7 +46,7 @@ const PartnerOption = (props) => {
     <components.Option {...props}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '2px', flexShrink: 0 }}>
-          {[1,2,3,4,5].map(i => (
+          {[1, 2, 3, 4, 5].map(i => (
             <Star key={i} size={12} fill={i <= (props.data.rating || 0) ? '#f59e0b' : 'transparent'} color={i <= (props.data.rating || 0) ? '#f59e0b' : '#d1d5db'} />
           ))}
         </div>
@@ -60,7 +60,7 @@ const PartnerSingleValue = (props) => (
   <components.SingleValue {...props}>
     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '2px', flexShrink: 0 }}>
-        {[1,2,3,4,5].map(i => (
+        {[1, 2, 3, 4, 5].map(i => (
           <Star key={i} size={12} fill={i <= (props.data.rating || 0) ? '#f59e0b' : 'transparent'} color={i <= (props.data.rating || 0) ? '#f59e0b' : '#d1d5db'} />
         ))}
       </div>
@@ -84,7 +84,7 @@ const CellInput = ({ value, onChange, type, partners, pkg }) => {
         placeholder="— Chọn nhà thầu —"
         components={{ Option: PartnerOption, SingleValue: PartnerSingleValue }}
         menuPortalTarget={document.body}
-        styles={{ 
+        styles={{
           control: (base) => ({ ...base, minHeight: '32px', border: 'none', boxShadow: 'none', backgroundColor: 'transparent', cursor: 'pointer', fontSize: '0.78rem' }),
           valueContainer: (base) => ({ ...base, padding: '0 8px' }),
           menuPortal: (base) => ({ ...base, zIndex: 9999 }),
@@ -108,7 +108,7 @@ const CellInput = ({ value, onChange, type, partners, pkg }) => {
     };
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px' }}>
-        <select value={value} onChange={e => onChange(e.target.value)} 
+        <select value={value} onChange={e => onChange(e.target.value)}
           style={{ width: '100%', border: 'none', background: getBg(value), color: getColor(value), borderRadius: '12px', padding: '2px 8px', outline: 'none', fontFamily: 'inherit', fontSize: '0.75rem', fontWeight: '600', cursor: 'pointer', appearance: 'none', textAlign: 'center' }}>
           {STATUS_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
         </select>
@@ -121,7 +121,7 @@ const CellInput = ({ value, onChange, type, partners, pkg }) => {
 // ─── DataRow ─────────────────────────────────────────────────────────────────
 const DataRow = ({ bidder, idx, total, isAdmin, onUpdate, onDelete, onMoveUp, onMoveDown, partners, pkg, onEmailPreview }) => {
   const bg = idx % 2 === 0 ? '#ffffff' : 'var(--color-bg-surface)';
-  
+
   return (
     <tr style={{ backgroundColor: bg, transition: 'background-color 0.15s' }}>
       {isAdmin && (
@@ -138,17 +138,17 @@ const DataRow = ({ bidder, idx, total, isAdmin, onUpdate, onDelete, onMoveUp, on
           </div>
         </td>
       )}
-      
+
       <td style={{ ...cell(50), textAlign: 'center', color: 'var(--color-text-muted)' }}>{idx + 1}</td>
-      
+
       <td style={{ ...cell() }}>
         <CellInput type="partner" value={bidder.partnerId} onChange={v => onUpdate('partnerId', v)} partners={partners} pkg={pkg} />
       </td>
-      
+
       <td style={{ ...cell(160) }}>
-        <CellInput 
-          type="status" 
-          value={bidder.status} 
+        <CellInput
+          type="status"
+          value={bidder.status}
           onChange={v => {
             onUpdate('status', v);
             if (v === 'Đã mời thầu') {
@@ -157,7 +157,7 @@ const DataRow = ({ bidder, idx, total, isAdmin, onUpdate, onDelete, onMoveUp, on
                 if (onEmailPreview) onEmailPreview({ partner, pkg });
               }
             }
-          }} 
+          }}
         />
       </td>
 
@@ -186,15 +186,15 @@ const NewRow = ({ onAdd, isAdmin, partners, pkg }) => {
     <tr style={{ backgroundColor: '#f8fafc' }}>
       {isAdmin && <td style={{ ...cell(72), borderRight: '1px solid var(--color-border)' }} />}
       <td style={{ ...cell(50), textAlign: 'center', color: '#94a3b8', fontSize: '0.7rem' }}>+</td>
-      
+
       <td style={{ ...cell() }}>
         <CellInput type="partner" value={data.partnerId} onChange={v => setData({ ...data, partnerId: v })} partners={partners} pkg={pkg} />
       </td>
-      
+
       <td style={{ ...cell(160) }}>
         <CellInput type="status" value={data.status} onChange={v => setData({ ...data, status: v })} />
       </td>
-      
+
       {isAdmin && (
         <td style={{ ...cell(46), textAlign: 'center' }}>
           <button onClick={handleAdd} disabled={!data.partnerId}
@@ -256,7 +256,7 @@ const PackageDatasheet = ({ pkg, project, isAdmin, onSave, partners, onEmailPrev
             <div style={{ width: '50px', height: '50px', borderRadius: '12px', backgroundColor: color.bg, color: color.text, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.25rem', fontWeight: 'bold', flexShrink: 0, boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.05)' }}>
               {project.name.charAt(0).toUpperCase()}
             </div>
-            
+
             <div style={{ flex: 1 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
                 <span style={{ fontSize: '0.75rem', fontWeight: '700', padding: '2px 8px', backgroundColor: 'var(--color-bg-surface-hover)', color: 'var(--color-text-muted)', borderRadius: '12px' }}>
@@ -277,7 +277,7 @@ const PackageDatasheet = ({ pkg, project, isAdmin, onSave, partners, onEmailPrev
               </div>
             </div>
           </div>
-          
+
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0 }}>
             <div style={{ textAlign: 'right', fontSize: '0.75rem' }}>
               <div style={{ color: 'var(--color-text-muted)' }}>{bidders.length} nhà thầu tham dự</div>
@@ -320,7 +320,7 @@ const PackageDatasheet = ({ pkg, project, isAdmin, onSave, partners, onEmailPrev
                   onEmailPreview={onEmailPreview}
                 />
               ))}
-              
+
               {/* New row */}
               {isAdmin && (
                 <NewRow onAdd={handleAdd} isAdmin={isAdmin} partners={partners} pkg={pkg} />
@@ -342,7 +342,7 @@ const ContractorSelection = () => {
   const [emailPreview, setEmailPreview] = useState(null);
 
   // Lấy các package có dự án hợp lệ và đã được phê duyệt
-  let validPackages = biddingPackages.filter(p => 
+  let validPackages = biddingPackages.filter(p =>
     projects.some(proj => String(proj.id) === String(p.projectId)) &&
     (p.status === 'Đã phê duyệt' || p.status === '✅ Đã phê duyệt')
   );
@@ -350,7 +350,7 @@ const ContractorSelection = () => {
   // Áp dụng bộ lọc
   validPackages = validPackages.filter(pkg => {
     const project = projects.find(proj => String(proj.id) === String(pkg.projectId));
-    
+
     if (filters.project && project?.name !== filters.project) {
       return false;
     }
@@ -358,14 +358,14 @@ const ContractorSelection = () => {
     if (filters.nature && pkg.nature !== filters.nature) {
       return false;
     }
-    
+
     if (filters.keyword) {
       const kw = filters.keyword.toLowerCase();
       const codeMatch = (pkg.code || '').toLowerCase().includes(kw);
       const nameMatch = (pkg.name || '').toLowerCase().includes(kw);
       if (!codeMatch && !nameMatch) return false;
     }
-    
+
     return true;
   });
 
@@ -399,13 +399,13 @@ const ContractorSelection = () => {
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
           <div className="form-group" style={{ marginBottom: 0, flex: '1 1 250px' }}>
             <label className="form-label" style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Từ khóa (Mã, Tên gói thầu)</label>
-            <input 
-              type="text" 
-              name="keyword" 
-              value={filters.keyword} 
-              onChange={handleFilterChange} 
-              className="input-field" 
-              placeholder="Nhập mã hoặc tên gói thầu..." 
+            <input
+              type="text"
+              name="keyword"
+              value={filters.keyword}
+              onChange={handleFilterChange}
+              className="input-field"
+              placeholder="Nhập mã hoặc tên gói thầu..."
             />
           </div>
           <div className="form-group" style={{ marginBottom: 0, flex: '1 1 200px' }}>
@@ -424,12 +424,12 @@ const ContractorSelection = () => {
               </select>
             </div>
             {hasFilter && (
-              <button 
+              <button
                 onClick={handleClearFilters}
                 title="Bỏ lọc"
-                style={{ 
+                style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  backgroundColor: '#fef2f2', color: '#ef4444', border: '1px solid #fca5a5', 
+                  backgroundColor: '#fef2f2', color: '#ef4444', border: '1px solid #fca5a5',
                   width: '35px', height: '35px', borderRadius: '4px', cursor: 'pointer',
                   flexShrink: 0
                 }}>
@@ -445,15 +445,15 @@ const ContractorSelection = () => {
           Chưa có gói thầu nào. Vui lòng tạo gói thầu ở trang "Kế hoạch LCNT".
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem', alignItems: 'start' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1.5rem', alignItems: 'start' }}>
           {validPackages.map(pkg => {
             const project = projects.find(proj => String(proj.id) === String(pkg.projectId));
             return (
-              <PackageDatasheet 
-                key={pkg.id} 
-                pkg={pkg} 
-                project={project} 
-                isAdmin={isAdmin} 
+              <PackageDatasheet
+                key={pkg.id}
+                pkg={pkg}
+                project={project}
+                isAdmin={isAdmin}
                 onSave={handleSavePackage}
                 partners={partners}
                 onEmailPreview={setEmailPreview}
@@ -471,7 +471,7 @@ const ContractorSelection = () => {
               <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '700', color: 'var(--color-text-main)' }}>Nội dung thư mời thầu</h3>
               <button onClick={() => setEmailPreview(null)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-text-muted)' }}><X size={20} /></button>
             </div>
-            
+
             <div style={{ padding: '1.5rem', flex: 1, overflowY: 'auto' }}>
               <div style={{ marginBottom: '1rem', display: 'flex' }}>
                 <span style={{ fontWeight: '600', color: 'var(--color-text-muted)', fontSize: '0.85rem', width: '80px' }}>Gửi đến: </span>
@@ -483,7 +483,7 @@ const ContractorSelection = () => {
                   Thư mời thầu - [{emailPreview.pkg.code || 'Mã GT'}]: {emailPreview.pkg.name || 'Tên gói thầu'}
                 </span>
               </div>
-              
+
               <div style={{ border: '1px solid var(--color-border)', borderRadius: '8px', padding: '1.5rem', backgroundColor: '#fdfdfd', fontSize: '0.9rem', lineHeight: '1.6' }}>
                 <p>Kính gửi Ban Giám đốc <strong>{emailPreview.partner.name}</strong>,</p>
                 <p>Ban Quản lý dự án trân trọng kính mời Quý công ty tham gia đấu thầu:</p>
@@ -492,28 +492,28 @@ const ContractorSelection = () => {
                   <li><strong>Tên gói thầu:</strong> {emailPreview.pkg.name || 'Chưa cập nhật'}</li>
                 </ul>
                 <p>Để thuận tiện cho công tác chuẩn bị, Quý công ty vui lòng phản hồi lại bằng cách click vào một trong hai nút dưới đây:</p>
-                
+
                 <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', marginBottom: '1.5rem' }}>
                   <a href={`mailto:banquanly@duan.vn?subject=${encodeURIComponent('Xác nhận tham gia gói thầu ' + (emailPreview.pkg.code || ''))}&body=${encodeURIComponent('Chúng tôi xác nhận sẽ tham gia gói thầu này.')}`}
-                     style={{ display: 'inline-block', backgroundColor: '#10b981', color: 'white', padding: '10px 20px', borderRadius: '6px', textDecoration: 'none', fontWeight: '600', fontSize: '0.85rem', boxShadow: '0 2px 4px rgba(16,185,129,0.2)' }}>
+                    style={{ display: 'inline-block', backgroundColor: '#10b981', color: 'white', padding: '10px 20px', borderRadius: '6px', textDecoration: 'none', fontWeight: '600', fontSize: '0.85rem', boxShadow: '0 2px 4px rgba(16,185,129,0.2)' }}>
                     ✓ XÁC NHẬN THAM GIA
                   </a>
                   <a href={`mailto:banquanly@duan.vn?subject=${encodeURIComponent('Từ chối tham gia gói thầu ' + (emailPreview.pkg.code || ''))}&body=${encodeURIComponent('Chúng tôi rất tiếc không thể tham gia gói thầu này.')}`}
-                     style={{ display: 'inline-block', backgroundColor: '#ef4444', color: 'white', padding: '10px 20px', borderRadius: '6px', textDecoration: 'none', fontWeight: '600', fontSize: '0.85rem', boxShadow: '0 2px 4px rgba(239,68,68,0.2)' }}>
+                    style={{ display: 'inline-block', backgroundColor: '#ef4444', color: 'white', padding: '10px 20px', borderRadius: '6px', textDecoration: 'none', fontWeight: '600', fontSize: '0.85rem', boxShadow: '0 2px 4px rgba(239,68,68,0.2)' }}>
                     ✕ TỪ CHỐI THAM GIA
                   </a>
                 </div>
-                
-                <p style={{ margin: 0 }}>Rất mong nhận được sự hợp tác từ Quý công ty.<br/>Trân trọng,<br/><strong>Ban Quản lý dự án.</strong></p>
+
+                <p style={{ margin: 0 }}>Rất mong nhận được sự hợp tác từ Quý công ty.<br />Trân trọng,<br /><strong>Ban Quản lý dự án.</strong></p>
               </div>
               <div style={{ marginTop: '1rem', fontSize: '0.8rem', color: '#f59e0b', fontStyle: 'italic', display: 'flex', gap: '6px' }}>
                 * Lưu ý: Khi gửi qua Mail Client, các nút bấm sẽ tự động được chuyển đổi thành định dạng phù hợp.
               </div>
             </div>
-            
+
             <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', backgroundColor: '#f8fafc' }}>
               <button onClick={() => setEmailPreview(null)} style={{ padding: '8px 16px', borderRadius: '6px', border: '1px solid var(--color-border)', backgroundColor: '#fff', cursor: 'pointer', fontWeight: '600', fontSize: '0.85rem', color: 'var(--color-text-main)' }}>Đóng</button>
-              <button 
+              <button
                 onClick={() => {
                   const pCode = emailPreview.pkg.code || 'Mã GT';
                   const pName = emailPreview.pkg.name || 'Tên gói thầu';
