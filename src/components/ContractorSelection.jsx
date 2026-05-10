@@ -250,36 +250,35 @@ const PackageDatasheet = ({ pkg, project, isAdmin, onSave, partners, onEmailPrev
     <div className="card fade-in" style={{ padding: 0, overflow: 'hidden', border: '1px solid var(--color-border)', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
       {/* Header */}
       <div style={{ padding: '1.25rem 1.5rem', backgroundColor: '#fdfdfd', borderBottom: expanded ? '1px solid var(--color-border)' : 'none' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: 1, paddingRight: '16px' }}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', flex: 1 }}>
               <span style={{ fontSize: '0.75rem', fontWeight: '700', padding: '3px 8px', backgroundColor: 'var(--color-bg-surface-hover)', color: 'var(--color-text-muted)', borderRadius: '6px', flexShrink: 0, marginTop: '2px' }}>
                 {pkg.code || 'Chưa có mã'}
               </span>
               <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--color-text-main)', fontWeight: '700', lineHeight: '1.3' }}>{pkg.name}</h3>
             </div>
-            
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', color: 'var(--color-text-muted)', fontSize: '0.8rem', width: '100%' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', overflow: 'hidden' }}>
-                <Briefcase size={14} style={{ flexShrink: 0 }} /> 
-                <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Dự án: {project.name}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0 }}>
+              <div style={{ textAlign: 'right', fontSize: '0.75rem' }}>
+                <div style={{ color: 'var(--color-text-muted)' }}>{bidders.length} nhà thầu tham dự</div>
               </div>
-              {pkg.nature && (
-                <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
-                  <span style={{ color: 'var(--color-primary)', fontWeight: '600', backgroundColor: '#eff6ff', padding: '3px 8px', borderRadius: '4px', fontSize: '0.75rem', border: '1px solid #bfdbfe' }}>{pkg.nature}</span>
-                </div>
-              )}
+              <button onClick={() => setExpanded(v => !v)}
+                style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--color-primary)', background: 'var(--color-bg-surface)', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '5px 12px', cursor: 'pointer', fontSize: '0.78rem', fontWeight: '600', whiteSpace: 'nowrap' }}>
+                {expanded ? <><ChevronUp size={14} /> Thu gọn</> : <><ChevronDown size={14} /> Mở datasheet</>}
+              </button>
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0 }}>
-            <div style={{ textAlign: 'right', fontSize: '0.75rem' }}>
-              <div style={{ color: 'var(--color-text-muted)' }}>{bidders.length} nhà thầu tham dự</div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', color: 'var(--color-text-muted)', fontSize: '0.8rem', width: '100%' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', overflow: 'hidden' }}>
+              <Briefcase size={14} style={{ flexShrink: 0 }} /> 
+              <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Dự án: {project.name}</span>
             </div>
-            <button onClick={() => setExpanded(v => !v)}
-              style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--color-primary)', background: 'var(--color-bg-surface)', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '5px 12px', cursor: 'pointer', fontSize: '0.78rem', fontWeight: '600', whiteSpace: 'nowrap' }}>
-              {expanded ? <><ChevronUp size={14} /> Thu gọn</> : <><ChevronDown size={14} /> Mở datasheet</>}
-            </button>
+            {pkg.nature && (
+              <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                <span style={{ color: 'var(--color-primary)', fontWeight: '600', backgroundColor: '#eff6ff', padding: '3px 8px', borderRadius: '4px', fontSize: '0.75rem', border: '1px solid #bfdbfe' }}>{pkg.nature}</span>
+              </div>
+            )}
           </div>
         </div>
       </div>
