@@ -19,6 +19,7 @@
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
     "react-is": "^19.2.6",
+    "react-select": "^5.10.2",
     "recharts": "^3.8.1",
     "uuid": "^14.0.0"
   },

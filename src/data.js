@@ -242,7 +242,7 @@ export const LIST_CONFIGS = [
   {
     key: 'partnerTypes',
     collectionName: 'partnerTypes',
-    name: 'Loại hình đối tác',
+    name: 'Phân loại đối tác',
     description: 'Phân loại các công ty đối tác tham gia dự án.',
     initialData: ['Chủ đầu tư', 'Nhà thầu thi công', 'Đơn vị tư vấn', 'Nhà cung cấp vật tư', 'Đơn vị giám sát']
   },

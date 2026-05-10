@@ -1,4 +1,5 @@
 import React, { useState, useContext } from 'react';
+import Select from 'react-select';
 import { Building2, Mail, Phone, Globe, MapPin, Briefcase, CreditCard, Star } from 'lucide-react';
 import { DocumentContext } from '../context/DocumentContext';
 
@@ -23,7 +24,7 @@ const Partners = () => {
   const { partners, addPartner, editPartner, deletePartner, userRole, globalLists } = useContext(DocumentContext);
   const [isAdding, setIsAdding] = useState(false);
   const [newPartner, setNewPartner] = useState({ 
-    name: '', shortName: '', taxCode: '', type: '', representative: '', 
+    name: '', shortName: '', taxCode: '', type: [], representative: '', 
     phone: '', email: '', address: '', website: '', logo: '',
     bankAccount: '', bankName: '', rating: 0
   });
@@ -41,7 +42,7 @@ const Partners = () => {
       });
       setIsAdding(false);
       setNewPartner({ 
-        name: '', shortName: '', taxCode: '', type: '', representative: '', 
+        name: '', shortName: '', taxCode: '', type: [], representative: '', 
         phone: '', email: '', address: '', website: '', logo: '',
         bankAccount: '', bankName: '', rating: 0
       });
@@ -120,11 +121,15 @@ const Partners = () => {
               <input type="text" className="input-field" value={newPartner.taxCode} onChange={(e) => setNewPartner({...newPartner, taxCode: e.target.value})} placeholder="0123456789" />
             </div>
             <div className="form-group" style={{ marginBottom: 0 }}>
-              <label className="form-label">Loại hình</label>
-              <select className="input-field" value={newPartner.type} onChange={(e) => setNewPartner({...newPartner, type: e.target.value})}>
-                <option value="">-- Chọn loại hình --</option>
-                {partnerTypes.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
-              </select>
+              <label className="form-label">Loại hình đối tác</label>
+              <Select
+                isMulti
+                options={partnerTypes.map(t => ({ value: t.name, label: t.name }))}
+                placeholder="-- Chọn loại hình --"
+                value={(Array.isArray(newPartner.type) ? newPartner.type : (newPartner.type ? [newPartner.type] : [])).map(t => ({ value: t, label: t }))}
+                onChange={(selected) => setNewPartner({...newPartner, type: selected ? selected.map(s => s.value) : []})}
+                styles={{ control: (base) => ({ ...base, minHeight: '38px', borderRadius: '6px', borderColor: 'var(--color-border)', fontSize: '0.875rem' }) }}
+              />
             </div>
             <div className="form-group" style={{ marginBottom: 0 }}>
               <label className="form-label">Người đại diện</label>
@@ -188,10 +193,14 @@ const Partners = () => {
                 <input type="text" className="input-field" value={editFormData.name} onChange={(e) => setEditFormData({...editFormData, name: e.target.value})} placeholder="Tên công ty" />
                 <input type="text" className="input-field" value={editFormData.shortName} onChange={(e) => setEditFormData({...editFormData, shortName: e.target.value})} placeholder="Tên viết tắt" />
                 <input type="text" className="input-field" value={editFormData.taxCode} onChange={(e) => setEditFormData({...editFormData, taxCode: e.target.value})} placeholder="MST" />
-                <select className="input-field" value={editFormData.type} onChange={(e) => setEditFormData({...editFormData, type: e.target.value})}>
-                  <option value="">-- Loại hình --</option>
-                  {partnerTypes.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
-                </select>
+                <Select
+                  isMulti
+                  options={partnerTypes.map(t => ({ value: t.name, label: t.name }))}
+                  placeholder="-- Loại hình đối tác --"
+                  value={(Array.isArray(editFormData.type) ? editFormData.type : (editFormData.type ? [editFormData.type] : [])).map(t => ({ value: t, label: t }))}
+                  onChange={(selected) => setEditFormData({...editFormData, type: selected ? selected.map(s => s.value) : []})}
+                  styles={{ control: (base) => ({ ...base, minHeight: '38px', borderRadius: '6px', borderColor: 'var(--color-border)', marginBottom: '0.5rem', fontSize: '0.875rem' }) }}
+                />
                 <input type="text" className="input-field" value={editFormData.representative} onChange={(e) => setEditFormData({...editFormData, representative: e.target.value})} placeholder="Người đại diện" />
                 <input type="text" className="input-field" value={editFormData.phone} onChange={(e) => setEditFormData({...editFormData, phone: e.target.value})} placeholder="Số ĐT" />
                 <input type="email" className="input-field" value={editFormData.email} onChange={(e) => setEditFormData({...editFormData, email: e.target.value})} placeholder="Email" />
@@ -231,10 +240,14 @@ const Partners = () => {
                   <span style={{ backgroundColor: 'rgba(115, 169, 130, 0.15)', color: 'var(--color-success)', padding: '0.25rem 0.5rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: '600' }}>
                     MST: {partner.taxCode}
                   </span>
-                  {partner.type && (
-                    <span style={{ backgroundColor: 'rgba(130, 168, 209, 0.15)', color: 'var(--color-primary)', padding: '0.25rem 0.5rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: '600' }}>
-                      {partner.type}
-                    </span>
+                  {partner.type && (partner.type.length > 0) && (
+                    <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
+                      {(Array.isArray(partner.type) ? partner.type : [partner.type]).map(t => (
+                        <span key={t} style={{ backgroundColor: 'rgba(130, 168, 209, 0.15)', color: 'var(--color-primary)', padding: '0.25rem 0.5rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: '600' }}>
+                          {t}
+                        </span>
+                      ))}
+                    </div>
                   )}
                 </div>
                 
