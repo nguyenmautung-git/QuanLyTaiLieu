@@ -12,35 +12,6 @@ const thStyle = (w) => ({ padding: '10px 8px', borderBottom: '2px solid var(--co
 const btn = { background: 'none', border: 'none', cursor: 'pointer', padding: '3px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '4px' };
 const inputBase = { width: '100%', border: 'none', outline: 'none', padding: '5px 8px', fontSize: '0.78rem', backgroundColor: 'transparent', color: 'var(--color-text-main)', fontFamily: 'inherit' };
 
-const filterPartnersByPackage = (partners, pkg) => {
-  if (!pkg) return partners;
-  
-  let requiredKeywords = [];
-  const natureL = (pkg.nature || '').toLowerCase();
-  
-  if (natureL) {
-    if (natureL.includes('xây lắp')) requiredKeywords.push('thi công', 'xây dựng');
-    if (natureL.includes('tư vấn')) requiredKeywords.push('tư vấn', 'giám sát');
-    if (natureL.includes('mua sắm')) requiredKeywords.push('cung cấp', 'vật tư', 'thiết bị');
-  } else if (pkg.name) {
-    const nameL = pkg.name.toLowerCase();
-    if (nameL.includes('thi công') || nameL.includes('xây dựng') || nameL.includes('cọc')) requiredKeywords.push('thi công', 'xây dựng');
-    if (nameL.includes('tư vấn') || nameL.includes('thiết kế') || nameL.includes('báo cáo') || nameL.includes('kiểm toán')) requiredKeywords.push('tư vấn');
-    if (nameL.includes('giám sát')) requiredKeywords.push('giám sát', 'tư vấn');
-    if (nameL.includes('cung cấp') || nameL.includes('mua sắm') || nameL.includes('thiết bị') || nameL.includes('hàng hóa')) requiredKeywords.push('cung cấp', 'vật tư');
-  }
-
-  if (requiredKeywords.length === 0) return partners;
-
-  const filtered = partners.filter(p => {
-    const pTypes = Array.isArray(p.type) ? p.type : (p.type ? [p.type] : []);
-    const pTypeStr = pTypes.join(' ').toLowerCase();
-    return requiredKeywords.some(kw => pTypeStr.includes(kw));
-  });
-
-  return filtered.length > 0 ? filtered : partners;
-};
-
 const PartnerOption = (props) => {
   return (
     <components.Option {...props}>
@@ -72,8 +43,7 @@ const PartnerSingleValue = (props) => (
 // ─── Cell Input ─────────────────────────────────────────────────────────────
 const CellInput = ({ value, onChange, type, partners, pkg }) => {
   if (type === 'partner') {
-    const filteredPartners = filterPartnersByPackage(partners, pkg);
-    const options = filteredPartners.map(p => ({ value: p.id, label: p.name, rating: p.rating || 0 }));
+    const options = partners.map(p => ({ value: p.id, label: p.name, rating: p.rating || 0 }));
     const selectedOption = options.find(o => o.value === value) || null;
 
     return (
