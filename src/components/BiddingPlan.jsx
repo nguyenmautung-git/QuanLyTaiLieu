@@ -27,7 +27,7 @@ const unformatPrice = (val) => String(val).replace(/\./g, '').replace(/,/g, '');
 
 const EMPTY_ROW = () => ({
   _new: true,
-  code: '', name: '', summary: '', price: '',
+  code: '', name: '', summary: '', nature: '', price: '',
   fundSource: 'Vốn tư nhân',
   selectionMethod: 'Đấu thầu hạn chế',
   procurementMethod: 'Một giai đoạn hai túi hồ sơ',
@@ -43,6 +43,7 @@ const COLUMNS = [
   { key: 'code',               label: 'Mã gói thầu',           width: 140, type: 'code' },
   { key: 'status',             label: 'Trạng thái',            width: 130, type: 'status', options: STATUS_OPTIONS },
   { key: 'name',               label: 'Tên gói thầu',          width: 180, required: true },
+  { key: 'nature',             label: 'Tính chất gói thầu',    width: 160, type: 'nature_select' },
   { key: 'summary',            label: 'Tóm tắt CV chính',       width: 180, type: 'textarea' },
   { key: 'price',              label: 'Giá gói thầu (VNĐ)',     width: 150, type: 'price' },
   { key: 'fundSource',         label: 'Nguồn vốn',              width: 180, type: 'select', options: FUND_SOURCE_OPTIONS },
@@ -196,6 +197,16 @@ const CellInput = ({ col, value, onChange, isNew, projectCode }) => {
   if (col.type === 'code') return <input type="text" value={value} disabled
     placeholder={isNew && projectCode ? `${projectCode}.GT.01` : ''}
     style={{ ...base, color: '#64748b', backgroundColor: '#f1f5f9', cursor: 'not-allowed' }} />;
+  if (col.type === 'nature_select') {
+    const { globalLists } = useContext(DocumentContext);
+    const options = globalLists?.packageNatures || [];
+    return (
+      <select value={value} onChange={e => onChange(e.target.value)} style={{ ...base, cursor: 'pointer' }}>
+        <option value="">— Chọn tính chất —</option>
+        {options.map(o => <option key={o.id} value={o.name}>{o.name}</option>)}
+      </select>
+    );
+  }
   if (col.type === 'select') return (
     <select value={value} onChange={e => onChange(e.target.value)} style={{ ...base, cursor: 'pointer' }}>
       <option value="">—</option>
