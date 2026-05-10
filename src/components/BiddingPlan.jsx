@@ -57,9 +57,9 @@ const CellInput = ({ col, value, onChange, isNew, projectCode }) => {
         style={{ width: '15px', height: '15px', accentColor: 'var(--color-primary)', cursor: 'pointer' }} />
     </div>
   );
-  if (col.type === 'code') return <input type="text" value={value} onChange={e => onChange(e.target.value)}
-    placeholder={isNew && projectCode ? `${projectCode}.GT.01` : (isNew ? 'VD: MA.GT.01' : '')}
-    style={{ ...base }} />;
+  if (col.type === 'code') return <input type="text" value={value} disabled
+    placeholder={isNew && projectCode ? `${projectCode}.GT.01` : ''}
+    style={{ ...base, color: '#64748b', backgroundColor: '#f1f5f9', cursor: 'not-allowed' }} />;
   if (col.type === 'select') return (
     <select value={value} onChange={e => onChange(e.target.value)} style={{ ...base, cursor: 'pointer' }}>
       <option value="">—</option>
@@ -356,14 +356,18 @@ const ProjectDatasheet = ({ project, packages, isAdmin, onAdd, onSave, onDelete,
                   </td>
                 </tr>
               )}
-              {packages.map((pkg, idx) => (
-                <DataRow key={pkg.id} pkg={pkg} idx={idx} total={packages.length} isAdmin={isAdmin}
-                  visibleCols={visibleCols} colWidths={colWidths}
-                  onEdit={(pkg) => onEdit(project, pkg)}
-                  onDelete={(id) => onDelete(project, id)}
-                  onMoveUp={() => onMoveUp(project.id, packages, idx)}
-                  onMoveDown={() => onMoveDown(project.id, packages, idx)} />
-              ))}
+              {packages.map((p, idx) => {
+                const computedCode = `${project.code}.GT.${String(idx + 1).padStart(2, '0')}`;
+                const pkg = { ...p, code: computedCode };
+                return (
+                  <DataRow key={pkg.id} pkg={pkg} idx={idx} total={packages.length} isAdmin={isAdmin}
+                    visibleCols={visibleCols} colWidths={colWidths}
+                    onEdit={(pkg) => onEdit(project, pkg)}
+                    onDelete={(id) => onDelete(project, id)}
+                    onMoveUp={() => onMoveUp(project, packages, idx)}
+                    onMoveDown={() => onMoveDown(project, packages, idx)} />
+                );
+              })}
               {/* Tổng giá — căn dưới cột "Giá gói thầu" */}
               {packages.length > 0 && (() => {
                 // Đếm số cột trước cột "price" trong visibleCols
@@ -405,10 +409,25 @@ const BiddingPlan = () => {
   const { projects, userRole, biddingPackages = [], addBiddingPackage, editBiddingPackage, deleteBiddingPackage, reorderBiddingPackages } = useContext(DocumentContext);
   const isAdmin = userRole === 'Admin';
   const [editingData, setEditingData] = useState(null); // { project, pkg }
+  const didFixCodes = useRef(false);
 
   const getPackages = (projectId) =>
     [...biddingPackages.filter(p => String(p.projectId) === String(projectId))]
       .sort((a, b) => (a.order ?? 999) - (b.order ?? 999) || (a.createdAt || '').localeCompare(b.createdAt || ''));
+
+  // Migration script to fix missing/wrong codes
+  useEffect(() => {
+    if (!didFixCodes.current && projects.length > 0 && biddingPackages.length > 0) {
+      didFixCodes.current = true;
+      projects.forEach(p => {
+        const pkgs = getPackages(p.id);
+        const needsUpdate = pkgs.some((pkg, idx) => pkg.code !== `${p.code}.GT.${String(idx + 1).padStart(2, '0')}`);
+        if (needsUpdate && pkgs.length > 0 && isAdmin) {
+          reorderBiddingPackages(pkgs, p.code).catch(e => console.error(e));
+        }
+      });
+    }
+  }, [projects, biddingPackages, isAdmin, reorderBiddingPackages]);
 
   const handleAdd = async (projectId, row) => {
     const { _new, ...data } = row;
@@ -423,22 +442,26 @@ const BiddingPlan = () => {
   const handleDelete = async (project, pkgId) => {
     if (window.confirm('Xóa gói thầu này?')) {
       await deleteBiddingPackage(project.id, pkgId);
+      // Wait for deletion to propagate to state, then migration effect or next action will fix codes.
+      // To be strictly correct, we reorder remaining manually:
+      const remaining = getPackages(project.id).filter(p => p.id !== pkgId);
+      if (remaining.length > 0) await reorderBiddingPackages(remaining, project.code);
     }
   };
 
   // Reassign all order values after swap using batch
-  const handleMoveUp = async (projectId, pkgs, idx) => {
+  const handleMoveUp = async (project, pkgs, idx) => {
     if (idx === 0) return;
     const reordered = [...pkgs];
     [reordered[idx - 1], reordered[idx]] = [reordered[idx], reordered[idx - 1]];
-    await reorderBiddingPackages(reordered);
+    await reorderBiddingPackages(reordered, project.code);
   };
 
-  const handleMoveDown = async (projectId, pkgs, idx) => {
+  const handleMoveDown = async (project, pkgs, idx) => {
     if (idx >= pkgs.length - 1) return;
     const reordered = [...pkgs];
     [reordered[idx], reordered[idx + 1]] = [reordered[idx + 1], reordered[idx]];
-    await reorderBiddingPackages(reordered);
+    await reorderBiddingPackages(reordered, project.code);
   };
 
   return (

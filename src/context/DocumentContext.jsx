@@ -322,12 +322,13 @@ export const DocumentProvider = ({ children }) => {
   const deleteBiddingPackage = async (projectId, pkgId) => {
     await deleteDoc(doc(db, 'biddingPackages', pkgId));
   };
-  const reorderBiddingPackages = async (pkgs) => {
+  const reorderBiddingPackages = async (pkgs, projectCode) => {
     const batch = writeBatch(db);
     pkgs.forEach((pkg, index) => {
       const ref = doc(db, 'biddingPackages', pkg.id);
       const { id, ...data } = pkg;
-      batch.update(ref, { ...data, order: index, updatedAt: new Date().toISOString() });
+      const computedCode = projectCode ? `${projectCode}.GT.${String(index + 1).padStart(2, '0')}` : data.code;
+      batch.update(ref, { ...data, order: index, code: computedCode, updatedAt: new Date().toISOString() });
     });
     await batch.commit();
   };
