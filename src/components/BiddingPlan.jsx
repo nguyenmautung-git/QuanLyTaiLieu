@@ -25,14 +25,15 @@ const unformatPrice = (val) => String(val).replace(/\./g, '').replace(/,/g, '');
 
 const EMPTY_ROW = () => ({
   _new: true,
-  name: '', summary: '', price: '', fundSource: '',
+  code: '', name: '', summary: '', price: '', fundSource: '',
   selectionMethod: '', procurementMethod: '',
   organizationTime: '', startTime: '', contractType: '',
-  implementationTime: '', optionToBuy: '',
+  implementationTime: '', optionToBuy: false,
 });
 
 // ─── Column definitions ──────────────────────────────────────────────────────
 const COLUMNS = [
+  { key: 'code',               label: 'Mã gói thầu',           width: 140, type: 'code' },
   { key: 'name',               label: 'Tên gói thầu',          width: 180, required: true },
   { key: 'summary',            label: 'Tóm tắt CV chính',       width: 180 },
   { key: 'price',              label: 'Giá gói thầu (VNĐ)',     width: 150, type: 'price' },
@@ -43,56 +44,33 @@ const COLUMNS = [
   { key: 'startTime',          label: 'Ngày bắt đầu LCNT',      width: 140, type: 'date' },
   { key: 'contractType',       label: 'Loại hợp đồng',          width: 180, type: 'select', options: CONTRACT_OPTIONS },
   { key: 'implementationTime', label: 'TG thực hiện (ngày)',    width: 130, type: 'number' },
-  { key: 'optionToBuy',        label: 'Tùy chọn mua thêm',     width: 130 },
+  { key: 'optionToBuy',        label: 'Tùy chọn mua thêm',     width: 90,  type: 'checkbox' },
 ];
 
-// ─── Cell renderer ───────────────────────────────────────────────────────────
-const CellInput = ({ col, value, onChange, isNew }) => {
-  const base = {
-    width: '100%', border: 'none', outline: 'none',
-    padding: '5px 8px', fontSize: '0.78rem',
-    backgroundColor: 'transparent', color: 'var(--color-text-main)',
-    fontFamily: 'inherit',
-  };
 
-  if (col.type === 'select') {
-    return (
-      <select value={value} onChange={e => onChange(e.target.value)}
-        style={{ ...base, cursor: 'pointer' }}>
-        <option value="">—</option>
-        {col.options.map(o => <option key={o} value={o}>{o}</option>)}
-      </select>
-    );
-  }
-  if (col.type === 'price') {
-    return (
-      <input type="text" value={formatPrice(value)}
-        onChange={e => onChange(unformatPrice(e.target.value))}
-        placeholder={isNew ? 'Nhập số tiền' : ''}
-        style={{ ...base, textAlign: 'right' }} />
-    );
-  }
-  if (col.type === 'number') {
-    return (
-      <input type="number" min="0" value={value}
-        onChange={e => onChange(e.target.value)}
-        placeholder={isNew ? '0' : ''}
-        style={{ ...base, textAlign: 'center' }} />
-    );
-  }
-  if (col.type === 'date') {
-    return (
-      <input type="date" value={value}
-        onChange={e => onChange(e.target.value)}
-        style={{ ...base }} />
-    );
-  }
-  return (
-    <input type="text" value={value}
-      onChange={e => onChange(e.target.value)}
-      placeholder={isNew && col.required ? 'Bắt buộc *' : (isNew ? '...' : '')}
-      style={{ ...base }} />
+// ─── Cell renderer ───────────────────────────────────────────────────────────
+const CellInput = ({ col, value, onChange, isNew, projectCode }) => {
+  const base = { width: '100%', border: 'none', outline: 'none', padding: '5px 8px', fontSize: '0.78rem', backgroundColor: 'transparent', color: 'var(--color-text-main)', fontFamily: 'inherit' };
+  if (col.type === 'checkbox') return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px' }}>
+      <input type="checkbox" checked={!!value} onChange={e => onChange(e.target.checked)}
+        style={{ width: '15px', height: '15px', accentColor: 'var(--color-primary)', cursor: 'pointer' }} />
+    </div>
   );
+  if (col.type === 'code') return <input type="text" value={value} onChange={e => onChange(e.target.value)}
+    placeholder={isNew && projectCode ? `${projectCode}.GT.01` : (isNew ? 'VD: MA.GT.01' : '')}
+    style={{ ...base }} />;
+  if (col.type === 'select') return (
+    <select value={value} onChange={e => onChange(e.target.value)} style={{ ...base, cursor: 'pointer' }}>
+      <option value="">—</option>
+      {col.options.map(o => <option key={o} value={o}>{o}</option>)}
+    </select>
+  );
+  if (col.type === 'price') return <input type="text" value={formatPrice(value)} onChange={e => onChange(unformatPrice(e.target.value))} placeholder={isNew ? 'Nhập số tiền' : ''} style={{ ...base, textAlign: 'right' }} />;
+  if (col.type === 'number') return <input type="number" min="0" value={value} onChange={e => onChange(e.target.value)} placeholder={isNew ? '0' : ''} style={{ ...base, textAlign: 'center' }} />;
+  if (col.type === 'date') return <input type="date" value={value} onChange={e => onChange(e.target.value)} style={{ ...base }} />;
+  return <input type="text" value={value} onChange={e => onChange(e.target.value)}
+    placeholder={isNew && col.required ? 'Bắt buộc *' : (isNew ? '...' : '')} style={{ ...base }} />;
 };
 
 // ─── Datasheet row (existing package) ────────────────────────────────────────
@@ -152,15 +130,22 @@ const DataRow = ({ pkg, idx, total, isAdmin, onSave, onDelete, onMoveUp, onMoveD
       {visibleCols.map(col => {
         const w = colWidths[col.key] || col.width;
         const align = col.type === 'price' || col.type === 'date' ? 'right'
-                    : col.type === 'number' ? 'center' : 'left';
+                    : col.type === 'number' || col.type === 'checkbox' ? 'center' : 'left';
         return (
           <td key={col.key} style={{ ...cell(w), minWidth: w, maxWidth: w }}>
             {editing ? (
-              <CellInput col={col} value={row[col.key] || ''} onChange={v => setField(col.key, v)} />
+              <CellInput col={col} value={row[col.key] ?? ''} onChange={v => setField(col.key, v)} />
             ) : (
-              <div style={{ padding: '6px 8px', fontSize: '0.78rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textAlign: align, color: row[col.key] ? 'var(--color-text-main)' : 'var(--color-text-muted)' }}>
-                {col.type === 'price' ? formatPrice(row[col.key]) || '—' : (row[col.key] || '—')}
-              </div>
+              col.type === 'checkbox' ? (
+                <div style={{ textAlign: 'center', padding: '4px' }}>
+                  <input type="checkbox" checked={!!row[col.key]} readOnly
+                    style={{ width: '14px', height: '14px', accentColor: 'var(--color-primary)', cursor: 'default' }} />
+                </div>
+              ) : (
+                <div style={{ padding: '6px 8px', fontSize: '0.78rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textAlign: align, color: row[col.key] ? 'var(--color-text-main)' : 'var(--color-text-muted)' }}>
+                  {col.type === 'price' ? formatPrice(row[col.key]) || '—' : (row[col.key] || '—')}
+                </div>
+              )
             )}
           </td>
         );
@@ -182,7 +167,7 @@ const DataRow = ({ pkg, idx, total, isAdmin, onSave, onDelete, onMoveUp, onMoveD
 };
 
 // ─── New row at the bottom ────────────────────────────────────────────────────
-const NewRow = ({ onAdd, isAdmin, visibleCols, colWidths }) => {
+const NewRow = ({ onAdd, isAdmin, visibleCols, colWidths, projectCode }) => {
   const [row, setRow] = useState(EMPTY_ROW());
   const setField = (k, v) => setRow(r => ({ ...r, [k]: v }));
   const handleAdd = () => { if (!row.name.trim()) return; onAdd({ ...row }); setRow(EMPTY_ROW()); };
@@ -205,7 +190,7 @@ const NewRow = ({ onAdd, isAdmin, visibleCols, colWidths }) => {
         const w = colWidths[col.key] || col.width;
         return (
           <td key={col.key} style={cell(w)}>
-            <CellInput col={col} value={row[col.key] || ''} onChange={v => setField(col.key, v)} isNew />
+            <CellInput col={col} value={row[col.key] ?? ''} onChange={v => setField(col.key, v)} isNew projectCode={projectCode} />
           </td>
         );
       })}
@@ -378,7 +363,7 @@ const ProjectDatasheet = ({ project, packages, isAdmin, onAdd, onSave, onDelete,
               })()}
               {/* New row */}
               {isAdmin && (
-                <NewRow onAdd={(row) => onAdd(project.id, row)} isAdmin={isAdmin} visibleCols={visibleCols} colWidths={colWidths} />
+                <NewRow onAdd={(row) => onAdd(project.id, row)} isAdmin={isAdmin} visibleCols={visibleCols} colWidths={colWidths} projectCode={project.code} />
               )}
             </tbody>
           </table>
