@@ -315,7 +315,7 @@ const NewRow = ({ onAdd, isAdmin, visibleCols, colWidths, projectCode, nextIdx }
 
 // ─── Datasheet Card ──────────────────────────────────────────────────────────
 const ProjectDatasheet = ({ project, packages, isAdmin, onAdd, onSave, onDelete, onMoveUp, onMoveDown, projects, onEdit }) => {
-  const [hiddenCols, setHiddenCols] = useState(new Set());
+  const [hiddenCols, setHiddenCols] = useState(new Set(['optionToBuy']));
   const [colWidths, setColWidths] = useState(() => Object.fromEntries(COLUMNS.map(c => [c.key, c.width])));
   const [showColPanel, setShowColPanel] = useState(false);
   const panelRef = useRef(null);
