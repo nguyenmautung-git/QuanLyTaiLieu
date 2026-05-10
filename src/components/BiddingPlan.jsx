@@ -25,10 +25,14 @@ const unformatPrice = (val) => String(val).replace(/\./g, '').replace(/,/g, '');
 
 const EMPTY_ROW = () => ({
   _new: true,
-  code: '', name: '', summary: '', price: '', fundSource: '',
-  selectionMethod: '', procurementMethod: '',
-  organizationTime: '', startTime: '', contractType: '',
+  code: '', name: '', summary: '', price: '',
+  fundSource: 'Vốn tư nhân',
+  selectionMethod: 'Đấu thầu hạn chế',
+  procurementMethod: 'Một giai đoạn hai túi hồ sơ',
+  organizationTime: '', startTime: '',
+  contractType: 'Hợp đồng trọn gói',
   implementationTime: '', optionToBuy: false,
+  attachment: '',
 });
 
 // ─── Column definitions ──────────────────────────────────────────────────────
@@ -45,6 +49,7 @@ const COLUMNS = [
   { key: 'startTime',          label: 'Ngày bắt đầu LCNT',      width: 140, type: 'date' },
   { key: 'contractType',       label: 'Loại hợp đồng',          width: 180, type: 'select', options: CONTRACT_OPTIONS },
   { key: 'implementationTime', label: 'TG thực hiện (ngày)',    width: 130, type: 'number' },
+  { key: 'attachment',         label: 'Tệp đính kèm',           width: 150 },
 ];
 
 
@@ -69,6 +74,7 @@ const CellInput = ({ col, value, onChange, isNew, projectCode }) => {
   if (col.type === 'price') return <input type="text" value={formatPrice(value)} onChange={e => onChange(unformatPrice(e.target.value))} placeholder={isNew ? 'Nhập số tiền' : ''} style={{ ...base, textAlign: 'right' }} />;
   if (col.type === 'number') return <input type="number" min="0" value={value} onChange={e => onChange(e.target.value)} placeholder={isNew ? '0' : ''} style={{ ...base, textAlign: 'center' }} />;
   if (col.type === 'date') return <input type="date" value={value} onChange={e => onChange(e.target.value)} style={{ ...base }} />;
+  if (col.key === 'name') return <input type="text" list="package-names" value={value} onChange={e => onChange(e.target.value)} placeholder={isNew && col.required ? 'Bắt buộc *' : (isNew ? '...' : '')} style={{ ...base }} />;
   return <input type="text" value={value} onChange={e => onChange(e.target.value)}
     placeholder={isNew && col.required ? 'Bắt buộc *' : (isNew ? '...' : '')} style={{ ...base }} />;
 };
@@ -415,6 +421,8 @@ const BiddingPlan = () => {
     [...biddingPackages.filter(p => String(p.projectId) === String(projectId))]
       .sort((a, b) => (a.order ?? 999) - (b.order ?? 999) || (a.createdAt || '').localeCompare(b.createdAt || ''));
 
+  const uniquePackageNames = [...new Set(biddingPackages.map(p => p.name).filter(Boolean))];
+
   // Migration script to fix missing/wrong codes
   useEffect(() => {
     if (!didFixCodes.current && projects.length > 0 && biddingPackages.length > 0) {
@@ -466,6 +474,10 @@ const BiddingPlan = () => {
 
   return (
     <div className="fade-in" style={{ padding: '1.5rem' }}>
+      <datalist id="package-names">
+        {uniquePackageNames.map((name, i) => <option key={i} value={name} />)}
+      </datalist>
+
       <div style={{ marginBottom: '1.5rem' }}>
         <h1 style={{ fontSize: '1.5rem', fontWeight: '700', color: 'var(--color-text-main)', marginBottom: '0.25rem' }}>
           📋 Kế hoạch lựa chọn nhà thầu
