@@ -1,4 +1,4 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useRef, useEffect } from 'react';
 import { DocumentContext } from '../context/DocumentContext';
 import { getPastelColor } from '../data';
 import { MapPin, Building, Plus, Trash2, Check, ChevronDown, ChevronUp, Briefcase, Save, ArrowUp, ArrowDown, Settings } from 'lucide-react';
@@ -204,7 +204,22 @@ const ProjectDatasheet = ({ project, packages, isAdmin, onAdd, onSave, onDelete,
   const [hiddenCols, setHiddenCols] = useState(new Set());
   const [colWidths, setColWidths] = useState(() => Object.fromEntries(COLUMNS.map(c => [c.key, c.width])));
   const [showColPanel, setShowColPanel] = useState(false);
+  const panelRef = useRef(null);
   const visibleCols = COLUMNS.filter(c => !hiddenCols.has(c.key));
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (panelRef.current && !panelRef.current.contains(event.target)) {
+        setShowColPanel(false);
+      }
+    };
+    if (showColPanel) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showColPanel]);
 
   const toggleCol = (key) => setHiddenCols(prev => {
     const next = new Set(prev);
@@ -267,14 +282,14 @@ const ProjectDatasheet = ({ project, packages, isAdmin, onAdd, onSave, onDelete,
               {totalPrice > 0 && <div style={{ fontWeight: '700', color: 'var(--color-primary)' }}>{totalPrice.toLocaleString('vi-VN')} đ</div>}
             </div>
             {expanded && (
-              <div style={{ position: 'relative' }}>
+              <div style={{ position: 'relative' }} ref={panelRef}>
                 <button onClick={() => setShowColPanel(v => !v)}
                   style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--color-text-muted)', background: 'var(--color-bg-surface)', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '5px 10px', cursor: 'pointer', fontSize: '0.78rem' }}
                   title="Ẩn/hiện cột">
                   <Settings size={13} /> Cột
                 </button>
                 {showColPanel && (
-                  <div style={{ position: 'absolute', right: 0, top: '110%', zIndex: 100, background: 'var(--color-bg-surface)', border: '1px solid var(--color-border)', borderRadius: '10px', padding: '0.75rem', minWidth: '200px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)' }}>
+                  <div style={{ position: 'absolute', right: 0, top: '110%', zIndex: 100, background: 'var(--color-bg-surface)', border: '1px solid var(--color-border)', borderRadius: '10px', padding: '0.75rem', minWidth: '200px', maxHeight: '300px', overflowY: 'auto', boxShadow: '0 8px 24px rgba(0,0,0,0.12)' }}>
                     <div style={{ fontWeight: '700', fontSize: '0.75rem', marginBottom: '0.5rem', color: 'var(--color-text-muted)' }}>Hiển thị cột</div>
                     {COLUMNS.map(col => (
                       <label key={col.key} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 0', fontSize: '0.8rem', cursor: 'pointer' }}>
