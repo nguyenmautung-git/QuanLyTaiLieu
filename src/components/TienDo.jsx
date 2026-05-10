@@ -162,13 +162,13 @@ const ProjectLegalCard = ({ project, steps, isAdmin, onAddStep, onEditStep, onDe
           <div style={{ height: '100%', width: `${progress}%`, borderRadius: '3px', background: progress === 100 ? '#10b981' : 'linear-gradient(90deg,#6366f1,#8b5cf6)', transition: 'width 0.5s ease' }} />
         </div>
         <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginBottom: '0.75rem' }}>
-          {done}/{steps.length} bước tiến độ • {steps.filter(s => s.status === 'inprogress').length} đang thực hiện
+          {done}/{steps.length} công việc • {steps.filter(s => s.status === 'inprogress').length} đang thực hiện
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           {isAdmin && (
             <button className="btn btn-outline" onClick={() => onAddStep(project)} style={{ fontSize: '0.78rem', padding: '4px 12px', display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--color-primary)', borderColor: 'var(--color-primary)' }}>
-              <Plus size={13} /> Thêm bước
+              <Plus size={13} /> Thêm công việc
             </button>
           )}
           <button onClick={() => setExpanded(v => !v)} style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', marginLeft: 'auto' }}>
@@ -179,7 +179,7 @@ const ProjectLegalCard = ({ project, steps, isAdmin, onAddStep, onEditStep, onDe
         {expanded && (
           <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--color-border)' }}>
             {sorted.length === 0
-              ? <div style={{ textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.8rem', padding: '1rem 0' }}>Chưa có bước tiến độ nào. {isAdmin && 'Nhấn "+ Thêm bước" để bắt đầu.'}</div>
+              ? <div style={{ textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.8rem', padding: '1rem 0' }}>Chưa có công việc nào. {isAdmin && 'Nhấn "+ Thêm công việc" để bắt đầu.'}</div>
               : sorted.map((step, i) => (
                 <StepRow
                   key={step.id}
@@ -286,7 +286,7 @@ const StepFormModal = ({ project, editingStep, onClose, onSave, savedCount }) =>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', paddingBottom: '1rem', borderBottom: '1px solid var(--color-border)' }}>
           <h3 style={{ fontWeight: '700', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <AlertCircle size={18} color="var(--color-primary)" />
-            {editingStep ? 'Sửa bước tiến độ' : 'Thêm bước tiến độ mới'}
+            {editingStep ? 'Sửa công việc' : 'Thêm công việc mới'}
           </h3>
           <button className="btn-icon" onClick={onClose}><X size={18} /></button>
         </div>
@@ -297,8 +297,8 @@ const StepFormModal = ({ project, editingStep, onClose, onSave, savedCount }) =>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label">Tên bước tiến độ <span style={{ color: 'var(--color-danger)' }}>*</span></label>
-            <input list="step-suggestions" className="input-field" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="VD: Cấp phép xây dựng..." />
+            <label className="form-label">Tên công việc <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+            <input list="step-suggestions" className="input-field" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="VD: Đổ bê tông móng..." />
             <datalist id="step-suggestions">
               {DEFAULT_STEPS.map(s => <option key={s} value={s} />)}
             </datalist>
@@ -321,12 +321,12 @@ const StepFormModal = ({ project, editingStep, onClose, onSave, savedCount }) =>
 
           <div className="form-group" style={{ marginBottom: 0 }}>
             <label className="form-label">Trích yếu</label>
-            <textarea rows={3} className="input-field" value={form.summary} onChange={e => setForm({ ...form, summary: e.target.value })} placeholder="Nội dung trích yếu của bước tiến độ này..." style={{ resize: 'vertical' }} />
+            <textarea rows={3} className="input-field" value={form.summary} onChange={e => setForm({ ...form, summary: e.target.value })} placeholder="Nội dung trích yếu của công việc này..." style={{ resize: 'vertical' }} />
           </div>
 
           {savedMsg && (
             <div style={{ padding: '0.5rem 0.75rem', backgroundColor: '#d1fae5', borderRadius: '8px', fontSize: '0.78rem', color: '#065f46', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              ✅ Đã lưu! Nhập tiếp bước tiến độ mới...
+              ✅ Đã lưu! Nhập tiếp công việc mới...
             </div>
           )}
           <div className="form-group" style={{ marginBottom: 0 }}>
@@ -365,7 +365,7 @@ const StepFormModal = ({ project, editingStep, onClose, onSave, savedCount }) =>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid var(--color-border)' }}>
           <button className="btn btn-outline" onClick={onClose}>Hủy</button>
           <button className="btn btn-primary" onClick={() => onSave(form)} style={{ display: 'flex', alignItems: 'center', gap: '6px' }} disabled={!form.name.trim() || uploading}>
-            <Save size={15} /> {editingStep ? 'Cập nhật' : 'Lưu bước'}
+            <Save size={15} /> {editingStep ? 'Cập nhật' : 'Lưu công việc'}
           </button>
         </div>
       </div>
@@ -400,7 +400,7 @@ const TienDo = () => {
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm('Bạn có chắc muốn xóa bước tiến độ này?')) {
+    if (window.confirm('Bạn có chắc muốn xóa công việc này?')) {
       await deleteScheduleStep(id);
     }
   };
@@ -424,7 +424,7 @@ const TienDo = () => {
       <div style={{ marginBottom: '2rem' }}>
         <h1 style={{ fontSize: '1.5rem', fontWeight: '700', color: 'var(--color-text-main)', marginBottom: '0.25rem' }}>⚖️ Tiến độ dự án</h1>
         <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
-          Theo dõi tiến trình thực hiện của {projects.length} dự án — {scheduleSteps.filter(s => s.status === 'done').length} bước đã hoàn thành / {scheduleSteps.length} tổng số bước
+          Theo dõi tiến trình thực hiện của {projects.length} dự án — {scheduleSteps.filter(s => s.status === 'done').length} công việc đã hoàn thành / {scheduleSteps.length} tổng số công việc
         </p>
       </div>
 
