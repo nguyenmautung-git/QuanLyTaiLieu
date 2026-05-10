@@ -244,11 +244,20 @@ const StepFormModal = ({ project, editingStep, onClose, onSave, savedCount }) =>
     if (!files.length) return;
     setUploading(true);
     setUploadError('');
+
+    const withTimeout = (promise, ms) =>
+      Promise.race([
+        promise,
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('TIMEOUT')), ms)
+        ),
+      ]);
+
     try {
       const newAtts = await Promise.all(
         files.map(async (file) => {
           const storageRef = ref(storage, `legalSteps/${Date.now()}_${file.name}`);
-          const snapshot = await uploadBytes(storageRef, file);
+          const snapshot = await withTimeout(uploadBytes(storageRef, file), 20000);
           const url = await getDownloadURL(snapshot.ref);
           return { name: file.name, url };
         })
@@ -256,10 +265,13 @@ const StepFormModal = ({ project, editingStep, onClose, onSave, savedCount }) =>
       setForm(f => ({ ...f, attachments: [...f.attachments, ...newAtts], status: 'done' }));
     } catch (err) {
       console.error('Upload error:', err);
-      setUploadError(`Lỗi tải lên: ${err.message || 'Vui lòng thử lại'}`);
+      if (err.message === 'TIMEOUT' || err.code === 'storage/unauthorized') {
+        setUploadError('Firebase Storage chưa cho phép upload. Vào Firebase Console → Storage → Rules → đổi thành: allow read, write: if true;');
+      } else {
+        setUploadError(`Lỗi tải lên: ${err.message || 'Vui lòng thử lại'}`);
+      }
     } finally {
       setUploading(false);
-      // Reset file input
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };

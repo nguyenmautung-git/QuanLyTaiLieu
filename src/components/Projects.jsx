@@ -1,9 +1,9 @@
 import React, { useState, useContext, useRef } from 'react';
-import { Plus, Edit, Trash2, MapPin, Building, Activity, FileText, Briefcase, Eye, Download, Users, X, Link, BarChart2 } from 'lucide-react';
+import { Plus, Edit, Trash2, MapPin, Building, Activity, FileText, Briefcase, Eye, Download, Users, X, Link } from 'lucide-react';
 import { DocumentContext } from '../context/DocumentContext';
 import html2pdf from 'html2pdf.js';
 import { PROJECT_DETAILS_TEMPLATE, PROJECT_ROLES, getPastelColor } from '../data';
-import ProjectGantt from './ProjectGantt';
+
 
 const Projects = () => {
   const { userRole, projects, addProject, editProject, deleteProject, members, documents } = useContext(DocumentContext);
@@ -26,7 +26,6 @@ const Projects = () => {
   const [formData, setFormData] = useState(defaultFormData);
   const [showMembersSection, setShowMembersSection] = useState(false);
   const [showDocsSection, setShowDocsSection] = useState(false);
-  const [showGanttSection, setShowGanttSection] = useState(false);
 
   const handleOpenForm = (project = null, preview = false) => {
     if (project) {
@@ -42,7 +41,6 @@ const Projects = () => {
       });
       setShowMembersSection(false);
       setShowDocsSection(false);
-      setShowGanttSection(false);
     } else {
       setEditingProject(null);
       setIsPreviewMode(false);
@@ -334,9 +332,6 @@ const Projects = () => {
                 <button type="button" className="btn btn-outline" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--color-primary)', borderColor: 'var(--color-primary)' }} onClick={() => setShowDocsSection(!showDocsSection)}>
                   <FileText size={16} /> {showDocsSection ? 'Ẩn tài liệu đính kèm' : 'Xem tài liệu đính kèm'}
                 </button>
-                <button type="button" className="btn btn-outline" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--color-primary)', borderColor: 'var(--color-primary)' }} onClick={() => setShowGanttSection(true)}>
-                  <BarChart2 size={16} /> Xem tiến độ dự án (Gantt Chart)
-                </button>
               </div>
 
 
@@ -581,30 +576,7 @@ const Projects = () => {
           </div>
         </div>
       )}
-      {showGanttSection && (
-        <div className="modal-overlay" style={{ zIndex: 900, position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div className="modal-content" style={{ width: '95%', height: '95%', backgroundColor: '#fff', padding: '1.5rem', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-xl)', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <h3 style={{ fontSize: '1.25rem', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
-                <BarChart2 size={24} color="var(--color-primary)" />
-                Tiến độ dự án: {formData.name}
-              </h3>
-              <button className="btn-icon" onClick={() => setShowGanttSection(false)} style={{ border: 'none', backgroundColor: 'transparent', cursor: 'pointer' }}>
-                <X size={24} />
-              </button>
-            </div>
-            <div style={{ flex: 1, overflow: 'auto' }}>
-              <ProjectGantt 
-                projectId={formData.id} 
-                tasks={formData.tasks || []} 
-                onTasksChange={(newTasks) => setFormData({...formData, tasks: newTasks})} 
-                isPreviewMode={isPreviewMode} 
-                userRole={userRole} 
-              />
-            </div>
-          </div>
-        </div>
-      )}
+
     </div>
   );
 };
