@@ -15,6 +15,7 @@ import ContractorSelection from './components/ContractorSelection';
 import AIAssistant from './components/AIAssistant';
 import ComingSoon from './components/ComingSoon';
 import PhapLy from './components/PhapLy';
+import TienDo from './components/TienDo';
 
 function App() {
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -42,7 +43,7 @@ function App() {
       case 'phapLy':
         return <PhapLy />;
       case 'tienDo':
-        return <ComingSoon title="Tiến độ" icon="📅" description="Theo dõi và cập nhật tiến độ thi công, so sánh kế hoạch và thực tế, cảnh báo trễ tiến độ." />;
+        return <TienDo />;
       case 'khoiLuong':
         return <ComingSoon title="Khối lượng & Chất lượng" icon="📊" description="Theo dõi khối lượng thực hiện, kết quả kiểm định chất lượng và các biên bản nghiệm thu." />;
       case 'atld':

@@ -19,6 +19,7 @@ export const DocumentProvider = ({ children }) => {
   const [partners, setPartners] = useState([]);
   const [biddingPackages, setBiddingPackages] = useState([]);
   const [legalSteps, setLegalSteps] = useState([]); // legal workflow steps per project
+  const [scheduleSteps, setScheduleSteps] = useState([]); // schedule workflow steps per project
 
   useEffect(() => {
     // Theo dõi danh sách tài liệu
@@ -113,6 +114,12 @@ export const DocumentProvider = ({ children }) => {
       setLegalSteps(data);
     });
 
+    // Theo dõi tiến độ theo dự án
+    const unsubscribeSchedule = onSnapshot(collection(db, 'scheduleSteps'), (snapshot) => {
+      const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      setScheduleSteps(data);
+    });
+
     return () => {
       unsubscribeDocs();
       listUnsubscribes.forEach(unsub => unsub());
@@ -121,6 +128,7 @@ export const DocumentProvider = ({ children }) => {
       unsubscribePartners();
       unsubscribeBidding();
       unsubscribeLegal();
+      unsubscribeSchedule();
     };
   }, []);
 
@@ -349,6 +357,17 @@ export const DocumentProvider = ({ children }) => {
     await deleteDoc(doc(db, 'legalSteps', id));
   };
 
+  // ==== Schedule Steps ====
+  const addScheduleStep = async (projectId, stepData) => {
+    await addDoc(collection(db, 'scheduleSteps'), { projectId, ...stepData, createdAt: new Date().toISOString() });
+  };
+  const updateScheduleStep = async (id, stepData) => {
+    await updateDoc(doc(db, 'scheduleSteps', id), { ...stepData, updatedAt: new Date().toISOString() });
+  };
+  const deleteScheduleStep = async (id) => {
+    await deleteDoc(doc(db, 'scheduleSteps', id));
+  };
+
   return (
     <DocumentContext.Provider value={{
       documents, addDocument, editDocument, deleteDocument, markAsRead, getNewCount,
@@ -359,7 +378,8 @@ export const DocumentProvider = ({ children }) => {
       members, addMember, editMember, deleteMember,
       partners, addPartner, editPartner, deletePartner,
       biddingPackages, addBiddingPackage, editBiddingPackage, deleteBiddingPackage, reorderBiddingPackages,
-      legalSteps, addLegalStep, updateLegalStep, deleteLegalStep
+      legalSteps, addLegalStep, updateLegalStep, deleteLegalStep,
+      scheduleSteps, addScheduleStep, updateScheduleStep, deleteScheduleStep
     }}>
       {children}
     </DocumentContext.Provider>
