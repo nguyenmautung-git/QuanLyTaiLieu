@@ -154,9 +154,27 @@ const DataRow = ({ bidder, idx, total, isAdmin, onUpdate, onDelete, onMoveUp, on
             if (v === 'Đã mời thầu') {
               const partner = partners.find(p => String(p.id) === String(bidder.partnerId));
               if (partner && partner.email) {
-                const subject = encodeURIComponent(`[Thư mời thầu] ${pkg.name || 'Gói thầu'}`);
-                const body = encodeURIComponent(`Kính gửi ${partner.name},\n\nChúng tôi trân trọng kính mời Quý công ty tham gia gói thầu "${pkg.name || 'Gói thầu'}".\n\nVui lòng phản hồi để nhận hồ sơ mời thầu chi tiết.\n\nTrân trọng,\nBan Quản lý dự án.`);
-                window.open(`mailto:${partner.email}?subject=${subject}&body=${body}`, '_blank');
+                const pCode = pkg.code || 'Mã gói thầu';
+                const pName = pkg.name || 'Tên gói thầu';
+                const subject = encodeURIComponent(`Thư mời thầu - [${pCode}]: ${pName}`);
+                const bodyText = `Kính gửi Ban Giám đốc ${partner.name},
+
+Ban Quản lý dự án trân trọng kính mời Quý công ty tham gia đấu thầu:
+- Mã gói thầu: ${pCode}
+- Tên gói thầu: ${pName}
+
+Để thuận tiện cho công tác chuẩn bị, Quý công ty vui lòng phản hồi lại bằng cách click vào một trong hai lựa chọn dưới đây (hệ thống sẽ tự tạo email phản hồi):
+
+👉 [ XÁC NHẬN THAM GIA ]
+mailto:banquanly@duan.vn?subject=${encodeURIComponent('Xác nhận tham gia gói thầu ' + pCode)}&body=${encodeURIComponent('Chúng tôi xác nhận sẽ tham gia gói thầu này.')}
+
+👉 [ TỪ CHỐI THAM GIA ]
+mailto:banquanly@duan.vn?subject=${encodeURIComponent('Từ chối tham gia gói thầu ' + pCode)}&body=${encodeURIComponent('Chúng tôi rất tiếc không thể tham gia gói thầu này.')}
+
+Rất mong nhận được sự hợp tác từ Quý công ty.
+Trân trọng,
+Ban Quản lý dự án.`;
+                window.open(`mailto:${partner.email}?subject=${subject}&body=${encodeURIComponent(bodyText)}`, '_blank');
               } else if (partner && !partner.email) {
                 alert(`Nhà thầu "${partner.name}" chưa có địa chỉ email trong hệ thống. Vui lòng cập nhật ở danh mục đối tác.`);
               }
