@@ -120,7 +120,7 @@ const CellInput = ({ value, onChange, type, partners, pkg }) => {
 
 // ─── DataRow ─────────────────────────────────────────────────────────────────
 const DataRow = ({ bidder, idx, total, isAdmin, onUpdate, onDelete, onMoveUp, onMoveDown, partners, pkg, onEmailPreview }) => {
-  const bg = idx % 2 === 0 ? '#ffffff' : 'var(--color-bg-surface)';
+  const bg = idx % 2 === 0 ? 'rgba(255, 255, 255, 0.5)' : 'rgba(248, 250, 252, 0.3)';
 
   return (
     <tr style={{ backgroundColor: bg, transition: 'background-color 0.15s' }}>
@@ -247,9 +247,18 @@ const PackageDatasheet = ({ pkg, project, isAdmin, onSave, partners, onEmailPrev
   };
 
   return (
-    <div className="card fade-in" style={{ padding: 0, overflow: 'hidden', border: '1px solid var(--color-border)', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+    <div className="card fade-in" style={{ 
+      padding: 0, 
+      overflow: 'hidden', 
+      background: 'rgba(255, 255, 255, 0.3)',
+      backdropFilter: 'blur(20px)',
+      WebkitBackdropFilter: 'blur(20px)',
+      border: '1px solid rgba(255, 255, 255, 0.7)', 
+      borderRadius: '16px',
+      boxShadow: '0 10px 40px -10px rgba(31, 38, 135, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.9)' 
+    }}>
       {/* Header */}
-      <div style={{ padding: '1.25rem 1.5rem', backgroundColor: bgColor, borderBottom: expanded ? '1px solid var(--color-border)' : 'none' }}>
+      <div style={{ padding: '1.25rem 1.5rem', background: `linear-gradient(135deg, ${bgColor}CC 0%, ${bgColor}66 100%)`, borderBottom: expanded ? '1px solid rgba(255, 255, 255, 0.4)' : 'none' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px' }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', flex: 1 }}>
@@ -378,7 +387,12 @@ const ContractorSelection = () => {
   };
 
   return (
-    <div className="fade-in" style={{ padding: '1.5rem' }}>
+    <div className="fade-in" style={{ padding: '1.5rem', position: 'relative', zIndex: 1, minHeight: 'calc(100vh - 60px)' }}>
+      {/* Background blobs for Glassmorphism */}
+      <div style={{ position: 'fixed', top: '-10%', left: '-5%', width: '500px', height: '500px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(147,197,253,0.35) 0%, rgba(255,255,255,0) 70%)', zIndex: -1, pointerEvents: 'none' }}></div>
+      <div style={{ position: 'fixed', bottom: '10%', right: '-10%', width: '600px', height: '600px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(249,168,212,0.25) 0%, rgba(255,255,255,0) 70%)', zIndex: -1, pointerEvents: 'none' }}></div>
+      <div style={{ position: 'fixed', top: '30%', left: '30%', width: '700px', height: '700px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(167,243,208,0.25) 0%, rgba(255,255,255,0) 70%)', zIndex: -1, pointerEvents: 'none' }}></div>
+
       <div style={{ marginBottom: '1.5rem' }}>
         <h1 style={{ fontSize: '1.5rem', fontWeight: '700', color: 'var(--color-text-main)', marginBottom: '0.25rem' }}>
           🤝 Lựa chọn nhà thầu
@@ -388,7 +402,13 @@ const ContractorSelection = () => {
         </p>
       </div>
 
-      <div className="card" style={{ padding: '1.25rem', marginBottom: '1.5rem' }}>
+      <div className="card" style={{ 
+        padding: '1.25rem', marginBottom: '1.5rem', 
+        background: 'rgba(255, 255, 255, 0.4)', 
+        backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
+        border: '1px solid rgba(255, 255, 255, 0.7)', borderRadius: '16px',
+        boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.05)'
+      }}>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
           <div className="form-group" style={{ marginBottom: 0, flex: '1 1 250px' }}>
             <label className="form-label" style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Từ khóa (Mã, Tên gói thầu)</label>
