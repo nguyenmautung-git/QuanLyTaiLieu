@@ -290,7 +290,7 @@ const EditPackageModal = ({ pkg, onSave, onClose, projectCode, projectName }) =>
         )}
         <div style={{ padding: '1.5rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
           {COLUMNS.map(col => (
-            <div key={col.key} style={{ gridColumn: col.key === 'summary' || col.key === 'name' ? '1 / -1' : 'auto' }}>
+            <div key={col.key} style={{ gridColumn: col.key === 'summary' ? '1 / -1' : 'auto' }}>
               <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.8rem', fontWeight: '600', color: 'var(--color-text-main)' }}>{col.label} {col.required && <span style={{color:'red'}}>*</span>}</label>
               <div style={{ border: '1px solid var(--color-border)', borderRadius: '4px', backgroundColor: '#fff' }}>
                 <CellInput col={col} value={formData[col.key] ?? ''} onChange={v => handleChange(col.key, v)} projectCode={projectCode} />
