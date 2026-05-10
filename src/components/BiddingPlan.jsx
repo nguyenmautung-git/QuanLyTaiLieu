@@ -232,10 +232,35 @@ const CellInput = ({ col, value, onChange, isNew, projectCode }) => {
     placeholder={isNew && col.required ? 'Bắt buộc *' : (isNew ? '...' : '')} style={{ ...base }} />;
 };
 
+const validateDates = (data) => {
+  const { startTime, closingTime, openingTime } = data;
+  if (startTime && closingTime) {
+    if (new Date(closingTime) <= new Date(startTime)) return 'Ngày đóng thầu phải diễn ra sau Ngày mời thầu.';
+  }
+  if (openingTime) {
+    if (startTime && new Date(openingTime) < new Date(startTime)) return 'Ngày mở thầu không được diễn ra trước Ngày mời thầu.';
+    if (closingTime && new Date(openingTime) < new Date(closingTime)) return 'Ngày mở thầu không được diễn ra trước Ngày đóng thầu.';
+  }
+  return null;
+};
+
 // ─── Edit Modal ────────────────────────────────────────────────────────────────
 const EditPackageModal = ({ pkg, onSave, onClose, projectCode, projectName }) => {
   const [formData, setFormData] = useState({ ...pkg });
-  const handleChange = (key, value) => setFormData(prev => ({ ...prev, [key]: value }));
+  const [error, setError] = useState('');
+  const handleChange = (key, value) => {
+    setFormData(prev => ({ ...prev, [key]: value }));
+    setError('');
+  };
+
+  const handleSave = () => {
+    const err = validateDates(formData);
+    if (err) {
+      setError(err);
+      return;
+    }
+    if(formData.name.trim()) onSave(formData);
+  };
 
   return (
     <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -247,6 +272,11 @@ const EditPackageModal = ({ pkg, onSave, onClose, projectCode, projectName }) =>
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer', color: 'var(--color-text-muted)' }}>&times;</button>
         </div>
+        {error && (
+          <div style={{ padding: '0.75rem 1.5rem', backgroundColor: '#fef2f2', color: '#ef4444', fontSize: '0.85rem', fontWeight: '500', borderBottom: '1px solid #fecaca' }}>
+            ⚠️ {error}
+          </div>
+        )}
         <div style={{ padding: '1.5rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
           {COLUMNS.map(col => (
             <div key={col.key} style={{ gridColumn: col.key === 'summary' || col.key === 'name' ? '1 / -1' : 'auto' }}>
@@ -259,7 +289,7 @@ const EditPackageModal = ({ pkg, onSave, onClose, projectCode, projectName }) =>
         </div>
         <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', backgroundColor: '#f8fafc' }}>
           <button onClick={onClose} style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid var(--color-border)', background: '#fff', cursor: 'pointer', fontWeight: '600', fontSize: '0.85rem' }}>Hủy</button>
-          <button onClick={() => { if(formData.name.trim()) onSave(formData); }} disabled={!formData.name.trim()} style={{ padding: '6px 12px', borderRadius: '6px', border: 'none', background: 'var(--color-primary)', color: '#fff', cursor: formData.name.trim() ? 'pointer' : 'not-allowed', fontWeight: '600', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '4px' }}><Save size={14}/> Lưu thay đổi</button>
+          <button onClick={handleSave} disabled={!formData.name.trim()} style={{ padding: '6px 12px', borderRadius: '6px', border: 'none', background: 'var(--color-primary)', color: '#fff', cursor: formData.name.trim() ? 'pointer' : 'not-allowed', fontWeight: '600', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '4px' }}><Save size={14}/> Lưu thay đổi</button>
         </div>
       </div>
     </div>
@@ -357,7 +387,16 @@ const NewRow = ({ onAdd, isAdmin, visibleCols, colWidths, projectCode, nextIdx }
   }, [nextIdx, projectCode]);
 
   const setField = (k, v) => setRow(r => ({ ...r, [k]: v }));
-  const handleAdd = () => { if (!row.name.trim()) return; onAdd({ ...row }); setRow({ ...EMPTY_ROW(), code: getDefaultCode(nextIdx + 1) }); };
+  const handleAdd = () => { 
+    if (!row.name.trim()) return; 
+    const err = validateDates(row);
+    if (err) {
+      window.alert(err);
+      return;
+    }
+    onAdd({ ...row }); 
+    setRow({ ...EMPTY_ROW(), code: getDefaultCode(nextIdx + 1) }); 
+  };
   const cell = (w) => ({ padding: 0, minWidth: w, maxWidth: w, borderRight: '1px solid var(--color-border)', borderBottom: '1px solid var(--color-border)', backgroundColor: '#f0f9ff', overflow: 'hidden' });
 
   return (
