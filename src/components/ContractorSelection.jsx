@@ -445,7 +445,7 @@ const ContractorSelection = () => {
           Chưa có gói thầu nào. Vui lòng tạo gói thầu ở trang "Kế hoạch LCNT".
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem', alignItems: 'start' }}>
           {validPackages.map(pkg => {
             const project = projects.find(proj => String(proj.id) === String(pkg.projectId));
             return (
