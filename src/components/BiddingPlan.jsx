@@ -348,18 +348,30 @@ const ProjectDatasheet = ({ project, packages, isAdmin, onAdd, onSave, onDelete,
                   onMoveUp={() => onMoveUp(project.id, packages, idx)}
                   onMoveDown={() => onMoveDown(project.id, packages, idx)} />
               ))}
-              {/* Tổng giá */}
-              {packages.length > 0 && (
-                <tr style={{ backgroundColor: 'var(--color-bg-surface-hover)', fontWeight: '700' }}>
-                  <td colSpan={3} style={{ padding: '7px 10px', fontSize: '0.78rem', textAlign: 'right', borderTop: '2px solid var(--color-border)', borderRight: '1px solid var(--color-border)' }}>
-                    Tổng giá gói thầu:
-                  </td>
-                  <td style={{ padding: '7px 10px', fontSize: '0.78rem', color: 'var(--color-primary)', textAlign: 'right', borderTop: '2px solid var(--color-border)', borderRight: '1px solid var(--color-border)' }}>
-                    {totalPrice > 0 ? totalPrice.toLocaleString('vi-VN') + ' đ' : '—'}
-                  </td>
-                  <td colSpan={COLUMNS.length - 2 + (isAdmin ? 1 : 0)} style={{ borderTop: '2px solid var(--color-border)' }} />
-                </tr>
-              )}
+              {/* Tổng giá — căn dưới cột "Giá gói thầu" */}
+              {packages.length > 0 && (() => {
+                // Đếm số cột trước cột "price" trong visibleCols
+                const priceIdx = visibleCols.findIndex(c => c.key === 'price');
+                const colsAfterPrice = priceIdx >= 0 ? visibleCols.length - priceIdx - 1 : 0;
+                // Cột cố định trái: Di chuyển(1) + STT(1) + các cột trước price
+                const fixedLeft = (isAdmin ? 1 : 0) + 1 + (priceIdx >= 0 ? priceIdx : visibleCols.length);
+                const bdr = '1px solid var(--color-border)';
+                const bdrTop = '2px solid var(--color-border)';
+                const baseTd = { padding: '7px 10px', fontSize: '0.78rem', borderTop: bdrTop, backgroundColor: 'var(--color-bg-surface-hover)', fontWeight: '700' };
+                return (
+                  <tr>
+                    <td colSpan={fixedLeft} style={{ ...baseTd, textAlign: 'right', borderRight: bdr }}>
+                      Tổng giá gói thầu:
+                    </td>
+                    {priceIdx >= 0 && (
+                      <td style={{ ...baseTd, color: 'var(--color-primary)', textAlign: 'right', borderRight: bdr }}>
+                        {totalPrice > 0 ? totalPrice.toLocaleString('vi-VN') + ' đ' : '—'}
+                      </td>
+                    )}
+                    <td colSpan={colsAfterPrice + (isAdmin ? 1 : 0)} style={{ ...baseTd }} />
+                  </tr>
+                );
+              })()}
               {/* New row */}
               {isAdmin && (
                 <NewRow onAdd={(row) => onAdd(project.id, row)} isAdmin={isAdmin} visibleCols={visibleCols} colWidths={colWidths} />
