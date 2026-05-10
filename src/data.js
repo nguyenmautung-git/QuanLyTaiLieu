@@ -252,5 +252,12 @@ export const LIST_CONFIGS = [
     name: 'Danh sách Tên gói thầu',
     description: 'Danh sách tên gói thầu được gợi ý để tái sử dụng.',
     initialData: []
+  },
+  {
+    key: 'packageNatures',
+    collectionName: 'packageNatures',
+    name: 'Tính chất gói thầu',
+    description: 'Phân loại tính chất các gói thầu.',
+    initialData: ['Gói thầu tư vấn', 'Gói thầu xây lắp', 'Gói thầu mua sắm']
   }
 ];
