@@ -1,7 +1,7 @@
 import React, { useState, useContext } from 'react';
 import { DocumentContext } from '../context/DocumentContext';
 import { getPastelColor } from '../data';
-import { MapPin, Building, Plus, Trash2, Check, ChevronDown, ChevronUp, Briefcase, Save, ArrowUp, ArrowDown } from 'lucide-react';
+import { MapPin, Building, Plus, Trash2, Check, ChevronDown, ChevronUp, Briefcase, Save, ArrowUp, ArrowDown, Settings } from 'lucide-react';
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 const METHOD_OPTIONS = ['Đấu thầu rộng rãi', 'Đấu thầu hạn chế', 'Chỉ định thầu', 'Mua sắm trực tiếp', 'Chào hàng cạnh tranh', 'Tự thực hiện'];
@@ -96,7 +96,7 @@ const CellInput = ({ col, value, onChange, isNew }) => {
 };
 
 // ─── Datasheet row (existing package) ────────────────────────────────────────
-const DataRow = ({ pkg, idx, total, isAdmin, onSave, onDelete, onMoveUp, onMoveDown }) => {
+const DataRow = ({ pkg, idx, total, isAdmin, onSave, onDelete, onMoveUp, onMoveDown, visibleCols, colWidths }) => {
   const [editing, setEditing] = useState(false);
   const [row, setRow] = useState({ ...pkg });
   const setField = (k, v) => setRow(r => ({ ...r, [k]: v }));
@@ -149,17 +149,20 @@ const DataRow = ({ pkg, idx, total, isAdmin, onSave, onDelete, onMoveUp, onMoveD
       </td>
 
       {/* Data cells */}
-      {COLUMNS.map(col => (
-        <td key={col.key} style={{ ...cell(col.width), minWidth: col.width, maxWidth: col.width }}>
-          {editing ? (
-            <CellInput col={col} value={row[col.key] || ''} onChange={v => setField(col.key, v)} />
-          ) : (
-            <div style={{ padding: '6px 8px', fontSize: '0.78rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: row[col.key] ? 'var(--color-text-main)' : 'var(--color-text-muted)' }}>
-              {col.type === 'price' ? formatPrice(row[col.key]) || '—' : (row[col.key] || '—')}
-            </div>
-          )}
-        </td>
-      ))}
+      {visibleCols.map(col => {
+        const w = colWidths[col.key] || col.width;
+        return (
+          <td key={col.key} style={{ ...cell(w), minWidth: w, maxWidth: w }}>
+            {editing ? (
+              <CellInput col={col} value={row[col.key] || ''} onChange={v => setField(col.key, v)} />
+            ) : (
+              <div style={{ padding: '6px 8px', fontSize: '0.78rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: row[col.key] ? 'var(--color-text-main)' : 'var(--color-text-muted)' }}>
+                {col.type === 'price' ? formatPrice(row[col.key]) || '—' : (row[col.key] || '—')}
+              </div>
+            )}
+          </td>
+        );
+      })}
 
       {/* RIGHT: Delete */}
       {isAdmin && (
@@ -177,7 +180,7 @@ const DataRow = ({ pkg, idx, total, isAdmin, onSave, onDelete, onMoveUp, onMoveD
 };
 
 // ─── New row at the bottom ────────────────────────────────────────────────────
-const NewRow = ({ onAdd, isAdmin }) => {
+const NewRow = ({ onAdd, isAdmin, visibleCols, colWidths }) => {
   const [row, setRow] = useState(EMPTY_ROW());
   const setField = (k, v) => setRow(r => ({ ...r, [k]: v }));
   const handleAdd = () => { if (!row.name.trim()) return; onAdd({ ...row }); setRow(EMPTY_ROW()); };
@@ -196,11 +199,14 @@ const NewRow = ({ onAdd, isAdmin }) => {
       <td style={{ ...cell(38), textAlign: 'center', color: 'var(--color-primary)', padding: '4px' }}>
         <Plus size={13} style={{ display: 'block', margin: '0 auto' }} />
       </td>
-      {COLUMNS.map(col => (
-        <td key={col.key} style={cell(col.width)}>
-          <CellInput col={col} value={row[col.key] || ''} onChange={v => setField(col.key, v)} isNew />
-        </td>
-      ))}
+      {visibleCols.map(col => {
+        const w = colWidths[col.key] || col.width;
+        return (
+          <td key={col.key} style={cell(w)}>
+            <CellInput col={col} value={row[col.key] || ''} onChange={v => setField(col.key, v)} isNew />
+          </td>
+        );
+      })}
       {isAdmin && <td style={cell(46)} />}
     </tr>
   );
@@ -208,6 +214,25 @@ const NewRow = ({ onAdd, isAdmin }) => {
 
 // ─── Datasheet Card ──────────────────────────────────────────────────────────
 const ProjectDatasheet = ({ project, packages, isAdmin, onAdd, onSave, onDelete, onMoveUp, onMoveDown, projects }) => {
+  const [hiddenCols, setHiddenCols] = useState(new Set());
+  const [colWidths, setColWidths] = useState(() => Object.fromEntries(COLUMNS.map(c => [c.key, c.width])));
+  const [showColPanel, setShowColPanel] = useState(false);
+  const visibleCols = COLUMNS.filter(c => !hiddenCols.has(c.key));
+
+  const toggleCol = (key) => setHiddenCols(prev => {
+    const next = new Set(prev);
+    if (next.has(key)) next.delete(key); else next.add(key);
+    return next;
+  });
+
+  const startResize = (key, e) => {
+    e.preventDefault(); e.stopPropagation();
+    const startX = e.clientX, startW = colWidths[key];
+    const onMove = (me) => setColWidths(prev => ({ ...prev, [key]: Math.max(60, startW + me.clientX - startX) }));
+    const onUp = () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  };
   const [expanded, setExpanded] = useState(false);
 
   const totalPrice = packages.reduce((s, p) => {
@@ -254,7 +279,28 @@ const ProjectDatasheet = ({ project, packages, isAdmin, onAdd, onSave, onDelete,
               <div style={{ color: 'var(--color-text-muted)' }}>{packages.length} gói thầu</div>
               {totalPrice > 0 && <div style={{ fontWeight: '700', color: 'var(--color-primary)' }}>{totalPrice.toLocaleString('vi-VN')} đ</div>}
             </div>
-            <button onClick={() => setExpanded(v => !v)}
+            {expanded && (
+              <div style={{ position: 'relative' }}>
+                <button onClick={() => setShowColPanel(v => !v)}
+                  style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--color-text-muted)', background: 'var(--color-bg-surface)', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '5px 10px', cursor: 'pointer', fontSize: '0.78rem' }}
+                  title="Ẩn/hiện cột">
+                  <Settings size={13} /> Cột
+                </button>
+                {showColPanel && (
+                  <div style={{ position: 'absolute', right: 0, top: '110%', zIndex: 100, background: 'var(--color-bg-surface)', border: '1px solid var(--color-border)', borderRadius: '10px', padding: '0.75rem', minWidth: '200px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)' }}>
+                    <div style={{ fontWeight: '700', fontSize: '0.75rem', marginBottom: '0.5rem', color: 'var(--color-text-muted)' }}>Hiển thị cột</div>
+                    {COLUMNS.map(col => (
+                      <label key={col.key} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 0', fontSize: '0.8rem', cursor: 'pointer' }}>
+                        <input type="checkbox" checked={!hiddenCols.has(col.key)} onChange={() => toggleCol(col.key)}
+                          style={{ accentColor: 'var(--color-primary)', width: '14px', height: '14px' }} />
+                        {col.label}
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+            <button onClick={() => { setExpanded(v => !v); setShowColPanel(false); }}
               style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--color-primary)', background: 'var(--color-bg-surface)', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '5px 12px', cursor: 'pointer', fontSize: '0.78rem', fontWeight: '600', whiteSpace: 'nowrap' }}>
               {expanded ? <><ChevronUp size={14} /> Thu gọn</> : <><ChevronDown size={14} /> Mở datasheet</>}
             </button>
@@ -270,7 +316,19 @@ const ProjectDatasheet = ({ project, packages, isAdmin, onAdd, onSave, onDelete,
               <tr>
                 {isAdmin && <th style={{ ...thStyle({ width: 72 }), minWidth: 72 }}>Di chuyển</th>}
                 <th style={{ ...thStyle({ width: 38 }), minWidth: 38 }}>STT</th>
-                {COLUMNS.map(col => <th key={col.key} style={thStyle(col)}>{col.label}</th>)}
+                {visibleCols.map(col => {
+                  const w = colWidths[col.key] || col.width;
+                  return (
+                    <th key={col.key} style={{ ...thStyle({ width: w }), minWidth: w, maxWidth: w, position: 'relative', userSelect: 'none' }}>
+                      {col.label}
+                      <div onMouseDown={e => startResize(col.key, e)}
+                        style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: '5px', cursor: 'col-resize', backgroundColor: 'transparent' }}
+                        onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--color-primary)'}
+                        onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+                      />
+                    </th>
+                  );
+                })}
                 {isAdmin && <th style={{ ...thStyle({ width: 46 }), minWidth: 46 }}>Xóa</th>}
               </tr>
             </thead>
@@ -284,6 +342,7 @@ const ProjectDatasheet = ({ project, packages, isAdmin, onAdd, onSave, onDelete,
               )}
               {packages.map((pkg, idx) => (
                 <DataRow key={pkg.id} pkg={pkg} idx={idx} total={packages.length} isAdmin={isAdmin}
+                  visibleCols={visibleCols} colWidths={colWidths}
                   onSave={(updated) => onSave(project.id, pkg.id, updated)}
                   onDelete={(id) => onDelete(project, id)}
                   onMoveUp={() => onMoveUp(project.id, packages, idx)}
@@ -303,7 +362,7 @@ const ProjectDatasheet = ({ project, packages, isAdmin, onAdd, onSave, onDelete,
               )}
               {/* New row */}
               {isAdmin && (
-                <NewRow onAdd={(row) => onAdd(project.id, row)} isAdmin={isAdmin} />
+                <NewRow onAdd={(row) => onAdd(project.id, row)} isAdmin={isAdmin} visibleCols={visibleCols} colWidths={colWidths} />
               )}
             </tbody>
           </table>
