@@ -261,16 +261,6 @@ const EditPackageModal = ({ pkg, onSave, onClose, projectCode, projectName }) =>
           <button onClick={() => { if(formData.name.trim()) onSave(formData); }} disabled={!formData.name.trim()} style={{ padding: '6px 12px', borderRadius: '6px', border: 'none', background: 'var(--color-primary)', color: '#fff', cursor: formData.name.trim() ? 'pointer' : 'not-allowed', fontWeight: '600', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '4px' }}><Save size={14}/> Lưu thay đổi</button>
         </div>
       </div>
-
-      {showTemplateModal && (
-        <TemplateListModal 
-          onClose={() => setShowTemplateModal(false)}
-          onConfirm={async (names) => {
-            setShowTemplateModal(false);
-            await onAddMultiple(project.id, names);
-          }}
-        />
-      )}
     </div>
   );
 };
