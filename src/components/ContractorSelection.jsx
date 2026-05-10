@@ -360,6 +360,12 @@ const ContractorSelection = () => {
     setFilters(prev => ({ ...prev, [name]: value }));
   };
 
+  const handleClearFilters = () => {
+    setFilters({ keyword: '', project: '', nature: '' });
+  };
+
+  const hasFilter = filters.keyword || filters.project || filters.nature;
+
   const handleSavePackage = (updatedPkg) => {
     editBiddingPackage(updatedPkg.projectId, updatedPkg.id, updatedPkg);
   };
@@ -402,6 +408,20 @@ const ContractorSelection = () => {
               {(globalLists?.packageNatures || []).map(n => <option key={n.id} value={n.name}>{n.name}</option>)}
             </select>
           </div>
+          {hasFilter && (
+            <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+              <button 
+                onClick={handleClearFilters}
+                style={{ 
+                  display: 'flex', alignItems: 'center', gap: '4px',
+                  backgroundColor: '#fef2f2', color: '#ef4444', border: '1px solid #fca5a5', 
+                  padding: '7px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.78rem', fontWeight: '600',
+                  height: '35px'
+                }}>
+                Hủy lọc
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
