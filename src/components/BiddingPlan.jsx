@@ -386,7 +386,7 @@ const TemplateListModal = ({ onClose, onConfirm }) => {
     onConfirm(selectedNames);
   };
 
-  return createPortal(
+  return (
     <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div className="card fade-in" style={{ width: '600px', maxWidth: '90vw', maxHeight: '90vh', display: 'flex', flexDirection: 'column', backgroundColor: 'var(--color-bg-surface)', padding: 0 }}>
         <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f8fafc' }}>
@@ -428,13 +428,12 @@ const TemplateListModal = ({ onClose, onConfirm }) => {
           </button>
         </div>
       </div>
-    </div>,
-    document.body
+    </div>
   );
 };
 
 // ─── Datasheet Card ──────────────────────────────────────────────────────────
-const ProjectDatasheet = ({ project, packages, isAdmin, onAdd, onAddMultiple, onSave, onDelete, onMoveUp, onMoveDown, projects, onEdit }) => {
+const ProjectDatasheet = ({ project, packages, isAdmin, onAdd, onOpenTemplateModal, onSave, onDelete, onMoveUp, onMoveDown, projects, onEdit }) => {
   const [hiddenCols, setHiddenCols] = useState(new Set([
     'optionToBuy', 
     'fundSource', 
@@ -445,7 +444,6 @@ const ProjectDatasheet = ({ project, packages, isAdmin, onAdd, onAddMultiple, on
     'contractType', 
     'implementationTime'
   ]));
-  const [showTemplateModal, setShowTemplateModal] = useState(false);
   const [colWidths, setColWidths] = useState(() => Object.fromEntries(COLUMNS.map(c => [c.key, c.width])));
   const [showColPanel, setShowColPanel] = useState(false);
   const panelRef = useRef(null);
@@ -526,7 +524,7 @@ const ProjectDatasheet = ({ project, packages, isAdmin, onAdd, onAddMultiple, on
               {totalPrice > 0 && <div style={{ fontWeight: '700', color: 'var(--color-primary)' }}>{totalPrice.toLocaleString('vi-VN')} đ</div>}
             </div>
             {isAdmin && (
-              <button onClick={() => setShowTemplateModal(true)}
+              <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); onOpenTemplateModal(project.id); }}
                 style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#fff', background: 'var(--color-primary)', border: 'none', borderRadius: '8px', padding: '5px 12px', cursor: 'pointer', fontSize: '0.78rem', fontWeight: '600', whiteSpace: 'nowrap' }}>
                 <Plus size={14} /> Tạo gói thầu từ mẫu
               </button>
@@ -645,8 +643,9 @@ const ProjectDatasheet = ({ project, packages, isAdmin, onAdd, onAddMultiple, on
 const BiddingPlan = () => {
   const { projects, userRole, biddingPackages = [], addBiddingPackage, editBiddingPackage, deleteBiddingPackage, reorderBiddingPackages, addListItem, globalLists } = useContext(DocumentContext);
   const isAdmin = userRole === 'Admin';
-  const [editingData, setEditingData] = useState(null); // { project, pkg }
   const didFixCodes = useRef(false);
+  const [editingPkg, setEditingPkg] = useState(null);
+  const [templateModalProjectId, setTemplateModalProjectId] = useState(null);
 
   const getPackages = (projectId) =>
     [...biddingPackages.filter(p => String(p.projectId) === String(projectId))]
