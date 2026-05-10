@@ -1,7 +1,7 @@
-import React, { useState, useContext, useRef } from 'react';
+import React, { useState, useContext } from 'react';
 import { DocumentContext } from '../context/DocumentContext';
 import { getPastelColor } from '../data';
-import { MapPin, Building, Plus, Trash2, Check, ChevronDown, ChevronUp, Briefcase, Save } from 'lucide-react';
+import { MapPin, Building, Plus, Trash2, Check, ChevronDown, ChevronUp, Briefcase, Save, ArrowUp, ArrowDown } from 'lucide-react';
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 const METHOD_OPTIONS = ['Đấu thầu rộng rãi', 'Đấu thầu hạn chế', 'Chỉ định thầu', 'Mua sắm trực tiếp', 'Chào hàng cạnh tranh', 'Tự thực hiện'];
@@ -96,7 +96,7 @@ const CellInput = ({ col, value, onChange, isNew }) => {
 };
 
 // ─── Datasheet row (existing package) ────────────────────────────────────────
-const DataRow = ({ pkg, idx, isAdmin, onSave, onDelete }) => {
+const DataRow = ({ pkg, idx, total, isAdmin, onSave, onDelete, onMoveUp, onMoveDown }) => {
   const [editing, setEditing] = useState(false);
   const [row, setRow] = useState({ ...pkg });
   const setField = (k, v) => setRow(r => ({ ...r, [k]: v }));
@@ -114,11 +114,43 @@ const DataRow = ({ pkg, idx, isAdmin, onSave, onDelete }) => {
     transition: 'background-color 0.15s',
   });
 
+  const btnStyle = { background: 'none', border: 'none', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center' };
+
   return (
-    <tr onClick={() => isAdmin && setEditing(true)}
-      style={{ cursor: isAdmin ? 'pointer' : 'default' }}>
+    <tr onClick={() => isAdmin && !editing && setEditing(true)}
+      style={{ cursor: isAdmin && !editing ? 'pointer' : 'default' }}>
+
+      {/* Actions (leftmost) */}
+      {isAdmin && (
+        <td style={{ ...cellStyle({ width: 80 }), padding: '3px 4px', textAlign: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '2px' }}>
+            {editing ? (
+              <button onClick={e => { e.stopPropagation(); handleSave(); }}
+                style={{ background: 'var(--color-primary)', color: '#fff', border: 'none', borderRadius: '4px', padding: '3px 7px', cursor: 'pointer', fontSize: '0.68rem', display: 'flex', alignItems: 'center', gap: '2px' }}>
+                <Check size={10} /> Lưu
+              </button>
+            ) : (
+              <>
+                <button onClick={e => { e.stopPropagation(); onMoveUp(); }} disabled={idx === 0}
+                  style={{ ...btnStyle, color: idx === 0 ? '#cbd5e1' : 'var(--color-primary)' }} title="Di chuyển lên">
+                  <ArrowUp size={12} />
+                </button>
+                <button onClick={e => { e.stopPropagation(); onMoveDown(); }} disabled={idx === total - 1}
+                  style={{ ...btnStyle, color: idx === total - 1 ? '#cbd5e1' : 'var(--color-primary)' }} title="Di chuyển xuống">
+                  <ArrowDown size={12} />
+                </button>
+                <button onClick={e => { e.stopPropagation(); onDelete(pkg.id); }}
+                  style={{ ...btnStyle, color: 'var(--color-danger)' }} title="Xóa">
+                  <Trash2 size={12} />
+                </button>
+              </>
+            )}
+          </div>
+        </td>
+      )}
+
       {/* STT */}
-      <td style={{ ...cellStyle({ width: 44 }), textAlign: 'center', fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: '600', padding: '6px 4px' }}>
+      <td style={{ ...cellStyle({ width: 40 }), textAlign: 'center', fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: '600', padding: '6px 4px' }}>
         {idx + 1}
       </td>
 
@@ -133,29 +165,12 @@ const DataRow = ({ pkg, idx, isAdmin, onSave, onDelete }) => {
           )}
         </td>
       ))}
-
-      {/* Actions */}
-      {isAdmin && (
-        <td style={{ ...cellStyle({ width: 70 }), textAlign: 'center', padding: '4px' }}>
-          {editing ? (
-            <button onClick={e => { e.stopPropagation(); handleSave(); }}
-              style={{ background: 'var(--color-primary)', color: '#fff', border: 'none', borderRadius: '4px', padding: '3px 8px', cursor: 'pointer', fontSize: '0.7rem', display: 'flex', alignItems: 'center', gap: '3px', margin: '0 auto' }}>
-              <Check size={11} /> Lưu
-            </button>
-          ) : (
-            <button onClick={e => { e.stopPropagation(); onDelete(pkg.id); }}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-danger)', padding: '4px' }}>
-              <Trash2 size={13} />
-            </button>
-          )}
-        </td>
-      )}
     </tr>
   );
 };
 
 // ─── New row at the bottom ────────────────────────────────────────────────────
-const NewRow = ({ onAdd, colCount }) => {
+const NewRow = ({ onAdd, isAdmin }) => {
   const [row, setRow] = useState(EMPTY_ROW());
   const setField = (k, v) => setRow(r => ({ ...r, [k]: v }));
 
@@ -166,37 +181,37 @@ const NewRow = ({ onAdd, colCount }) => {
   };
 
   const cellStyle = (col) => ({
-    padding: 0,
-    minWidth: col.width,
-    maxWidth: col.width,
+    padding: 0, minWidth: col.width, maxWidth: col.width,
     borderRight: '1px solid var(--color-border)',
     borderBottom: '1px solid var(--color-border)',
-    backgroundColor: '#f0f9ff',
-    overflow: 'hidden',
+    backgroundColor: '#f0f9ff', overflow: 'hidden',
   });
 
   return (
     <tr>
-      <td style={{ ...cellStyle({ width: 44 }), textAlign: 'center', fontSize: '0.7rem', color: 'var(--color-primary)', fontWeight: '700', padding: '4px 2px' }}>
-        <Plus size={14} style={{ display: 'block', margin: '0 auto' }} />
+      {/* Actions placeholder */}
+      {isAdmin && (
+        <td style={{ ...cellStyle({ width: 80 }), textAlign: 'center', padding: '4px' }}>
+          <button onClick={handleAdd} disabled={!row.name.trim()}
+            style={{ background: row.name.trim() ? 'var(--color-primary)' : '#e2e8f0', color: row.name.trim() ? '#fff' : '#94a3b8', border: 'none', borderRadius: '4px', padding: '3px 7px', cursor: row.name.trim() ? 'pointer' : 'not-allowed', fontSize: '0.68rem', display: 'flex', alignItems: 'center', gap: '2px', margin: '0 auto' }}>
+            <Save size={10} /> Lưu
+          </button>
+        </td>
+      )}
+      <td style={{ ...cellStyle({ width: 40 }), textAlign: 'center', color: 'var(--color-primary)', padding: '4px 2px' }}>
+        <Plus size={13} style={{ display: 'block', margin: '0 auto' }} />
       </td>
       {COLUMNS.map(col => (
         <td key={col.key} style={cellStyle(col)}>
           <CellInput col={col} value={row[col.key] || ''} onChange={v => setField(col.key, v)} isNew />
         </td>
       ))}
-      <td style={{ ...cellStyle({ width: 70 }), textAlign: 'center', padding: '4px' }}>
-        <button onClick={handleAdd} disabled={!row.name.trim()}
-          style={{ background: row.name.trim() ? 'var(--color-primary)' : '#e2e8f0', color: row.name.trim() ? '#fff' : '#94a3b8', border: 'none', borderRadius: '4px', padding: '3px 8px', cursor: row.name.trim() ? 'pointer' : 'not-allowed', fontSize: '0.7rem', display: 'flex', alignItems: 'center', gap: '3px', margin: '0 auto' }}>
-          <Save size={11} /> Lưu
-        </button>
-      </td>
     </tr>
   );
 };
 
 // ─── Datasheet Card ──────────────────────────────────────────────────────────
-const ProjectDatasheet = ({ project, packages, isAdmin, onAdd, onSave, onDelete, projects }) => {
+const ProjectDatasheet = ({ project, packages, isAdmin, onAdd, onSave, onDelete, onMoveUp, onMoveDown, projects }) => {
   const [expanded, setExpanded] = useState(false);
 
   const totalPrice = packages.reduce((s, p) => {
@@ -257,11 +272,11 @@ const ProjectDatasheet = ({ project, packages, isAdmin, onAdd, onSave, onDelete,
           <table style={{ borderCollapse: 'collapse', fontSize: '0.78rem', tableLayout: 'fixed', minWidth: '100%' }}>
             <thead>
               <tr>
-                <th style={{ ...thStyle({ width: 44 }), minWidth: 44 }}>STT</th>
+                {isAdmin && <th style={{ ...thStyle({ width: 80 }), minWidth: 80 }}>Thao tác</th>}
+                <th style={{ ...thStyle({ width: 40 }), minWidth: 40 }}>STT</th>
                 {COLUMNS.map(col => (
                   <th key={col.key} style={thStyle(col)}>{col.label}</th>
                 ))}
-                {isAdmin && <th style={{ ...thStyle({ width: 70 }), minWidth: 70 }}>Thao tác</th>}
               </tr>
             </thead>
             <tbody>
@@ -273,9 +288,11 @@ const ProjectDatasheet = ({ project, packages, isAdmin, onAdd, onSave, onDelete,
                 </tr>
               )}
               {packages.map((pkg, idx) => (
-                <DataRow key={pkg.id} pkg={pkg} idx={idx} isAdmin={isAdmin}
+                <DataRow key={pkg.id} pkg={pkg} idx={idx} total={packages.length} isAdmin={isAdmin}
                   onSave={(updated) => onSave(project.id, pkg.id, updated)}
-                  onDelete={(id) => onDelete(project, id)} />
+                  onDelete={(id) => onDelete(project, id)}
+                  onMoveUp={() => onMoveUp(project.id, packages, idx)}
+                  onMoveDown={() => onMoveDown(project.id, packages, idx)} />
               ))}
               {/* Tổng giá */}
               {packages.length > 0 && (
@@ -291,7 +308,7 @@ const ProjectDatasheet = ({ project, packages, isAdmin, onAdd, onSave, onDelete,
               )}
               {/* New row */}
               {isAdmin && (
-                <NewRow onAdd={(row) => onAdd(project.id, row)} colCount={COLUMNS.length} />
+                <NewRow onAdd={(row) => onAdd(project.id, row)} isAdmin={isAdmin} />
               )}
             </tbody>
           </table>
@@ -308,11 +325,12 @@ const BiddingPlan = () => {
 
   const getPackages = (projectId) =>
     [...biddingPackages.filter(p => String(p.projectId) === String(projectId))]
-      .sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''));
+      .sort((a, b) => (a.order ?? 999) - (b.order ?? 999) || (a.createdAt || '').localeCompare(b.createdAt || ''));
 
   const handleAdd = async (projectId, row) => {
     const { _new, ...data } = row;
-    await addBiddingPackage(projectId, data);
+    const pkgs = getPackages(projectId);
+    await addBiddingPackage(projectId, { ...data, order: pkgs.length });
   };
 
   const handleSave = async (projectId, pkgId, updated) => {
@@ -323,6 +341,20 @@ const BiddingPlan = () => {
     if (window.confirm('Xóa gói thầu này?')) {
       await deleteBiddingPackage(project.id, pkgId);
     }
+  };
+
+  const handleMoveUp = async (projectId, pkgs, idx) => {
+    if (idx === 0) return;
+    const a = pkgs[idx], b = pkgs[idx - 1];
+    await editBiddingPackage(projectId, a.id, { ...a, order: idx - 1 });
+    await editBiddingPackage(projectId, b.id, { ...b, order: idx });
+  };
+
+  const handleMoveDown = async (projectId, pkgs, idx) => {
+    if (idx >= pkgs.length - 1) return;
+    const a = pkgs[idx], b = pkgs[idx + 1];
+    await editBiddingPackage(projectId, a.id, { ...a, order: idx + 1 });
+    await editBiddingPackage(projectId, b.id, { ...b, order: idx });
   };
 
   return (
@@ -353,6 +385,8 @@ const BiddingPlan = () => {
               onAdd={handleAdd}
               onSave={handleSave}
               onDelete={handleDelete}
+              onMoveUp={handleMoveUp}
+              onMoveDown={handleMoveDown}
             />
           ))}
         </div>
