@@ -322,10 +322,10 @@ const PackageDatasheet = ({ pkg, project, isAdmin, onSave, partners }) => {
 
 // ─── Main Page ───────────────────────────────────────────────────────────────
 const ContractorSelection = () => {
-  const { projects, userRole, biddingPackages = [], editBiddingPackage, partners = [] } = useContext(DocumentContext);
+  const { projects, userRole, biddingPackages = [], editBiddingPackage, partners = [], globalLists } = useContext(DocumentContext);
   const isAdmin = userRole === 'Admin';
 
-  const [filters, setFilters] = useState({ keyword: '', project: '' });
+  const [filters, setFilters] = useState({ keyword: '', project: '', nature: '' });
 
   // Lấy các package có dự án hợp lệ và đã được phê duyệt
   let validPackages = biddingPackages.filter(p => 
@@ -338,6 +338,10 @@ const ContractorSelection = () => {
     const project = projects.find(proj => String(proj.id) === String(pkg.projectId));
     
     if (filters.project && project?.name !== filters.project) {
+      return false;
+    }
+
+    if (filters.nature && pkg.nature !== filters.nature) {
       return false;
     }
     
@@ -389,6 +393,13 @@ const ContractorSelection = () => {
             <select name="project" value={filters.project} onChange={handleFilterChange} className="input-field">
               <option value="">Tất cả dự án</option>
               {projects.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
+            </select>
+          </div>
+          <div className="form-group" style={{ marginBottom: 0, flex: '1 1 200px' }}>
+            <label className="form-label" style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Tính chất gói thầu</label>
+            <select name="nature" value={filters.nature} onChange={handleFilterChange} className="input-field">
+              <option value="">Tất cả tính chất</option>
+              {(globalLists?.packageNatures || []).map(n => <option key={n.id} value={n.name}>{n.name}</option>)}
             </select>
           </div>
         </div>
