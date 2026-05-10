@@ -322,6 +322,15 @@ export const DocumentProvider = ({ children }) => {
   const deleteBiddingPackage = async (projectId, pkgId) => {
     await deleteDoc(doc(db, 'biddingPackages', pkgId));
   };
+  const reorderBiddingPackages = async (pkgs) => {
+    const batch = writeBatch(db);
+    pkgs.forEach((pkg, index) => {
+      const ref = doc(db, 'biddingPackages', pkg.id);
+      const { id, ...data } = pkg;
+      batch.update(ref, { ...data, order: index, updatedAt: new Date().toISOString() });
+    });
+    await batch.commit();
+  };
 
   // ==== Legal Steps ====
   const addLegalStep = async (projectId, stepData) => {
@@ -343,7 +352,7 @@ export const DocumentProvider = ({ children }) => {
       projects, addProject, editProject, deleteProject,
       members, addMember, editMember, deleteMember,
       partners, addPartner, editPartner, deletePartner,
-      biddingPackages, addBiddingPackage, editBiddingPackage, deleteBiddingPackage,
+      biddingPackages, addBiddingPackage, editBiddingPackage, deleteBiddingPackage, reorderBiddingPackages,
       legalSteps, addLegalStep, updateLegalStep, deleteLegalStep
     }}>
       {children}

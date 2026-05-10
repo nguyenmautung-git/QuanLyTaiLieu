@@ -402,7 +402,7 @@ const ProjectDatasheet = ({ project, packages, isAdmin, onAdd, onSave, onDelete,
 
 // ─── Main Page ───────────────────────────────────────────────────────────────
 const BiddingPlan = () => {
-  const { projects, userRole, biddingPackages = [], addBiddingPackage, editBiddingPackage, deleteBiddingPackage } = useContext(DocumentContext);
+  const { projects, userRole, biddingPackages = [], addBiddingPackage, editBiddingPackage, deleteBiddingPackage, reorderBiddingPackages } = useContext(DocumentContext);
   const isAdmin = userRole === 'Admin';
   const [editingData, setEditingData] = useState(null); // { project, pkg }
 
@@ -426,23 +426,19 @@ const BiddingPlan = () => {
     }
   };
 
-  // Reassign all order values after swap to keep them consistent
+  // Reassign all order values after swap using batch
   const handleMoveUp = async (projectId, pkgs, idx) => {
     if (idx === 0) return;
     const reordered = [...pkgs];
     [reordered[idx - 1], reordered[idx]] = [reordered[idx], reordered[idx - 1]];
-    await Promise.all(
-      reordered.map((p, i) => editBiddingPackage(projectId, p.id, { ...p, order: i }))
-    );
+    await reorderBiddingPackages(reordered);
   };
 
   const handleMoveDown = async (projectId, pkgs, idx) => {
     if (idx >= pkgs.length - 1) return;
     const reordered = [...pkgs];
     [reordered[idx], reordered[idx + 1]] = [reordered[idx + 1], reordered[idx]];
-    await Promise.all(
-      reordered.map((p, i) => editBiddingPackage(projectId, p.id, { ...p, order: i }))
-    );
+    await reorderBiddingPackages(reordered);
   };
 
   return (
