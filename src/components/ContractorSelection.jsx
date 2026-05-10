@@ -247,8 +247,33 @@ const ContractorSelection = () => {
   const { projects, userRole, biddingPackages = [], editBiddingPackage, partners = [] } = useContext(DocumentContext);
   const isAdmin = userRole === 'Admin';
 
+  const [filters, setFilters] = useState({ keyword: '', project: '' });
+
   // Lấy các package có dự án hợp lệ
-  const validPackages = biddingPackages.filter(p => projects.some(proj => String(proj.id) === String(p.projectId)));
+  let validPackages = biddingPackages.filter(p => projects.some(proj => String(proj.id) === String(p.projectId)));
+
+  // Áp dụng bộ lọc
+  validPackages = validPackages.filter(pkg => {
+    const project = projects.find(proj => String(proj.id) === String(pkg.projectId));
+    
+    if (filters.project && project?.name !== filters.project) {
+      return false;
+    }
+    
+    if (filters.keyword) {
+      const kw = filters.keyword.toLowerCase();
+      const codeMatch = (pkg.code || '').toLowerCase().includes(kw);
+      const nameMatch = (pkg.name || '').toLowerCase().includes(kw);
+      if (!codeMatch && !nameMatch) return false;
+    }
+    
+    return true;
+  });
+
+  const handleFilterChange = (e) => {
+    const { name, value } = e.target;
+    setFilters(prev => ({ ...prev, [name]: value }));
+  };
 
   const handleSavePackage = (updatedPkg) => {
     editBiddingPackage(updatedPkg.projectId, updatedPkg.id, updatedPkg);
@@ -263,6 +288,29 @@ const ContractorSelection = () => {
         <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
           {validPackages.length} gói thầu • Quản lý danh sách nhà thầu tham dự cho từng gói thầu
         </p>
+      </div>
+
+      <div className="card" style={{ padding: '1.25rem', marginBottom: '1.5rem' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
+          <div className="form-group" style={{ marginBottom: 0, flex: '1 1 250px' }}>
+            <label className="form-label" style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Từ khóa (Mã, Tên gói thầu)</label>
+            <input 
+              type="text" 
+              name="keyword" 
+              value={filters.keyword} 
+              onChange={handleFilterChange} 
+              className="input-field" 
+              placeholder="Nhập mã hoặc tên gói thầu..." 
+            />
+          </div>
+          <div className="form-group" style={{ marginBottom: 0, flex: '1 1 200px' }}>
+            <label className="form-label" style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Dự án liên quan</label>
+            <select name="project" value={filters.project} onChange={handleFilterChange} className="input-field">
+              <option value="">Tất cả dự án</option>
+              {projects.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
+            </select>
+          </div>
+        </div>
       </div>
 
       {validPackages.length === 0 ? (
