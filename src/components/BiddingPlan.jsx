@@ -1,403 +1,361 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useRef } from 'react';
 import { DocumentContext } from '../context/DocumentContext';
 import { getPastelColor } from '../data';
-import {
-  MapPin, Building, Plus, Edit2, Trash2, X, Save,
-  ChevronDown, ChevronUp, Briefcase
-} from 'lucide-react';
+import { MapPin, Building, Plus, Trash2, Check, ChevronDown, ChevronUp, Briefcase, Save } from 'lucide-react';
 
-// ─── Cột bảng KHLCNT ───────────────────────────────────────────────────────
-const EMPTY_PACKAGE = () => ({
-  id: Date.now() + Math.random(),
-  investor: '',
-  name: '',
-  summary: '',
-  price: '',
-  fundSource: '',
-  selectionMethod: '',
-  procurementMethod: '',
-  organizationTime: '',
-  startTime: '',
-  contractType: '',
-  implementationTime: '',
-  optionToBuy: '',
-});
-
+// ─── Constants ──────────────────────────────────────────────────────────────
 const METHOD_OPTIONS = ['Đấu thầu rộng rãi', 'Đấu thầu hạn chế', 'Chỉ định thầu', 'Mua sắm trực tiếp', 'Chào hàng cạnh tranh', 'Tự thực hiện'];
 const PROCUREMENT_OPTIONS = ['Một giai đoạn một túi hồ sơ', 'Một giai đoạn hai túi hồ sơ', 'Hai giai đoạn'];
 const CONTRACT_OPTIONS = ['Hợp đồng trọn gói', 'Hợp đồng theo đơn giá cố định', 'Hợp đồng theo đơn giá điều chỉnh', 'Hợp đồng theo thời gian', 'Hợp đồng theo chi phí cộng phí'];
-
-// Theo Luật Đầu tư công và Luật Đấu thầu hiện hành
 const FUND_SOURCE_OPTIONS = [
-  'Vốn ngân sách nhà nước',
-  'Vốn trái phiếu Chính phủ',
+  'Vốn ngân sách nhà nước', 'Vốn trái phiếu Chính phủ',
   'Vốn ODA và vốn vay ưu đãi của nhà tài trợ nước ngoài',
   'Vốn tín dụng đầu tư phát triển của Nhà nước',
   'Vốn đầu tư từ nguồn thu để lại chưa đưa vào cân đối NSNN',
-  'Vốn của doanh nghiệp nhà nước',
-  'Vốn hỗn hợp (NSNN + vốn doanh nghiệp)',
-  'Vốn hợp tác công tư (PPP)',
-  'Vốn tư nhân',
-  'Nguồn vốn hợp pháp khác',
+  'Vốn của doanh nghiệp nhà nước', 'Vốn hỗn hợp (NSNN + vốn doanh nghiệp)',
+  'Vốn hợp tác công tư (PPP)', 'Vốn tư nhân', 'Nguồn vốn hợp pháp khác',
 ];
 
-// ─── Helpers ───────────────────────────────────────────────────────────────
 const formatPrice = (val) => {
-  // Only format digits
   const digits = String(val).replace(/\D/g, '');
   if (!digits) return '';
-  return parseInt(digits, 10).toLocaleString('vi-VN'); // uses dots as thousands sep
+  return parseInt(digits, 10).toLocaleString('vi-VN');
 };
 const unformatPrice = (val) => String(val).replace(/\./g, '').replace(/,/g, '');
 
-// ─── Modal thêm/sửa gói thầu ───────────────────────────────────────────────
-const PackageModal = ({ pkg, project, onClose, onSave }) => {
-  const [form, setForm] = useState(pkg || EMPTY_PACKAGE());
-  const set = (field, val) => setForm(f => ({ ...f, [field]: val }));
+const EMPTY_ROW = () => ({
+  _new: true,
+  name: '', summary: '', price: '', fundSource: '',
+  selectionMethod: '', procurementMethod: '',
+  organizationTime: '', startTime: '', contractType: '',
+  implementationTime: '', optionToBuy: '',
+});
 
-  const tdLabel = { padding: '10px 14px', fontWeight: '600', color: 'var(--color-text-main)', backgroundColor: 'var(--color-bg-surface-hover)', width: '42%', verticalAlign: 'middle', borderRight: '1px solid var(--color-border)', fontSize: '0.82rem', lineHeight: '1.4' };
-  const tdInput = { padding: '6px 10px', verticalAlign: 'middle' };
-  const inlineInput = { margin: 0, width: '100%' };
+// ─── Column definitions ──────────────────────────────────────────────────────
+const COLUMNS = [
+  { key: 'name',               label: 'Tên gói thầu',          width: 180, required: true },
+  { key: 'summary',            label: 'Tóm tắt CV chính',       width: 180 },
+  { key: 'price',              label: 'Giá gói thầu (VNĐ)',     width: 150, type: 'price' },
+  { key: 'fundSource',         label: 'Nguồn vốn',              width: 180, type: 'select', options: FUND_SOURCE_OPTIONS },
+  { key: 'selectionMethod',    label: 'Hình thức LCNT',         width: 160, type: 'select', options: METHOD_OPTIONS },
+  { key: 'procurementMethod',  label: 'Phương thức LCNT',       width: 160, type: 'select', options: PROCUREMENT_OPTIONS },
+  { key: 'organizationTime',   label: 'TG tổ chức (ngày)',      width: 120, type: 'number' },
+  { key: 'startTime',          label: 'Ngày bắt đầu LCNT',      width: 140, type: 'date' },
+  { key: 'contractType',       label: 'Loại hợp đồng',          width: 180, type: 'select', options: CONTRACT_OPTIONS },
+  { key: 'implementationTime', label: 'TG thực hiện (ngày)',    width: 130, type: 'number' },
+  { key: 'optionToBuy',        label: 'Tùy chọn mua thêm',     width: 130 },
+];
 
+// ─── Cell renderer ───────────────────────────────────────────────────────────
+const CellInput = ({ col, value, onChange, isNew }) => {
+  const base = {
+    width: '100%', border: 'none', outline: 'none',
+    padding: '5px 8px', fontSize: '0.78rem',
+    backgroundColor: 'transparent', color: 'var(--color-text-main)',
+    fontFamily: 'inherit',
+  };
+
+  if (col.type === 'select') {
+    return (
+      <select value={value} onChange={e => onChange(e.target.value)}
+        style={{ ...base, cursor: 'pointer' }}>
+        <option value="">—</option>
+        {col.options.map(o => <option key={o} value={o}>{o}</option>)}
+      </select>
+    );
+  }
+  if (col.type === 'price') {
+    return (
+      <input type="text" value={formatPrice(value)}
+        onChange={e => onChange(unformatPrice(e.target.value))}
+        placeholder={isNew ? 'Nhập số tiền' : ''}
+        style={{ ...base, textAlign: 'right' }} />
+    );
+  }
+  if (col.type === 'number') {
+    return (
+      <input type="number" min="0" value={value}
+        onChange={e => onChange(e.target.value)}
+        placeholder={isNew ? '0' : ''}
+        style={{ ...base, textAlign: 'center' }} />
+    );
+  }
+  if (col.type === 'date') {
+    return (
+      <input type="date" value={value}
+        onChange={e => onChange(e.target.value)}
+        style={{ ...base }} />
+    );
+  }
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '680px', padding: '2rem', overflowY: 'auto', maxHeight: '90vh' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', paddingBottom: '1rem', borderBottom: '1px solid var(--color-border)' }}>
-          <h3 style={{ fontWeight: '700', fontSize: '1.1rem' }}>
-            {pkg ? '✏️ Sửa gói thầu' : '➕ Thêm gói thầu mới'}
-          </h3>
-          <button className="btn-icon" onClick={onClose}><X size={18} /></button>
-        </div>
-
-        {/* Banner tên dự án */}
-        {project && (
-          <div style={{ padding: '0.5rem 0.75rem', marginBottom: '1rem', backgroundColor: 'var(--color-bg-surface-hover)', borderRadius: '8px', fontSize: '0.78rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            📁 Dự án: <strong style={{ color: 'var(--color-text-main)' }}>{project.name}</strong>
-            {project.code && <span className="badge badge-blue" style={{ fontSize: '0.7rem', marginLeft: '4px' }}>{project.code}</span>}
-          </div>
-        )}
-
-        {/* Bảng nhập liệu */}
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
-          <tbody>
-            {/* Tên gói thầu */}
-            <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
-              <td style={tdLabel}>Tên gói thầu <span style={{ color: 'var(--color-danger)' }}>*</span></td>
-              <td style={tdInput}>
-                <input className="input-field" style={inlineInput} value={form.name} onChange={e => set('name', e.target.value)} placeholder="Nhập tên gói thầu..." />
-              </td>
-            </tr>
-
-            {/* Tóm tắt */}
-            <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
-              <td style={tdLabel}>Tóm tắt công việc chính</td>
-              <td style={tdInput}>
-                <textarea className="input-field" rows={2} style={{ ...inlineInput, resize: 'vertical' }} value={form.summary} onChange={e => set('summary', e.target.value)} placeholder="Mô tả ngắn gọn..." />
-              </td>
-            </tr>
-
-            {/* Giá gói thầu */}
-            <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
-              <td style={tdLabel}>Giá gói thầu (VNĐ)</td>
-              <td style={tdInput}>
-                <input className="input-field" style={inlineInput} value={formatPrice(form.price)} onChange={e => set('price', unformatPrice(e.target.value))} placeholder="VD: 5.000.000.000" />
-              </td>
-            </tr>
-
-            {/* Nguồn vốn */}
-            <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
-              <td style={tdLabel}>Nguồn vốn</td>
-              <td style={tdInput}>
-                <select className="input-field" style={inlineInput} value={form.fundSource} onChange={e => set('fundSource', e.target.value)}>
-                  <option value="">-- Chọn --</option>
-                  {FUND_SOURCE_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
-                </select>
-              </td>
-            </tr>
-
-            {/* Hình thức LCNT */}
-            <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
-              <td style={tdLabel}>Hình thức lựa chọn nhà thầu</td>
-              <td style={tdInput}>
-                <select className="input-field" style={inlineInput} value={form.selectionMethod} onChange={e => set('selectionMethod', e.target.value)}>
-                  <option value="">-- Chọn --</option>
-                  {METHOD_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
-                </select>
-              </td>
-            </tr>
-
-            {/* Phương thức LCNT */}
-            <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
-              <td style={tdLabel}>Phương thức lựa chọn nhà thầu</td>
-              <td style={tdInput}>
-                <select className="input-field" style={inlineInput} value={form.procurementMethod} onChange={e => set('procurementMethod', e.target.value)}>
-                  <option value="">-- Chọn --</option>
-                  {PROCUREMENT_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
-                </select>
-              </td>
-            </tr>
-
-            {/* Thời gian tổ chức */}
-            <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
-              <td style={tdLabel}>Thời gian tổ chức LCNT <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}>(ngày)</span></td>
-              <td style={tdInput}>
-                <input type="number" min="0" className="input-field" style={inlineInput} value={form.organizationTime} onChange={e => set('organizationTime', e.target.value)} placeholder="VD: 30" />
-              </td>
-            </tr>
-
-            {/* Ngày bắt đầu */}
-            <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
-              <td style={tdLabel}>Ngày bắt đầu tổ chức LCNT</td>
-              <td style={tdInput}>
-                <input type="date" className="input-field" style={inlineInput} value={form.startTime} onChange={e => set('startTime', e.target.value)} />
-              </td>
-            </tr>
-
-            {/* Loại hợp đồng */}
-            <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
-              <td style={tdLabel}>Loại hợp đồng</td>
-              <td style={tdInput}>
-                <select className="input-field" style={inlineInput} value={form.contractType} onChange={e => set('contractType', e.target.value)}>
-                  <option value="">-- Chọn --</option>
-                  {CONTRACT_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
-                </select>
-              </td>
-            </tr>
-
-            {/* Thời gian thực hiện */}
-            <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
-              <td style={tdLabel}>Thời gian thực hiện gói thầu <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}>(ngày)</span></td>
-              <td style={tdInput}>
-                <input type="number" min="0" className="input-field" style={inlineInput} value={form.implementationTime} onChange={e => set('implementationTime', e.target.value)} placeholder="VD: 180" />
-              </td>
-            </tr>
-
-            {/* Tùy chọn mua thêm */}
-            <tr>
-              <td style={tdLabel}>Tùy chọn mua thêm</td>
-              <td style={tdInput}>
-                <input className="input-field" style={inlineInput} value={form.optionToBuy} onChange={e => set('optionToBuy', e.target.value)} placeholder="VD: Có / Không" />
-              </td>
-            </tr>
-          </tbody>
-        </table>
-
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid var(--color-border)' }}>
-          <button className="btn btn-outline" onClick={onClose}>Hủy</button>
-          <button
-            className="btn btn-primary"
-            onClick={() => onSave(form)}
-            disabled={!form.name.trim()}
-            style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
-          >
-            <Save size={15} /> Lưu gói thầu
-          </button>
-        </div>
-      </div>
-    </div>
+    <input type="text" value={value}
+      onChange={e => onChange(e.target.value)}
+      placeholder={isNew && col.required ? 'Bắt buộc *' : (isNew ? '...' : '')}
+      style={{ ...base }} />
   );
 };
 
-// ─── Project Bidding Card ───────────────────────────────────────────────────
-const ProjectBiddingCard = ({ project, packages, isAdmin, onAdd, onEdit, onDelete, projects }) => {
-  const [expanded, setExpanded] = useState(false);
-  const total = packages.reduce((sum, p) => {
-    const n = parseFloat((p.price || '').replace(/[^0-9.]/g, ''));
-    return sum + (isNaN(n) ? 0 : n);
-  }, 0);
+// ─── Datasheet row (existing package) ────────────────────────────────────────
+const DataRow = ({ pkg, idx, isAdmin, onSave, onDelete }) => {
+  const [editing, setEditing] = useState(false);
+  const [row, setRow] = useState({ ...pkg });
+  const setField = (k, v) => setRow(r => ({ ...r, [k]: v }));
+
+  const handleSave = () => { onSave(row); setEditing(false); };
+
+  const cellStyle = (col) => ({
+    padding: 0,
+    minWidth: col.width,
+    maxWidth: col.width,
+    borderRight: '1px solid var(--color-border)',
+    borderBottom: '1px solid var(--color-border)',
+    overflow: 'hidden',
+    backgroundColor: editing ? '#fffbea' : (idx % 2 === 0 ? '#ffffff' : 'var(--color-bg-surface)'),
+    transition: 'background-color 0.15s',
+  });
 
   return (
-    <div
-      className="card"
-      style={{ padding: 0, overflow: 'hidden', cursor: 'default', backgroundColor: getPastelColor(project.id) }}
-    >
-      {/* Header ảnh */}
-      {project.image && (
-        <div style={{ height: '120px', width: '100%', backgroundImage: `url(${project.image})`, backgroundSize: 'cover', backgroundPosition: 'center' }} />
-      )}
+    <tr onClick={() => isAdmin && setEditing(true)}
+      style={{ cursor: isAdmin ? 'pointer' : 'default' }}>
+      {/* STT */}
+      <td style={{ ...cellStyle({ width: 44 }), textAlign: 'center', fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: '600', padding: '6px 4px' }}>
+        {idx + 1}
+      </td>
 
-      {/* Body thẻ */}
-      <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-        {/* Title row */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          <div>
-            <span className="badge badge-blue" style={{ marginBottom: '0.5rem' }}>{project.code || 'N/A'}</span>
-            <h3 style={{ fontSize: '1.1rem', fontWeight: '700', margin: 0 }}>{project.name}</h3>
-          </div>
-          {isAdmin && (
-            <button
-              className="btn btn-outline"
-              style={{ fontSize: '0.75rem', padding: '4px 10px', display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--color-primary)', borderColor: 'var(--color-primary)', flexShrink: 0 }}
-              onClick={() => onAdd(project)}
-            >
-              <Plus size={13} /> Thêm gói thầu
-            </button>
-          )}
-        </div>
-
-        {/* Meta */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem' }}>
-            <MapPin size={14} style={{ marginTop: '2px', flexShrink: 0 }} />
-            <span>{project.location || 'Chưa cập nhật địa điểm'}</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Building size={14} />
-            <span>CĐT: {project.investor}</span>
-          </div>
-          {project.parentId && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <Briefcase size={14} />
-              <span>Dự án cha: {projects.find(p => p.id?.toString() === project.parentId)?.name || '—'}</span>
+      {COLUMNS.map(col => (
+        <td key={col.key} style={cellStyle(col)}>
+          {editing ? (
+            <CellInput col={col} value={row[col.key] || ''} onChange={v => setField(col.key, v)} />
+          ) : (
+            <div style={{ padding: '6px 8px', fontSize: '0.78rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: row[col.key] ? 'var(--color-text-main)' : 'var(--color-text-muted)' }}>
+              {col.type === 'price' ? formatPrice(row[col.key]) || '—' : (row[col.key] || '—')}
             </div>
           )}
-        </div>
+        </td>
+      ))}
 
-        {/* Summary bar */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem' }}>
-          <span style={{ color: 'var(--color-text-muted)' }}>
-            {packages.length} gói thầu
-            {total > 0 && ` • Tổng: ${total.toLocaleString('vi-VN')} đ`}
-          </span>
-          <button
-            onClick={() => setExpanded(v => !v)}
-            style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--color-primary)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.8rem', fontWeight: '600' }}
-          >
-            {expanded ? <><ChevronUp size={14} /> Thu gọn</> : <><ChevronDown size={14} /> Xem kế hoạch</>}
-          </button>
-        </div>
+      {/* Actions */}
+      {isAdmin && (
+        <td style={{ ...cellStyle({ width: 70 }), textAlign: 'center', padding: '4px' }}>
+          {editing ? (
+            <button onClick={e => { e.stopPropagation(); handleSave(); }}
+              style={{ background: 'var(--color-primary)', color: '#fff', border: 'none', borderRadius: '4px', padding: '3px 8px', cursor: 'pointer', fontSize: '0.7rem', display: 'flex', alignItems: 'center', gap: '3px', margin: '0 auto' }}>
+              <Check size={11} /> Lưu
+            </button>
+          ) : (
+            <button onClick={e => { e.stopPropagation(); onDelete(pkg.id); }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-danger)', padding: '4px' }}>
+              <Trash2 size={13} />
+            </button>
+          )}
+        </td>
+      )}
+    </tr>
+  );
+};
 
-        {/* Expanded: bảng KHLCNT */}
-        {expanded && (
-          <div style={{ marginTop: '0.5rem', overflowX: 'auto', borderRadius: '8px', border: '1px solid var(--color-border)' }}>
-            {packages.length === 0 ? (
-              <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>
-                Chưa có gói thầu nào. {isAdmin && 'Nhấn "+ Thêm gói thầu" để bắt đầu.'}
-              </div>
-            ) : (
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem', minWidth: '900px' }}>
-                <thead>
-                  <tr style={{ backgroundColor: 'var(--color-bg-surface-hover)' }}>
-                    {['STT', 'Tên gói thầu', 'Tóm tắt CV chính', 'Giá gói thầu', 'Nguồn vốn', 'Hình thức LCNT', 'Phương thức LCNT', 'TG tổ chức', 'Ngày bắt đầu', 'Loại HĐ', 'TG thực hiện', 'Tùy chọn mua thêm', ...(isAdmin ? [''] : [])].map((h, i) => (
-                      <th key={i} style={{ padding: '8px 10px', textAlign: 'center', borderBottom: '2px solid var(--color-border)', fontWeight: '700', whiteSpace: 'nowrap', color: 'var(--color-text-main)' }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {packages.map((pkg, idx) => (
-                    <tr key={pkg.id} style={{ borderBottom: '1px solid var(--color-border)', backgroundColor: idx % 2 === 0 ? 'white' : 'var(--color-bg-surface)' }}>
-                      <td style={{ padding: '8px 10px', textAlign: 'center', color: 'var(--color-text-muted)', fontWeight: '600' }}>{idx + 1}</td>
-                      <td style={{ padding: '8px 10px', fontWeight: '600', minWidth: '140px' }}>{pkg.name}</td>
-                      <td style={{ padding: '8px 10px', color: 'var(--color-text-muted)', minWidth: '160px' }}>{pkg.summary || '—'}</td>
-                      <td style={{ padding: '8px 10px', textAlign: 'right', whiteSpace: 'nowrap' }}>{pkg.price || '—'}</td>
-                      <td style={{ padding: '8px 10px', whiteSpace: 'nowrap' }}>{pkg.fundSource || '—'}</td>
-                      <td style={{ padding: '8px 10px', minWidth: '120px' }}>{pkg.selectionMethod || '—'}</td>
-                      <td style={{ padding: '8px 10px', minWidth: '120px' }}>{pkg.procurementMethod || '—'}</td>
-                      <td style={{ padding: '8px 10px', textAlign: 'center', whiteSpace: 'nowrap' }}>{pkg.organizationTime || '—'}</td>
-                      <td style={{ padding: '8px 10px', textAlign: 'center', whiteSpace: 'nowrap' }}>{pkg.startTime || '—'}</td>
-                      <td style={{ padding: '8px 10px', minWidth: '120px' }}>{pkg.contractType || '—'}</td>
-                      <td style={{ padding: '8px 10px', textAlign: 'center', whiteSpace: 'nowrap' }}>{pkg.implementationTime || '—'}</td>
-                      <td style={{ padding: '8px 10px', textAlign: 'center' }}>{pkg.optionToBuy || '—'}</td>
-                      {isAdmin && (
-                        <td style={{ padding: '8px 10px', textAlign: 'center', whiteSpace: 'nowrap' }}>
-                          <button className="btn-icon" onClick={() => onEdit(project, pkg)} style={{ color: 'var(--color-primary)' }} title="Sửa"><Edit2 size={13} /></button>
-                          <button className="btn-icon" onClick={() => onDelete(project, pkg.id)} style={{ color: 'var(--color-danger)' }} title="Xóa"><Trash2 size={13} /></button>
-                        </td>
-                      )}
-                    </tr>
-                  ))}
-                </tbody>
-                {packages.length > 0 && (
-                  <tfoot>
-                    <tr style={{ backgroundColor: 'var(--color-bg-surface-hover)', fontWeight: '700' }}>
-                      <td colSpan={3} style={{ padding: '8px 10px', textAlign: 'right' }}>Tổng giá gói thầu:</td>
-                      <td style={{ padding: '8px 10px', textAlign: 'right', color: 'var(--color-primary)' }}>
-                        {total > 0 ? total.toLocaleString('vi-VN') + ' đ' : '—'}
-                      </td>
-                      <td colSpan={isAdmin ? 9 : 8} />
-                    </tr>
-                  </tfoot>
-                )}
-              </table>
-            )}
+// ─── New row at the bottom ────────────────────────────────────────────────────
+const NewRow = ({ onAdd, colCount }) => {
+  const [row, setRow] = useState(EMPTY_ROW());
+  const setField = (k, v) => setRow(r => ({ ...r, [k]: v }));
+
+  const handleAdd = () => {
+    if (!row.name.trim()) return;
+    onAdd({ ...row });
+    setRow(EMPTY_ROW());
+  };
+
+  const cellStyle = (col) => ({
+    padding: 0,
+    minWidth: col.width,
+    maxWidth: col.width,
+    borderRight: '1px solid var(--color-border)',
+    borderBottom: '1px solid var(--color-border)',
+    backgroundColor: '#f0f9ff',
+    overflow: 'hidden',
+  });
+
+  return (
+    <tr>
+      <td style={{ ...cellStyle({ width: 44 }), textAlign: 'center', fontSize: '0.7rem', color: 'var(--color-primary)', fontWeight: '700', padding: '4px 2px' }}>
+        <Plus size={14} style={{ display: 'block', margin: '0 auto' }} />
+      </td>
+      {COLUMNS.map(col => (
+        <td key={col.key} style={cellStyle(col)}>
+          <CellInput col={col} value={row[col.key] || ''} onChange={v => setField(col.key, v)} isNew />
+        </td>
+      ))}
+      <td style={{ ...cellStyle({ width: 70 }), textAlign: 'center', padding: '4px' }}>
+        <button onClick={handleAdd} disabled={!row.name.trim()}
+          style={{ background: row.name.trim() ? 'var(--color-primary)' : '#e2e8f0', color: row.name.trim() ? '#fff' : '#94a3b8', border: 'none', borderRadius: '4px', padding: '3px 8px', cursor: row.name.trim() ? 'pointer' : 'not-allowed', fontSize: '0.7rem', display: 'flex', alignItems: 'center', gap: '3px', margin: '0 auto' }}>
+          <Save size={11} /> Lưu
+        </button>
+      </td>
+    </tr>
+  );
+};
+
+// ─── Datasheet Card ──────────────────────────────────────────────────────────
+const ProjectDatasheet = ({ project, packages, isAdmin, onAdd, onSave, onDelete, projects }) => {
+  const [expanded, setExpanded] = useState(false);
+
+  const totalPrice = packages.reduce((s, p) => {
+    const n = parseFloat(String(p.price || '').replace(/\D/g, ''));
+    return s + (isNaN(n) ? 0 : n);
+  }, 0);
+
+  const thStyle = (col) => ({
+    padding: '8px 10px',
+    minWidth: col.width,
+    maxWidth: col.width,
+    backgroundColor: 'var(--color-bg-surface-hover)',
+    borderRight: '1px solid var(--color-border)',
+    borderBottom: '2px solid var(--color-border)',
+    fontWeight: '700',
+    fontSize: '0.73rem',
+    color: 'var(--color-text-main)',
+    whiteSpace: 'nowrap',
+    textAlign: 'center',
+    position: 'sticky',
+    top: 0,
+    zIndex: 1,
+  });
+
+  return (
+    <div className="card" style={{ padding: 0, overflow: 'hidden', backgroundColor: getPastelColor(project.id) }}>
+      {/* Card Header */}
+      {project.image && (
+        <div style={{ height: '100px', backgroundImage: `url(${project.image})`, backgroundSize: 'cover', backgroundPosition: 'center' }} />
+      )}
+      <div style={{ padding: '1.25rem 1.5rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
+          <div>
+            <span className="badge badge-blue" style={{ marginBottom: '0.4rem' }}>{project.code || 'N/A'}</span>
+            <h3 style={{ fontSize: '1rem', fontWeight: '700', margin: 0 }}>{project.name}</h3>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', marginTop: '0.5rem', fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>
+              <span><MapPin size={12} style={{ verticalAlign: 'middle', marginRight: '3px' }} />{project.location || '—'}</span>
+              <span><Building size={12} style={{ verticalAlign: 'middle', marginRight: '3px' }} />CĐT: {project.investor}</span>
+              {project.parentId && <span><Briefcase size={12} style={{ verticalAlign: 'middle', marginRight: '3px' }} />DA cha: {projects.find(p => p.id?.toString() === project.parentId)?.name || '—'}</span>}
+            </div>
           </div>
-        )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0 }}>
+            <div style={{ textAlign: 'right', fontSize: '0.75rem' }}>
+              <div style={{ color: 'var(--color-text-muted)' }}>{packages.length} gói thầu</div>
+              {totalPrice > 0 && <div style={{ fontWeight: '700', color: 'var(--color-primary)' }}>{totalPrice.toLocaleString('vi-VN')} đ</div>}
+            </div>
+            <button onClick={() => setExpanded(v => !v)}
+              style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--color-primary)', background: 'var(--color-bg-surface)', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '5px 12px', cursor: 'pointer', fontSize: '0.78rem', fontWeight: '600', whiteSpace: 'nowrap' }}>
+              {expanded ? <><ChevronUp size={14} /> Thu gọn</> : <><ChevronDown size={14} /> Mở datasheet</>}
+            </button>
+          </div>
+        </div>
       </div>
+
+      {/* Datasheet */}
+      {expanded && (
+        <div style={{ overflowX: 'auto', borderTop: '2px solid var(--color-border)' }}>
+          <table style={{ borderCollapse: 'collapse', fontSize: '0.78rem', tableLayout: 'fixed', minWidth: '100%' }}>
+            <thead>
+              <tr>
+                <th style={{ ...thStyle({ width: 44 }), minWidth: 44 }}>STT</th>
+                {COLUMNS.map(col => (
+                  <th key={col.key} style={thStyle(col)}>{col.label}</th>
+                ))}
+                {isAdmin && <th style={{ ...thStyle({ width: 70 }), minWidth: 70 }}>Thao tác</th>}
+              </tr>
+            </thead>
+            <tbody>
+              {packages.length === 0 && !isAdmin && (
+                <tr>
+                  <td colSpan={COLUMNS.length + 2} style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-muted)', fontStyle: 'italic', fontSize: '0.82rem' }}>
+                    Chưa có gói thầu nào.
+                  </td>
+                </tr>
+              )}
+              {packages.map((pkg, idx) => (
+                <DataRow key={pkg.id} pkg={pkg} idx={idx} isAdmin={isAdmin}
+                  onSave={(updated) => onSave(project.id, pkg.id, updated)}
+                  onDelete={(id) => onDelete(project, id)} />
+              ))}
+              {/* Tổng giá */}
+              {packages.length > 0 && (
+                <tr style={{ backgroundColor: 'var(--color-bg-surface-hover)', fontWeight: '700' }}>
+                  <td colSpan={3} style={{ padding: '7px 10px', fontSize: '0.78rem', textAlign: 'right', borderTop: '2px solid var(--color-border)', borderRight: '1px solid var(--color-border)' }}>
+                    Tổng giá gói thầu:
+                  </td>
+                  <td style={{ padding: '7px 10px', fontSize: '0.78rem', color: 'var(--color-primary)', textAlign: 'right', borderTop: '2px solid var(--color-border)', borderRight: '1px solid var(--color-border)' }}>
+                    {totalPrice > 0 ? totalPrice.toLocaleString('vi-VN') + ' đ' : '—'}
+                  </td>
+                  <td colSpan={COLUMNS.length - 2 + (isAdmin ? 1 : 0)} style={{ borderTop: '2px solid var(--color-border)' }} />
+                </tr>
+              )}
+              {/* New row */}
+              {isAdmin && (
+                <NewRow onAdd={(row) => onAdd(project.id, row)} colCount={COLUMNS.length} />
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 };
 
-// ─── Main Page ──────────────────────────────────────────────────────────────
+// ─── Main Page ───────────────────────────────────────────────────────────────
 const BiddingPlan = () => {
   const { projects, userRole, biddingPackages = [], addBiddingPackage, editBiddingPackage, deleteBiddingPackage } = useContext(DocumentContext);
   const isAdmin = userRole === 'Admin';
 
-  const [addingToProject, setAddingToProject] = useState(null);
-  const [editingPkg, setEditingPkg] = useState(null);
-  const [editingProject, setEditingProject] = useState(null);
+  const getPackages = (projectId) =>
+    [...biddingPackages.filter(p => String(p.projectId) === String(projectId))]
+      .sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''));
 
-  const handleSave = async (form) => {
-    if (editingPkg) {
-      await editBiddingPackage(editingProject.id, editingPkg.id, form);
-      setEditingPkg(null);
-      setEditingProject(null);
-    } else {
-      await addBiddingPackage(addingToProject.id, form);
-      setAddingToProject(null);
-    }
+  const handleAdd = async (projectId, row) => {
+    const { _new, ...data } = row;
+    await addBiddingPackage(projectId, data);
+  };
+
+  const handleSave = async (projectId, pkgId, updated) => {
+    await editBiddingPackage(projectId, pkgId, updated);
   };
 
   const handleDelete = async (project, pkgId) => {
-    if (window.confirm('Bạn có chắc muốn xóa gói thầu này?')) {
+    if (window.confirm('Xóa gói thầu này?')) {
       await deleteBiddingPackage(project.id, pkgId);
     }
   };
 
-  const getPackages = (projectId) =>
-    biddingPackages.filter(p => p.projectId === projectId || p.projectId === projectId?.toString());
-
   return (
     <div className="fade-in" style={{ padding: '1.5rem' }}>
-      {/* Header */}
-      <div style={{ marginBottom: '2rem' }}>
+      <div style={{ marginBottom: '1.5rem' }}>
         <h1 style={{ fontSize: '1.5rem', fontWeight: '700', color: 'var(--color-text-main)', marginBottom: '0.25rem' }}>
           📋 Kế hoạch lựa chọn nhà thầu
         </h1>
         <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
-          Quản lý kế hoạch LCNT cho {projects.length} dự án — {biddingPackages.length} gói thầu
+          {projects.length} dự án • {biddingPackages.length} gói thầu
+          {isAdmin && ' — Nhấp vào hàng để chỉnh sửa, hàng cuối để thêm mới'}
         </p>
       </div>
 
-      {/* Cards grid */}
       {projects.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '4rem', color: 'var(--color-text-muted)' }}>
           Chưa có dự án nào. Vui lòng tạo dự án ở trang "Dự án".
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: '1.5rem', alignItems: 'start' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           {projects.map(project => (
-            <ProjectBiddingCard
+            <ProjectDatasheet
               key={project.id}
               project={project}
               projects={projects}
               packages={getPackages(project.id)}
               isAdmin={isAdmin}
-              onAdd={(p) => setAddingToProject(p)}
-              onEdit={(p, pkg) => { setEditingProject(p); setEditingPkg(pkg); }}
+              onAdd={handleAdd}
+              onSave={handleSave}
               onDelete={handleDelete}
             />
           ))}
         </div>
-      )}
-
-      {/* Modal */}
-      {(addingToProject || editingPkg) && (
-        <PackageModal
-          pkg={editingPkg}
-          project={editingProject || addingToProject}
-          onClose={() => { setAddingToProject(null); setEditingPkg(null); setEditingProject(null); }}
-          onSave={handleSave}
-        />
       )}
     </div>
   );
