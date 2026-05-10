@@ -35,6 +35,8 @@ function App() {
         return <BiddingPackages />;
       case 'biddingPlan':
         return <BiddingPlan />;
+      case 'contractorSelection':
+        return <ComingSoon title="Lựa chọn nhà thầu" icon="🤝" description="Quản lý quá trình lựa chọn nhà thầu, đánh giá hồ sơ dự thầu, thương thảo và ký kết hợp đồng." />;
       // === Quản lý dự án ===
       case 'phapLy':
         return <PhapLy />;

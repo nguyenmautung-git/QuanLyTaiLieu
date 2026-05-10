@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FolderOpen, LayoutDashboard, FileText, Settings, Users, HelpCircle, Briefcase, Building2, Package, ChevronDown, ChevronRight, ClipboardList, Scale, Clock, BarChart3, HardHat, CheckSquare, AlertCircle } from 'lucide-react';
+import { FolderOpen, LayoutDashboard, FileText, Settings, Users, HelpCircle, Briefcase, Building2, Package, ChevronDown, ChevronRight, ClipboardList, Scale, Clock, BarChart3, HardHat, CheckSquare, AlertCircle, UserCheck } from 'lucide-react';
 
 const Sidebar = ({ currentView, setCurrentView }) => {
   return (
@@ -17,9 +17,10 @@ const Sidebar = ({ currentView, setCurrentView }) => {
           <NavItem icon={<FileText size={20} />} label="Tài liệu" active={currentView === 'dashboard'} onClick={() => setCurrentView('dashboard')} isChild />
         </NavAccordion>
 
-        <NavAccordion label="Công tác đấu thầu" icon={<Briefcase size={20} />} defaultOpen={currentView === 'biddingPlan' || currentView === 'bidding'}>
+        <NavAccordion label="Công tác đấu thầu" icon={<Briefcase size={20} />} defaultOpen={['biddingPlan', 'bidding', 'contractorSelection'].includes(currentView)}>
           <NavItem icon={<ClipboardList size={20} />} label="Kế hoạch LCNT" active={currentView === 'biddingPlan'} onClick={() => setCurrentView('biddingPlan')} isChild />
           <NavItem icon={<Package size={20} />} label="Danh sách gói thầu" active={currentView === 'bidding'} onClick={() => setCurrentView('bidding')} isChild />
+          <NavItem icon={<UserCheck size={20} />} label="Lựa chọn nhà thầu" active={currentView === 'contractorSelection'} onClick={() => setCurrentView('contractorSelection')} isChild />
         </NavAccordion>
 
         <NavAccordion label="Quản lý dự án" icon={<BarChart3 size={20} />} defaultOpen={['phapLy','tienDo','khoiLuong','atld','nghiemThu','danhMucLoi'].includes(currentView)}>
