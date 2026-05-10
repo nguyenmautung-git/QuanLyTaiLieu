@@ -151,12 +151,14 @@ const DataRow = ({ pkg, idx, total, isAdmin, onSave, onDelete, onMoveUp, onMoveD
       {/* Data cells */}
       {visibleCols.map(col => {
         const w = colWidths[col.key] || col.width;
+        const align = col.type === 'price' || col.type === 'date' ? 'right'
+                    : col.type === 'number' ? 'center' : 'left';
         return (
           <td key={col.key} style={{ ...cell(w), minWidth: w, maxWidth: w }}>
             {editing ? (
               <CellInput col={col} value={row[col.key] || ''} onChange={v => setField(col.key, v)} />
             ) : (
-              <div style={{ padding: '6px 8px', fontSize: '0.78rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: row[col.key] ? 'var(--color-text-main)' : 'var(--color-text-muted)' }}>
+              <div style={{ padding: '6px 8px', fontSize: '0.78rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textAlign: align, color: row[col.key] ? 'var(--color-text-main)' : 'var(--color-text-muted)' }}>
                 {col.type === 'price' ? formatPrice(row[col.key]) || '—' : (row[col.key] || '—')}
               </div>
             )}
@@ -318,8 +320,10 @@ const ProjectDatasheet = ({ project, packages, isAdmin, onAdd, onSave, onDelete,
                 <th style={{ ...thStyle({ width: 38 }), minWidth: 38 }}>STT</th>
                 {visibleCols.map(col => {
                   const w = colWidths[col.key] || col.width;
+                  const align = col.type === 'price' || col.type === 'date' ? 'right'
+                              : col.type === 'number' ? 'center' : 'left';
                   return (
-                    <th key={col.key} style={{ ...thStyle({ width: w }), minWidth: w, maxWidth: w, position: 'relative', userSelect: 'none' }}>
+                    <th key={col.key} style={{ ...thStyle({ width: w }), minWidth: w, maxWidth: w, position: 'relative', userSelect: 'none', textAlign: align }}>
                       {col.label}
                       <div onMouseDown={e => startResize(col.key, e)}
                         style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: '5px', cursor: 'col-resize', backgroundColor: 'transparent' }}
