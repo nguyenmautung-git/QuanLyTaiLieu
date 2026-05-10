@@ -27,20 +27,51 @@ const METHOD_OPTIONS = ['Đấu thầu rộng rãi', 'Đấu thầu hạn chế'
 const PROCUREMENT_OPTIONS = ['Một giai đoạn một túi hồ sơ', 'Một giai đoạn hai túi hồ sơ', 'Hai giai đoạn'];
 const CONTRACT_OPTIONS = ['Hợp đồng trọn gói', 'Hợp đồng theo đơn giá cố định', 'Hợp đồng theo đơn giá điều chỉnh', 'Hợp đồng theo thời gian', 'Hợp đồng theo chi phí cộng phí'];
 
+// Theo Luật Đầu tư công và Luật Đấu thầu hiện hành
+const FUND_SOURCE_OPTIONS = [
+  'Vốn ngân sách nhà nước',
+  'Vốn trái phiếu Chính phủ',
+  'Vốn ODA và vốn vay ưu đãi của nhà tài trợ nước ngoài',
+  'Vốn tín dụng đầu tư phát triển của Nhà nước',
+  'Vốn đầu tư từ nguồn thu để lại chưa đưa vào cân đối NSNN',
+  'Vốn của doanh nghiệp nhà nước',
+  'Vốn hỗn hợp (NSNN + vốn doanh nghiệp)',
+  'Vốn hợp tác công tư (PPP)',
+  'Vốn tư nhân',
+  'Nguồn vốn hợp pháp khác',
+];
+
+// ─── Helpers ───────────────────────────────────────────────────────────────
+const formatPrice = (val) => {
+  // Only format digits
+  const digits = String(val).replace(/\D/g, '');
+  if (!digits) return '';
+  return parseInt(digits, 10).toLocaleString('vi-VN'); // uses dots as thousands sep
+};
+const unformatPrice = (val) => String(val).replace(/\./g, '').replace(/,/g, '');
+
 // ─── Modal thêm/sửa gói thầu ───────────────────────────────────────────────
-const PackageModal = ({ pkg, onClose, onSave }) => {
+const PackageModal = ({ pkg, project, onClose, onSave }) => {
   const [form, setForm] = useState(pkg || EMPTY_PACKAGE());
   const set = (field, val) => setForm(f => ({ ...f, [field]: val }));
 
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '680px', padding: '2rem', overflowY: 'auto', maxHeight: '90vh' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', paddingBottom: '1rem', borderBottom: '1px solid var(--color-border)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', paddingBottom: '1rem', borderBottom: '1px solid var(--color-border)' }}>
           <h3 style={{ fontWeight: '700', fontSize: '1.1rem' }}>
             {pkg ? '✏️ Sửa gói thầu' : '➕ Thêm gói thầu mới'}
           </h3>
           <button className="btn-icon" onClick={onClose}><X size={18} /></button>
         </div>
+
+        {/* Banner tên dự án */}
+        {project && (
+          <div style={{ padding: '0.5rem 0.75rem', marginBottom: '1rem', backgroundColor: 'var(--color-bg-surface-hover)', borderRadius: '8px', fontSize: '0.78rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            📁 Dự án: <strong style={{ color: 'var(--color-text-main)' }}>{project.name}</strong>
+            {project.code && <span className="badge badge-blue" style={{ fontSize: '0.7rem', marginLeft: '4px' }}>{project.code}</span>}
+          </div>
+        )}
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           {/* Tên gói thầu */}
@@ -58,12 +89,20 @@ const PackageModal = ({ pkg, onClose, onSave }) => {
           {/* Giá & Nguồn vốn */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <div className="form-group" style={{ marginBottom: 0 }}>
-              <label className="form-label">Giá gói thầu</label>
-              <input className="input-field" value={form.price} onChange={e => set('price', e.target.value)} placeholder="VD: 5.000.000.000 đồng" />
+              <label className="form-label">Giá gói thầu (VNĐ)</label>
+              <input
+                className="input-field"
+                value={formatPrice(form.price)}
+                onChange={e => set('price', unformatPrice(e.target.value))}
+                placeholder="VD: 5.000.000.000"
+              />
             </div>
             <div className="form-group" style={{ marginBottom: 0 }}>
               <label className="form-label">Nguồn vốn</label>
-              <input className="input-field" value={form.fundSource} onChange={e => set('fundSource', e.target.value)} placeholder="VD: Ngân sách nhà nước" />
+              <select className="input-field" value={form.fundSource} onChange={e => set('fundSource', e.target.value)}>
+                <option value="">-- Chọn --</option>
+                {FUND_SOURCE_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+              </select>
             </div>
           </div>
 
@@ -88,8 +127,8 @@ const PackageModal = ({ pkg, onClose, onSave }) => {
           {/* Thời gian tổ chức & Ngày bắt đầu */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <div className="form-group" style={{ marginBottom: 0 }}>
-              <label className="form-label">Thời gian tổ chức LCNT (ngày)</label>
-              <input className="input-field" value={form.organizationTime} onChange={e => set('organizationTime', e.target.value)} placeholder="VD: 30 ngày" />
+              <label className="form-label">Thời gian tổ chức LCNT <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}>(ngày)</span></label>
+              <input type="number" min="0" className="input-field" value={form.organizationTime} onChange={e => set('organizationTime', e.target.value)} placeholder="VD: 30" />
             </div>
             <div className="form-group" style={{ marginBottom: 0 }}>
               <label className="form-label">Ngày bắt đầu tổ chức LCNT</label>
@@ -107,8 +146,8 @@ const PackageModal = ({ pkg, onClose, onSave }) => {
               </select>
             </div>
             <div className="form-group" style={{ marginBottom: 0 }}>
-              <label className="form-label">Thời gian thực hiện gói thầu</label>
-              <input className="input-field" value={form.implementationTime} onChange={e => set('implementationTime', e.target.value)} placeholder="VD: 180 ngày" />
+              <label className="form-label">Thời gian thực hiện gói thầu <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}>(ngày)</span></label>
+              <input type="number" min="0" className="input-field" value={form.implementationTime} onChange={e => set('implementationTime', e.target.value)} placeholder="VD: 180" />
             </div>
           </div>
 
@@ -331,6 +370,7 @@ const BiddingPlan = () => {
       {(addingToProject || editingPkg) && (
         <PackageModal
           pkg={editingPkg}
+          project={editingProject || addingToProject}
           onClose={() => { setAddingToProject(null); setEditingPkg(null); setEditingProject(null); }}
           onSave={handleSave}
         />
