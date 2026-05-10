@@ -210,7 +210,7 @@ const NewRow = ({ onAdd, isAdmin, partners, pkg }) => {
 // ─── Package Datasheet ───────────────────────────────────────────────────────
 const PackageDatasheet = ({ pkg, project, isAdmin, onSave, partners, onEmailPreview }) => {
   const [expanded, setExpanded] = useState(true);
-  const color = getPastelColor(project.name);
+  const bgColor = getPastelColor(pkg.id || pkg.name);
   const bidders = pkg.bidders || [];
 
   const handleAdd = (newBidder) => {
@@ -249,7 +249,7 @@ const PackageDatasheet = ({ pkg, project, isAdmin, onSave, partners, onEmailPrev
   return (
     <div className="card fade-in" style={{ padding: 0, overflow: 'hidden', border: '1px solid var(--color-border)', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
       {/* Header */}
-      <div style={{ padding: '1.25rem 1.5rem', backgroundColor: '#fdfdfd', borderBottom: expanded ? '1px solid var(--color-border)' : 'none' }}>
+      <div style={{ padding: '1.25rem 1.5rem', backgroundColor: bgColor, borderBottom: expanded ? '1px solid var(--color-border)' : 'none' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px' }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', flex: 1 }}>
@@ -263,7 +263,7 @@ const PackageDatasheet = ({ pkg, project, isAdmin, onSave, partners, onEmailPrev
                 <div style={{ color: 'var(--color-text-muted)' }}>{bidders.length} nhà thầu tham dự</div>
               </div>
               <button onClick={() => setExpanded(v => !v)}
-                style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--color-primary)', background: 'var(--color-bg-surface)', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '5px 12px', cursor: 'pointer', fontSize: '0.78rem', fontWeight: '600', whiteSpace: 'nowrap' }}>
+                style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--color-primary)', backgroundColor: 'rgba(255,255,255,0.6)', border: '1px solid rgba(0,0,0,0.05)', borderRadius: '8px', padding: '5px 12px', cursor: 'pointer', fontSize: '0.78rem', fontWeight: '600', whiteSpace: 'nowrap' }}>
                 {expanded ? <><ChevronUp size={14} /> Thu gọn</> : <><ChevronDown size={14} /> Mở datasheet</>}
               </button>
             </div>
