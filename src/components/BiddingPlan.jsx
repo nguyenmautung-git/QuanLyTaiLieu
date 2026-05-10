@@ -80,7 +80,7 @@ const EditPackageModal = ({ pkg, onSave, onClose, projectCode, projectName }) =>
 
   return (
     <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div className="card fade-in" style={{ width: '750px', maxWidth: '90vw', maxHeight: '90vh', overflowY: 'auto', backgroundColor: 'var(--color-bg-surface)', padding: 0 }}>
+      <div className="card fade-in" style={{ width: '600px', maxWidth: '90vw', maxHeight: '90vh', overflowY: 'auto', backgroundColor: 'var(--color-bg-surface)', padding: 0 }}>
         <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', backgroundColor: '#f8fafc' }}>
           <div>
             <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--color-text-main)', fontWeight: '700' }}>Chỉnh sửa gói thầu</h3>
@@ -88,7 +88,7 @@ const EditPackageModal = ({ pkg, onSave, onClose, projectCode, projectName }) =>
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer', color: 'var(--color-text-muted)' }}>&times;</button>
         </div>
-        <div style={{ padding: '1.5rem', display: 'grid', gridTemplateColumns: '3fr 4fr', gap: '1.25rem' }}>
+        <div style={{ padding: '1.5rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
           {COLUMNS.map(col => (
             <div key={col.key} style={{ gridColumn: col.key === 'summary' || col.key === 'name' ? '1 / -1' : 'auto' }}>
               <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.8rem', fontWeight: '600', color: 'var(--color-text-main)' }}>{col.label} {col.required && <span style={{color:'red'}}>*</span>}</label>
