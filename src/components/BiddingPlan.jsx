@@ -644,7 +644,7 @@ const BiddingPlan = () => {
   const { projects, userRole, biddingPackages = [], addBiddingPackage, editBiddingPackage, deleteBiddingPackage, reorderBiddingPackages, addListItem, globalLists } = useContext(DocumentContext);
   const isAdmin = userRole === 'Admin';
   const didFixCodes = useRef(false);
-  const [editingPkg, setEditingPkg] = useState(null);
+  const [editingData, setEditingData] = useState(null);
   const [templateModalProjectId, setTemplateModalProjectId] = useState(null);
 
   const getPackages = (projectId) =>
