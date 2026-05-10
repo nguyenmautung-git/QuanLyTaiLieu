@@ -259,14 +259,14 @@ const PackageDatasheet = ({ pkg, project, isAdmin, onSave, partners, onEmailPrev
               <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--color-text-main)', fontWeight: '700', lineHeight: '1.3' }}>{pkg.name}</h3>
             </div>
             
-            <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '12px', color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <Briefcase size={14} /> Dự án: {project.name}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', color: 'var(--color-text-muted)', fontSize: '0.8rem', width: '100%' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', overflow: 'hidden' }}>
+                <Briefcase size={14} style={{ flexShrink: 0 }} /> 
+                <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Dự án: {project.name}</span>
               </div>
               {pkg.nature && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span style={{ display: 'inline-block', width: '4px', height: '4px', borderRadius: '50%', backgroundColor: '#cbd5e1' }}></span>
-                  <span style={{ color: 'var(--color-primary)', fontWeight: '600' }}>{pkg.nature}</span>
+                <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                  <span style={{ color: 'var(--color-primary)', fontWeight: '600', backgroundColor: '#eff6ff', padding: '3px 8px', borderRadius: '4px', fontSize: '0.75rem', border: '1px solid #bfdbfe' }}>{pkg.nature}</span>
                 </div>
               )}
             </div>
