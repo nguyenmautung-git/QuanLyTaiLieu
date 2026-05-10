@@ -210,11 +210,10 @@ const NewRow = ({ onAdd, isAdmin, visibleCols, colWidths, projectCode }) => {
 };
 
 // ─── Datasheet Card ──────────────────────────────────────────────────────────
-const ProjectDatasheet = ({ project, packages, isAdmin, onAdd, onSave, onDelete, onMoveUp, onMoveDown, projects }) => {
+const ProjectDatasheet = ({ project, packages, isAdmin, onAdd, onSave, onDelete, onMoveUp, onMoveDown, projects, onEdit }) => {
   const [hiddenCols, setHiddenCols] = useState(new Set());
   const [colWidths, setColWidths] = useState(() => Object.fromEntries(COLUMNS.map(c => [c.key, c.width])));
   const [showColPanel, setShowColPanel] = useState(false);
-  const [editingPkg, setEditingPkg] = useState(null);
   const panelRef = useRef(null);
   const visibleCols = COLUMNS.filter(c => !hiddenCols.has(c.key));
 
@@ -358,7 +357,7 @@ const ProjectDatasheet = ({ project, packages, isAdmin, onAdd, onSave, onDelete,
               {packages.map((pkg, idx) => (
                 <DataRow key={pkg.id} pkg={pkg} idx={idx} total={packages.length} isAdmin={isAdmin}
                   visibleCols={visibleCols} colWidths={colWidths}
-                  onEdit={(pkg) => setEditingPkg(pkg)}
+                  onEdit={(pkg) => onEdit(project, pkg)}
                   onDelete={(id) => onDelete(project, id)}
                   onMoveUp={() => onMoveUp(project.id, packages, idx)}
                   onMoveDown={() => onMoveDown(project.id, packages, idx)} />
@@ -395,19 +394,6 @@ const ProjectDatasheet = ({ project, packages, isAdmin, onAdd, onSave, onDelete,
           </table>
         </div>
       )}
-
-      {/* Edit Modal Overlay */}
-      {editingPkg && (
-        <EditPackageModal
-          pkg={editingPkg}
-          projectCode={project.code}
-          onClose={() => setEditingPkg(null)}
-          onSave={(updated) => {
-            onSave(project.id, editingPkg.id, updated);
-            setEditingPkg(null);
-          }}
-        />
-      )}
     </div>
   );
 };
@@ -416,6 +402,7 @@ const ProjectDatasheet = ({ project, packages, isAdmin, onAdd, onSave, onDelete,
 const BiddingPlan = () => {
   const { projects, userRole, biddingPackages = [], addBiddingPackage, editBiddingPackage, deleteBiddingPackage } = useContext(DocumentContext);
   const isAdmin = userRole === 'Admin';
+  const [editingData, setEditingData] = useState(null); // { project, pkg }
 
   const getPackages = (projectId) =>
     [...biddingPackages.filter(p => String(p.projectId) === String(projectId))]
@@ -486,9 +473,23 @@ const BiddingPlan = () => {
               onDelete={handleDelete}
               onMoveUp={handleMoveUp}
               onMoveDown={handleMoveDown}
+              onEdit={(project, pkg) => setEditingData({ project, pkg })}
             />
           ))}
         </div>
+      )}
+
+      {/* Edit Modal Overlay (Rendered at Root) */}
+      {editingData && (
+        <EditPackageModal
+          pkg={editingData.pkg}
+          projectCode={editingData.project.code}
+          onClose={() => setEditingData(null)}
+          onSave={(updated) => {
+            handleSave(editingData.project.id, editingData.pkg.id, updated);
+            setEditingData(null);
+          }}
+        />
       )}
     </div>
   );
