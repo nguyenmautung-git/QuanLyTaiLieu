@@ -146,7 +146,23 @@ const DataRow = ({ bidder, idx, total, isAdmin, onUpdate, onDelete, onMoveUp, on
       </td>
       
       <td style={{ ...cell(160) }}>
-        <CellInput type="status" value={bidder.status} onChange={v => onUpdate('status', v)} />
+        <CellInput 
+          type="status" 
+          value={bidder.status} 
+          onChange={v => {
+            onUpdate('status', v);
+            if (v === 'Đã mời thầu') {
+              const partner = partners.find(p => String(p.id) === String(bidder.partnerId));
+              if (partner && partner.email) {
+                const subject = encodeURIComponent(`[Thư mời thầu] ${pkg.name || 'Gói thầu'}`);
+                const body = encodeURIComponent(`Kính gửi ${partner.name},\n\nChúng tôi trân trọng kính mời Quý công ty tham gia gói thầu "${pkg.name || 'Gói thầu'}".\n\nVui lòng phản hồi để nhận hồ sơ mời thầu chi tiết.\n\nTrân trọng,\nBan Quản lý dự án.`);
+                window.open(`mailto:${partner.email}?subject=${subject}&body=${body}`, '_blank');
+              } else if (partner && !partner.email) {
+                alert(`Nhà thầu "${partner.name}" chưa có địa chỉ email trong hệ thống. Vui lòng cập nhật ở danh mục đối tác.`);
+              }
+            }
+          }} 
+        />
       </td>
 
       {isAdmin && (
