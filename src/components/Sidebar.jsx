@@ -19,8 +19,8 @@ const Sidebar = ({ currentView, setCurrentView }) => {
 
         <NavAccordion label="Công tác đấu thầu" icon={<Briefcase size={20} />} defaultOpen={['biddingPlan', 'bidding', 'contractorSelection'].includes(currentView)}>
           <NavItem icon={<ClipboardList size={20} />} label="Kế hoạch LCNT" active={currentView === 'biddingPlan'} onClick={() => setCurrentView('biddingPlan')} isChild />
-          <NavItem icon={<Package size={20} />} label="Danh sách gói thầu" active={currentView === 'bidding'} onClick={() => setCurrentView('bidding')} isChild />
           <NavItem icon={<UserCheck size={20} />} label="Lựa chọn nhà thầu" active={currentView === 'contractorSelection'} onClick={() => setCurrentView('contractorSelection')} isChild />
+          <NavItem icon={<Package size={20} />} label="Danh mục gói thầu" active={currentView === 'bidding'} onClick={() => setCurrentView('bidding')} isChild />
         </NavAccordion>
 
         <NavAccordion label="Quản lý dự án" icon={<BarChart3 size={20} />} defaultOpen={['phapLy','tienDo','khoiLuong','atld','nghiemThu','danhMucLoi'].includes(currentView)}>
