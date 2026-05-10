@@ -70,7 +70,7 @@ const PartnerSingleValue = (props) => (
 );
 
 // ─── Cell Input ─────────────────────────────────────────────────────────────
-const CellInput = ({ value, onChange, type, partners, pkg }) => {
+const CellInput = ({ value, onChange, type, partners, pkg, statusOptions }) => {
   if (type === 'partner') {
     const filteredPartners = filterPartnersByPackage(partners, pkg);
     const options = filteredPartners.map(p => ({ value: p.id, label: p.name, rating: p.rating || 0 }));
@@ -94,23 +94,30 @@ const CellInput = ({ value, onChange, type, partners, pkg }) => {
     );
   }
   if (type === 'status') {
+    const options = statusOptions || STATUS_OPTIONS;
     const getBg = (s) => {
-      if (s === 'Đã nộp thầu') return '#dcfce7'; // green
-      if (s === 'Đang làm thầu') return '#dbeafe'; // blue
-      if (s === 'Đã mời thầu') return '#fef08a'; // yellow
+      const lowerS = (s || '').toLowerCase();
+      if (lowerS.includes('nộp') || lowerS.includes('trúng')) return '#dcfce7'; // green
+      if (lowerS.includes('đang làm')) return '#dbeafe'; // blue
+      if (lowerS.includes('mời thầu')) return '#fef08a'; // yellow
+      if (lowerS.includes('chấm')) return '#f3e8ff'; // purple
+      if (lowerS.includes('rút') || lowerS.includes('trượt') || lowerS.includes('không')) return '#fee2e2'; // red
       return '#f1f5f9'; // gray
     };
     const getColor = (s) => {
-      if (s === 'Đã nộp thầu') return '#166534';
-      if (s === 'Đang làm thầu') return '#1e40af';
-      if (s === 'Đã mời thầu') return '#854d0e';
+      const lowerS = (s || '').toLowerCase();
+      if (lowerS.includes('nộp') || lowerS.includes('trúng')) return '#166534';
+      if (lowerS.includes('đang làm')) return '#1e40af';
+      if (lowerS.includes('mời thầu')) return '#854d0e';
+      if (lowerS.includes('chấm')) return '#6b21a8';
+      if (lowerS.includes('rút') || lowerS.includes('trượt') || lowerS.includes('không')) return '#991b1b';
       return '#475569';
     };
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px' }}>
-        <select value={value} onChange={e => onChange(e.target.value)}
-          style={{ width: '100%', border: 'none', background: getBg(value), color: getColor(value), borderRadius: '12px', padding: '2px 8px', outline: 'none', fontFamily: 'inherit', fontSize: '0.75rem', fontWeight: '600', cursor: 'pointer', appearance: 'none', textAlign: 'center' }}>
-          {STATUS_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+        <select value={value || options[0]} onChange={e => onChange(e.target.value)}
+          style={{ width: '100%', border: 'none', background: getBg(value || options[0]), color: getColor(value || options[0]), borderRadius: '12px', padding: '2px 8px', outline: 'none', fontFamily: 'inherit', fontSize: '0.75rem', fontWeight: '600', cursor: 'pointer', appearance: 'none', textAlign: 'center' }}>
+          {options.map(o => <option key={o} value={o}>{o}</option>)}
         </select>
       </div>
     );
@@ -119,7 +126,7 @@ const CellInput = ({ value, onChange, type, partners, pkg }) => {
 };
 
 // ─── DataRow ─────────────────────────────────────────────────────────────────
-const DataRow = ({ bidder, idx, total, isAdmin, onUpdate, onDelete, onMoveUp, onMoveDown, partners, pkg, onEmailPreview }) => {
+const DataRow = ({ bidder, idx, total, isAdmin, onUpdate, onDelete, onMoveUp, onMoveDown, partners, pkg, onEmailPreview, statusOptions }) => {
   const bg = idx % 2 === 0 ? 'rgba(255, 255, 255, 0.5)' : 'rgba(248, 250, 252, 0.3)';
 
   return (
@@ -149,6 +156,7 @@ const DataRow = ({ bidder, idx, total, isAdmin, onUpdate, onDelete, onMoveUp, on
         <CellInput
           type="status"
           value={bidder.status}
+          statusOptions={statusOptions}
           onChange={v => {
             onUpdate('status', v);
             if (v === 'Đã mời thầu') {
@@ -173,13 +181,14 @@ const DataRow = ({ bidder, idx, total, isAdmin, onUpdate, onDelete, onMoveUp, on
 };
 
 // ─── NewRow ──────────────────────────────────────────────────────────────────
-const NewRow = ({ onAdd, isAdmin, partners, pkg }) => {
-  const [data, setData] = useState({ partnerId: '', status: 'Chưa mời thầu' });
+const NewRow = ({ onAdd, isAdmin, partners, pkg, statusOptions }) => {
+  const defaultStatus = statusOptions && statusOptions.length > 0 ? statusOptions[0] : 'Chưa mời thầu';
+  const [data, setData] = useState({ partnerId: '', status: defaultStatus });
 
   const handleAdd = () => {
     if (!data.partnerId) return;
     onAdd({ id: crypto.randomUUID(), ...data, createdAt: new Date().toISOString() });
-    setData({ partnerId: '', status: 'Chưa mời thầu' });
+    setData({ partnerId: '', status: defaultStatus });
   };
 
   return (
@@ -192,7 +201,7 @@ const NewRow = ({ onAdd, isAdmin, partners, pkg }) => {
       </td>
 
       <td style={{ ...cell(160) }}>
-        <CellInput type="status" value={data.status} onChange={v => setData({ ...data, status: v })} />
+        <CellInput type="status" value={data.status} onChange={v => setData({ ...data, status: v })} statusOptions={statusOptions} />
       </td>
 
       {isAdmin && (
@@ -208,7 +217,7 @@ const NewRow = ({ onAdd, isAdmin, partners, pkg }) => {
 };
 
 // ─── Package Datasheet ───────────────────────────────────────────────────────
-const PackageDatasheet = ({ pkg, project, isAdmin, onSave, partners, onEmailPreview }) => {
+const PackageDatasheet = ({ pkg, project, isAdmin, onSave, partners, onEmailPreview, statusOptions }) => {
   const [expanded, setExpanded] = useState(true);
   const bgColor = getPastelColor(pkg.id || pkg.name);
   const bidders = pkg.bidders || [];
@@ -315,6 +324,7 @@ const PackageDatasheet = ({ pkg, project, isAdmin, onSave, partners, onEmailPrev
               )}
               {bidders.sort((a, b) => a.order - b.order).map((bidder, idx) => (
                 <DataRow key={bidder.id} bidder={bidder} idx={idx} total={bidders.length} isAdmin={isAdmin} partners={partners} pkg={pkg}
+                  statusOptions={statusOptions}
                   onUpdate={(k, v) => handleUpdate(idx, k, v)}
                   onDelete={() => handleDelete(bidder.id)}
                   onMoveUp={() => handleMoveUp(idx)}
@@ -325,7 +335,7 @@ const PackageDatasheet = ({ pkg, project, isAdmin, onSave, partners, onEmailPrev
 
               {/* New row */}
               {isAdmin && (
-                <NewRow onAdd={handleAdd} isAdmin={isAdmin} partners={partners} pkg={pkg} />
+                <NewRow onAdd={handleAdd} isAdmin={isAdmin} partners={partners} pkg={pkg} statusOptions={statusOptions} />
               )}
             </tbody>
           </table>
@@ -339,6 +349,8 @@ const PackageDatasheet = ({ pkg, project, isAdmin, onSave, partners, onEmailPrev
 const ContractorSelection = () => {
   const { projects, userRole, biddingPackages = [], editBiddingPackage, partners = [], globalLists } = useContext(DocumentContext);
   const isAdmin = userRole === 'Admin';
+  
+  const statusOptions = globalLists?.bidderStatuses?.map(s => s.name) || STATUS_OPTIONS;
 
   const [filters, setFilters] = useState({ keyword: '', project: '', nature: '' });
   const [emailPreview, setEmailPreview] = useState(null);
@@ -470,6 +482,7 @@ const ContractorSelection = () => {
                 onSave={handleSavePackage}
                 partners={partners}
                 onEmailPreview={setEmailPreview}
+                statusOptions={statusOptions}
               />
             );
           })}

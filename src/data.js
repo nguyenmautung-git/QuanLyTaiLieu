@@ -259,5 +259,12 @@ export const LIST_CONFIGS = [
     name: 'Tính chất gói thầu',
     description: 'Phân loại tính chất các gói thầu.',
     initialData: ['Gói thầu tư vấn', 'Gói thầu xây lắp', 'Gói thầu mua sắm']
+  },
+  {
+    key: 'bidderStatuses',
+    collectionName: 'bidderStatuses',
+    name: 'Tình trạng gói thầu',
+    description: 'Danh sách các trạng thái của nhà thầu tham dự.',
+    initialData: ['Chưa mời thầu', 'Đã mời thầu', 'Đang làm thầu', 'Không tham gia', 'Đã nộp thầu', 'Đã rút thầu', 'Đang chấm thầu', 'Đã trúng thầu', 'Đã trượt thầu']
   }
 ];
