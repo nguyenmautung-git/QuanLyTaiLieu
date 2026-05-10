@@ -53,10 +53,12 @@ const CellInput = ({ value, onChange, type, partners, pkg }) => {
         options={options}
         placeholder="— Chọn nhà thầu —"
         components={{ Option: PartnerOption, SingleValue: PartnerSingleValue }}
+        menuPortalTarget={document.body}
         styles={{ 
           control: (base) => ({ ...base, minHeight: '32px', border: 'none', boxShadow: 'none', backgroundColor: 'transparent', cursor: 'pointer', fontSize: '0.78rem' }),
           valueContainer: (base) => ({ ...base, padding: '0 8px' }),
-          menu: (base) => ({ ...base, zIndex: 9999, fontSize: '0.78rem' })
+          menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+          menu: (base) => ({ ...base, fontSize: '0.78rem' })
         }}
       />
     );
