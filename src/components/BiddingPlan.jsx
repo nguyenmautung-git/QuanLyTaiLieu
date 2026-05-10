@@ -88,7 +88,7 @@ const EditPackageModal = ({ pkg, onSave, onClose, projectCode, projectName }) =>
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer', color: 'var(--color-text-muted)' }}>&times;</button>
         </div>
-        <div style={{ padding: '1.5rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
+        <div style={{ padding: '1.5rem', display: 'grid', gridTemplateColumns: '3fr 4fr', gap: '1.25rem' }}>
           {COLUMNS.map(col => (
             <div key={col.key} style={{ gridColumn: col.key === 'summary' || col.key === 'name' ? '1 / -1' : 'auto' }}>
               <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.8rem', fontWeight: '600', color: 'var(--color-text-main)' }}>{col.label} {col.required && <span style={{color:'red'}}>*</span>}</label>
