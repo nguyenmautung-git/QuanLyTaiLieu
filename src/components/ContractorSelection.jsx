@@ -1,7 +1,8 @@
 import React, { useState, useContext } from 'react';
 import { DocumentContext } from '../context/DocumentContext';
 import { getPastelColor } from '../data';
-import { ChevronDown, ChevronUp, Plus, Trash2, ArrowUp, ArrowDown, Briefcase } from 'lucide-react';
+import { ChevronDown, ChevronUp, Plus, Trash2, ArrowUp, ArrowDown, Briefcase, Star } from 'lucide-react';
+import Select, { components } from 'react-select';
 
 const STATUS_OPTIONS = ['Chưa mời thầu', 'Đã mời thầu', 'Đang làm thầu', 'Đã nộp thầu'];
 
@@ -11,14 +12,75 @@ const thStyle = (w) => ({ padding: '10px 8px', borderBottom: '2px solid var(--co
 const btn = { background: 'none', border: 'none', cursor: 'pointer', padding: '3px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '4px' };
 const inputBase = { width: '100%', border: 'none', outline: 'none', padding: '5px 8px', fontSize: '0.78rem', backgroundColor: 'transparent', color: 'var(--color-text-main)', fontFamily: 'inherit' };
 
+const filterPartnersByPackage = (partners, pkgName = '') => {
+  if (!pkgName) return partners;
+  const nameL = pkgName.toLowerCase();
+  
+  let requiredKeywords = [];
+  if (nameL.includes('thi công') || nameL.includes('xây dựng') || nameL.includes('cọc')) requiredKeywords.push('thi công', 'xây dựng');
+  if (nameL.includes('tư vấn') || nameL.includes('thiết kế') || nameL.includes('báo cáo') || nameL.includes('kiểm toán')) requiredKeywords.push('tư vấn');
+  if (nameL.includes('giám sát')) requiredKeywords.push('giám sát', 'tư vấn');
+  if (nameL.includes('cung cấp') || nameL.includes('mua sắm') || nameL.includes('thiết bị') || nameL.includes('hàng hóa')) requiredKeywords.push('cung cấp', 'vật tư');
+
+  if (requiredKeywords.length === 0) return partners;
+
+  const filtered = partners.filter(p => {
+    const pTypes = Array.isArray(p.type) ? p.type : (p.type ? [p.type] : []);
+    const pTypeStr = pTypes.join(' ').toLowerCase();
+    return requiredKeywords.some(kw => pTypeStr.includes(kw));
+  });
+
+  return filtered.length > 0 ? filtered : partners;
+};
+
+const PartnerOption = (props) => {
+  return (
+    <components.Option {...props}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '2px', flexShrink: 0 }}>
+          {[1,2,3,4,5].map(i => (
+            <Star key={i} size={12} fill={i <= (props.data.rating || 0) ? '#f59e0b' : 'transparent'} color={i <= (props.data.rating || 0) ? '#f59e0b' : '#d1d5db'} />
+          ))}
+        </div>
+        <span style={{ fontWeight: '500' }}>{props.data.label}</span>
+      </div>
+    </components.Option>
+  );
+};
+
+const PartnerSingleValue = (props) => (
+  <components.SingleValue {...props}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '2px', flexShrink: 0 }}>
+        {[1,2,3,4,5].map(i => (
+          <Star key={i} size={12} fill={i <= (props.data.rating || 0) ? '#f59e0b' : 'transparent'} color={i <= (props.data.rating || 0) ? '#f59e0b' : '#d1d5db'} />
+        ))}
+      </div>
+      <span style={{ fontWeight: '600', color: 'var(--color-primary)' }}>{props.data.label}</span>
+    </div>
+  </components.SingleValue>
+);
+
 // ─── Cell Input ─────────────────────────────────────────────────────────────
-const CellInput = ({ value, onChange, type, partners }) => {
+const CellInput = ({ value, onChange, type, partners, pkg }) => {
   if (type === 'partner') {
+    const filteredPartners = filterPartnersByPackage(partners, pkg?.name);
+    const options = filteredPartners.map(p => ({ value: p.id, label: p.name, rating: p.rating || 0 }));
+    const selectedOption = options.find(o => o.value === value) || null;
+
     return (
-      <select value={value} onChange={e => onChange(e.target.value)} style={{ ...inputBase, cursor: 'pointer' }}>
-        <option value="">— Chọn nhà thầu —</option>
-        {partners.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-      </select>
+      <Select
+        value={selectedOption}
+        onChange={opt => onChange(opt ? opt.value : '')}
+        options={options}
+        placeholder="— Chọn nhà thầu —"
+        components={{ Option: PartnerOption, SingleValue: PartnerSingleValue }}
+        styles={{ 
+          control: (base) => ({ ...base, minHeight: '32px', border: 'none', boxShadow: 'none', backgroundColor: 'transparent', cursor: 'pointer', fontSize: '0.78rem' }),
+          valueContainer: (base) => ({ ...base, padding: '0 8px' }),
+          menu: (base) => ({ ...base, zIndex: 9999, fontSize: '0.78rem' })
+        }}
+      />
     );
   }
   if (type === 'status') {
@@ -47,7 +109,7 @@ const CellInput = ({ value, onChange, type, partners }) => {
 };
 
 // ─── DataRow ─────────────────────────────────────────────────────────────────
-const DataRow = ({ bidder, idx, total, isAdmin, onUpdate, onDelete, onMoveUp, onMoveDown, partners }) => {
+const DataRow = ({ bidder, idx, total, isAdmin, onUpdate, onDelete, onMoveUp, onMoveDown, partners, pkg }) => {
   const bg = idx % 2 === 0 ? '#ffffff' : 'var(--color-bg-surface)';
   
   return (
@@ -70,7 +132,7 @@ const DataRow = ({ bidder, idx, total, isAdmin, onUpdate, onDelete, onMoveUp, on
       <td style={{ ...cell(50), textAlign: 'center', color: 'var(--color-text-muted)' }}>{idx + 1}</td>
       
       <td style={{ ...cell() }}>
-        <CellInput type="partner" value={bidder.partnerId} onChange={v => onUpdate('partnerId', v)} partners={partners} />
+        <CellInput type="partner" value={bidder.partnerId} onChange={v => onUpdate('partnerId', v)} partners={partners} pkg={pkg} />
       </td>
       
       <td style={{ ...cell(160) }}>
@@ -89,7 +151,7 @@ const DataRow = ({ bidder, idx, total, isAdmin, onUpdate, onDelete, onMoveUp, on
 };
 
 // ─── NewRow ──────────────────────────────────────────────────────────────────
-const NewRow = ({ onAdd, isAdmin, partners }) => {
+const NewRow = ({ onAdd, isAdmin, partners, pkg }) => {
   const [data, setData] = useState({ partnerId: '', status: 'Chưa mời thầu' });
 
   const handleAdd = () => {
@@ -104,7 +166,7 @@ const NewRow = ({ onAdd, isAdmin, partners }) => {
       <td style={{ ...cell(50), textAlign: 'center', color: '#94a3b8', fontSize: '0.7rem' }}>+</td>
       
       <td style={{ ...cell() }}>
-        <CellInput type="partner" value={data.partnerId} onChange={v => setData({ ...data, partnerId: v })} partners={partners} />
+        <CellInput type="partner" value={data.partnerId} onChange={v => setData({ ...data, partnerId: v })} partners={partners} pkg={pkg} />
       </td>
       
       <td style={{ ...cell(160) }}>
@@ -222,7 +284,7 @@ const PackageDatasheet = ({ pkg, project, isAdmin, onSave, partners }) => {
                 </tr>
               )}
               {bidders.sort((a, b) => a.order - b.order).map((bidder, idx) => (
-                <DataRow key={bidder.id} bidder={bidder} idx={idx} total={bidders.length} isAdmin={isAdmin} partners={partners}
+                <DataRow key={bidder.id} bidder={bidder} idx={idx} total={bidders.length} isAdmin={isAdmin} partners={partners} pkg={pkg}
                   onUpdate={(k, v) => handleUpdate(idx, k, v)}
                   onDelete={() => handleDelete(bidder.id)}
                   onMoveUp={() => handleMoveUp(idx)}
@@ -232,7 +294,7 @@ const PackageDatasheet = ({ pkg, project, isAdmin, onSave, partners }) => {
               
               {/* New row */}
               {isAdmin && (
-                <NewRow onAdd={handleAdd} isAdmin={isAdmin} partners={partners} />
+                <NewRow onAdd={handleAdd} isAdmin={isAdmin} partners={partners} pkg={pkg} />
               )}
             </tbody>
           </table>
