@@ -119,7 +119,7 @@ const CellInput = ({ value, onChange, type, partners, pkg }) => {
 };
 
 // ─── DataRow ─────────────────────────────────────────────────────────────────
-const DataRow = ({ bidder, idx, total, isAdmin, onUpdate, onDelete, onMoveUp, onMoveDown, partners, pkg }) => {
+const DataRow = ({ bidder, idx, total, isAdmin, onUpdate, onDelete, onMoveUp, onMoveDown, partners, pkg, onEmailPreview }) => {
   const bg = idx % 2 === 0 ? '#ffffff' : 'var(--color-bg-surface)';
   
   return (
@@ -153,30 +153,8 @@ const DataRow = ({ bidder, idx, total, isAdmin, onUpdate, onDelete, onMoveUp, on
             onUpdate('status', v);
             if (v === 'Đã mời thầu') {
               const partner = partners.find(p => String(p.id) === String(bidder.partnerId));
-              if (partner && partner.email) {
-                const pCode = pkg.code || 'Mã gói thầu';
-                const pName = pkg.name || 'Tên gói thầu';
-                const subject = encodeURIComponent(`Thư mời thầu - [${pCode}]: ${pName}`);
-                const bodyText = `Kính gửi Ban Giám đốc ${partner.name},
-
-Ban Quản lý dự án trân trọng kính mời Quý công ty tham gia đấu thầu:
-- Mã gói thầu: ${pCode}
-- Tên gói thầu: ${pName}
-
-Để thuận tiện cho công tác chuẩn bị, Quý công ty vui lòng phản hồi lại bằng cách click vào một trong hai lựa chọn dưới đây (hệ thống sẽ tự tạo email phản hồi):
-
-👉 [ XÁC NHẬN THAM GIA ]
-mailto:banquanly@duan.vn?subject=${encodeURIComponent('Xác nhận tham gia gói thầu ' + pCode)}&body=${encodeURIComponent('Chúng tôi xác nhận sẽ tham gia gói thầu này.')}
-
-👉 [ TỪ CHỐI THAM GIA ]
-mailto:banquanly@duan.vn?subject=${encodeURIComponent('Từ chối tham gia gói thầu ' + pCode)}&body=${encodeURIComponent('Chúng tôi rất tiếc không thể tham gia gói thầu này.')}
-
-Rất mong nhận được sự hợp tác từ Quý công ty.
-Trân trọng,
-Ban Quản lý dự án.`;
-                window.open(`mailto:${partner.email}?subject=${subject}&body=${encodeURIComponent(bodyText)}`, '_blank');
-              } else if (partner && !partner.email) {
-                alert(`Nhà thầu "${partner.name}" chưa có địa chỉ email trong hệ thống. Vui lòng cập nhật ở danh mục đối tác.`);
+              if (partner) {
+                if (onEmailPreview) onEmailPreview({ partner, pkg });
               }
             }
           }} 
@@ -230,7 +208,7 @@ const NewRow = ({ onAdd, isAdmin, partners, pkg }) => {
 };
 
 // ─── Package Datasheet ───────────────────────────────────────────────────────
-const PackageDatasheet = ({ pkg, project, isAdmin, onSave, partners }) => {
+const PackageDatasheet = ({ pkg, project, isAdmin, onSave, partners, onEmailPreview }) => {
   const [expanded, setExpanded] = useState(true);
   const color = getPastelColor(project.name);
   const bidders = pkg.bidders || [];
@@ -339,6 +317,7 @@ const PackageDatasheet = ({ pkg, project, isAdmin, onSave, partners }) => {
                   onDelete={() => handleDelete(bidder.id)}
                   onMoveUp={() => handleMoveUp(idx)}
                   onMoveDown={() => handleMoveDown(idx)}
+                  onEmailPreview={onEmailPreview}
                 />
               ))}
               
@@ -360,6 +339,7 @@ const ContractorSelection = () => {
   const isAdmin = userRole === 'Admin';
 
   const [filters, setFilters] = useState({ keyword: '', project: '', nature: '' });
+  const [emailPreview, setEmailPreview] = useState(null);
 
   // Lấy các package có dự án hợp lệ và đã được phê duyệt
   let validPackages = biddingPackages.filter(p => 
@@ -465,20 +445,98 @@ const ContractorSelection = () => {
           Chưa có gói thầu nào. Vui lòng tạo gói thầu ở trang "Kế hoạch LCNT".
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(600px, 1fr))', gap: '1.25rem', alignItems: 'start' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           {validPackages.map(pkg => {
             const project = projects.find(proj => String(proj.id) === String(pkg.projectId));
             return (
-              <PackageDatasheet
-                key={pkg.id}
-                pkg={pkg}
-                project={project}
-                isAdmin={isAdmin}
-                partners={partners}
+              <PackageDatasheet 
+                key={pkg.id} 
+                pkg={pkg} 
+                project={project} 
+                isAdmin={isAdmin} 
                 onSave={handleSavePackage}
+                partners={partners}
+                onEmailPreview={setEmailPreview}
               />
             );
           })}
+        </div>
+      )}
+
+      {/* Email Preview Modal */}
+      {emailPreview && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="card fade-in" style={{ width: '640px', maxWidth: '95%', backgroundColor: '#fff', borderRadius: '12px', overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)' }}>
+            <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f8fafc' }}>
+              <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '700', color: 'var(--color-text-main)' }}>Nội dung thư mời thầu</h3>
+              <button onClick={() => setEmailPreview(null)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-text-muted)' }}><X size={20} /></button>
+            </div>
+            
+            <div style={{ padding: '1.5rem', flex: 1, overflowY: 'auto' }}>
+              <div style={{ marginBottom: '1rem', display: 'flex' }}>
+                <span style={{ fontWeight: '600', color: 'var(--color-text-muted)', fontSize: '0.85rem', width: '80px' }}>Gửi đến: </span>
+                <span style={{ fontWeight: '600', color: 'var(--color-text-main)', fontSize: '0.9rem' }}>{emailPreview.partner.name} &lt;{emailPreview.partner.email || 'Chưa cập nhật email'}&gt;</span>
+              </div>
+              <div style={{ marginBottom: '1.5rem', display: 'flex' }}>
+                <span style={{ fontWeight: '600', color: 'var(--color-text-muted)', fontSize: '0.85rem', width: '80px' }}>Chủ đề: </span>
+                <span style={{ fontWeight: '700', color: 'var(--color-primary)', fontSize: '0.9rem' }}>
+                  Thư mời thầu - [{emailPreview.pkg.code || 'Mã GT'}]: {emailPreview.pkg.name || 'Tên gói thầu'}
+                </span>
+              </div>
+              
+              <div style={{ border: '1px solid var(--color-border)', borderRadius: '8px', padding: '1.5rem', backgroundColor: '#fdfdfd', fontSize: '0.9rem', lineHeight: '1.6' }}>
+                <p>Kính gửi Ban Giám đốc <strong>{emailPreview.partner.name}</strong>,</p>
+                <p>Ban Quản lý dự án trân trọng kính mời Quý công ty tham gia đấu thầu:</p>
+                <ul style={{ paddingLeft: '1.5rem', marginBottom: '1rem' }}>
+                  <li><strong>Mã gói thầu:</strong> {emailPreview.pkg.code || 'Chưa cập nhật'}</li>
+                  <li><strong>Tên gói thầu:</strong> {emailPreview.pkg.name || 'Chưa cập nhật'}</li>
+                </ul>
+                <p>Để thuận tiện cho công tác chuẩn bị, Quý công ty vui lòng phản hồi lại bằng cách click vào một trong hai nút dưới đây:</p>
+                
+                <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', marginBottom: '1.5rem' }}>
+                  <a href={`mailto:banquanly@duan.vn?subject=${encodeURIComponent('Xác nhận tham gia gói thầu ' + (emailPreview.pkg.code || ''))}&body=${encodeURIComponent('Chúng tôi xác nhận sẽ tham gia gói thầu này.')}`}
+                     style={{ display: 'inline-block', backgroundColor: '#10b981', color: 'white', padding: '10px 20px', borderRadius: '6px', textDecoration: 'none', fontWeight: '600', fontSize: '0.85rem', boxShadow: '0 2px 4px rgba(16,185,129,0.2)' }}>
+                    ✓ XÁC NHẬN THAM GIA
+                  </a>
+                  <a href={`mailto:banquanly@duan.vn?subject=${encodeURIComponent('Từ chối tham gia gói thầu ' + (emailPreview.pkg.code || ''))}&body=${encodeURIComponent('Chúng tôi rất tiếc không thể tham gia gói thầu này.')}`}
+                     style={{ display: 'inline-block', backgroundColor: '#ef4444', color: 'white', padding: '10px 20px', borderRadius: '6px', textDecoration: 'none', fontWeight: '600', fontSize: '0.85rem', boxShadow: '0 2px 4px rgba(239,68,68,0.2)' }}>
+                    ✕ TỪ CHỐI THAM GIA
+                  </a>
+                </div>
+                
+                <p style={{ margin: 0 }}>Rất mong nhận được sự hợp tác từ Quý công ty.<br/>Trân trọng,<br/><strong>Ban Quản lý dự án.</strong></p>
+              </div>
+              <div style={{ marginTop: '1rem', fontSize: '0.8rem', color: '#f59e0b', fontStyle: 'italic', display: 'flex', gap: '6px' }}>
+                * Lưu ý: Khi gửi qua Mail Client, các nút bấm sẽ tự động được chuyển đổi thành định dạng phù hợp.
+              </div>
+            </div>
+            
+            <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', backgroundColor: '#f8fafc' }}>
+              <button onClick={() => setEmailPreview(null)} style={{ padding: '8px 16px', borderRadius: '6px', border: '1px solid var(--color-border)', backgroundColor: '#fff', cursor: 'pointer', fontWeight: '600', fontSize: '0.85rem', color: 'var(--color-text-main)' }}>Đóng</button>
+              <button 
+                onClick={() => {
+                  const pCode = emailPreview.pkg.code || 'Mã GT';
+                  const pName = emailPreview.pkg.name || 'Tên gói thầu';
+                  const subject = encodeURIComponent(`Thư mời thầu - [${pCode}]: ${pName}`);
+                  const bodyText = `Kính gửi Ban Giám đốc ${emailPreview.partner.name},
+
+Ban Quản lý dự án trân trọng kính mời Quý công ty tham gia đấu thầu:
+- Mã gói thầu: ${pCode}
+- Tên gói thầu: ${pName}
+
+Để thuận tiện cho công tác chuẩn bị, Quý công ty vui lòng phản hồi lại bằng cách trả lời "Xác nhận tham gia" hoặc "Từ chối tham gia" vào email này.
+
+Rất mong nhận được sự hợp tác từ Quý công ty.
+Trân trọng,
+Ban Quản lý dự án.`;
+                  window.open(`mailto:${emailPreview.partner.email || ''}?subject=${subject}&body=${encodeURIComponent(bodyText)}`, '_blank');
+                  setEmailPreview(null);
+                }}
+                style={{ padding: '8px 16px', borderRadius: '6px', border: 'none', backgroundColor: 'var(--color-primary)', color: '#fff', cursor: 'pointer', fontWeight: '600', fontSize: '0.85rem', display: 'flex', alignItems: 'center' }}>
+                Soạn & Gửi ngay
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
