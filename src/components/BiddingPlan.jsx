@@ -53,6 +53,64 @@ const COLUMNS = [
 ];
 
 
+// ─── Custom Combobox ─────────────────────────────────────────────────────────
+const NameCombobox = ({ value, onChange, isNew }) => {
+  const { globalLists, deleteListItem } = useContext(DocumentContext);
+  const packageNames = globalLists?.packageNames || [];
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (containerRef.current && !containerRef.current.contains(e.target)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const filtered = packageNames.filter(o => o.name.toLowerCase().includes(value.toLowerCase()));
+  const base = { width: '100%', border: 'none', outline: 'none', padding: '5px 8px', fontSize: '0.78rem', backgroundColor: 'transparent', color: 'var(--color-text-main)', fontFamily: 'inherit' };
+
+  return (
+    <div ref={containerRef} style={{ position: 'relative', width: '100%' }}>
+      <input
+        type="text"
+        value={value}
+        onChange={e => { onChange(e.target.value); setIsOpen(true); }}
+        onFocus={() => setIsOpen(true)}
+        placeholder={isNew ? 'Bắt buộc *' : '...'}
+        style={base}
+      />
+      {isOpen && filtered.length > 0 && (
+        <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 9999, background: '#fff', border: '1px solid var(--color-border)', borderRadius: '4px', maxHeight: '200px', overflowY: 'auto', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}>
+          {filtered.map(opt => (
+            <div key={opt.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 10px', cursor: 'pointer', borderBottom: '1px solid #f1f5f9' }}
+              onMouseDown={(e) => {
+                e.preventDefault(); // Prevent input blur
+                onChange(opt.name);
+                setIsOpen(false);
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+            >
+              <span style={{ fontSize: '0.8rem', color: 'var(--color-text-main)' }}>{opt.name}</span>
+              <button
+                onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); deleteListItem('packageNames', opt.id); }}
+                style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
+                title="Xóa gợi ý này"
+              >
+                <Trash2 size={13} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 // ─── Cell renderer ───────────────────────────────────────────────────────────
 const CellInput = ({ col, value, onChange, isNew, projectCode }) => {
   const base = { width: '100%', border: 'none', outline: 'none', padding: '5px 8px', fontSize: '0.78rem', backgroundColor: 'transparent', color: 'var(--color-text-main)', fontFamily: 'inherit' };
@@ -74,7 +132,7 @@ const CellInput = ({ col, value, onChange, isNew, projectCode }) => {
   if (col.type === 'price') return <input type="text" value={formatPrice(value)} onChange={e => onChange(unformatPrice(e.target.value))} placeholder={isNew ? 'Nhập số tiền' : ''} style={{ ...base, textAlign: 'right' }} />;
   if (col.type === 'number') return <input type="number" min="0" value={value} onChange={e => onChange(e.target.value)} placeholder={isNew ? '0' : ''} style={{ ...base, textAlign: 'center' }} />;
   if (col.type === 'date') return <input type="date" value={value} onChange={e => onChange(e.target.value)} style={{ ...base }} />;
-  if (col.key === 'name') return <input type="text" list="package-names" value={value} onChange={e => onChange(e.target.value)} placeholder={isNew && col.required ? 'Bắt buộc *' : (isNew ? '...' : '')} style={{ ...base }} />;
+  if (col.key === 'name') return <NameCombobox value={value} onChange={onChange} isNew={isNew && col.required} />;
   return <input type="text" value={value} onChange={e => onChange(e.target.value)}
     placeholder={isNew && col.required ? 'Bắt buộc *' : (isNew ? '...' : '')} style={{ ...base }} />;
 };
@@ -412,7 +470,7 @@ const ProjectDatasheet = ({ project, packages, isAdmin, onAdd, onSave, onDelete,
 
 // ─── Main Page ───────────────────────────────────────────────────────────────
 const BiddingPlan = () => {
-  const { projects, userRole, biddingPackages = [], addBiddingPackage, editBiddingPackage, deleteBiddingPackage, reorderBiddingPackages } = useContext(DocumentContext);
+  const { projects, userRole, biddingPackages = [], addBiddingPackage, editBiddingPackage, deleteBiddingPackage, reorderBiddingPackages, addListItem } = useContext(DocumentContext);
   const isAdmin = userRole === 'Admin';
   const [editingData, setEditingData] = useState(null); // { project, pkg }
   const didFixCodes = useRef(false);
@@ -420,8 +478,6 @@ const BiddingPlan = () => {
   const getPackages = (projectId) =>
     [...biddingPackages.filter(p => String(p.projectId) === String(projectId))]
       .sort((a, b) => (a.order ?? 999) - (b.order ?? 999) || (a.createdAt || '').localeCompare(b.createdAt || ''));
-
-  const uniquePackageNames = [...new Set(biddingPackages.map(p => p.name).filter(Boolean))];
 
   // Migration script to fix missing/wrong codes
   useEffect(() => {
@@ -441,10 +497,12 @@ const BiddingPlan = () => {
     const { _new, ...data } = row;
     const pkgs = getPackages(projectId);
     await addBiddingPackage(projectId, { ...data, order: pkgs.length });
+    if (data.name) await addListItem('packageNames', data.name);
   };
 
   const handleSave = async (projectId, pkgId, updated) => {
     await editBiddingPackage(projectId, pkgId, updated);
+    if (updated.name) await addListItem('packageNames', updated.name);
   };
 
   const handleDelete = async (project, pkgId) => {
@@ -474,10 +532,6 @@ const BiddingPlan = () => {
 
   return (
     <div className="fade-in" style={{ padding: '1.5rem' }}>
-      <datalist id="package-names">
-        {uniquePackageNames.map((name, i) => <option key={i} value={name} />)}
-      </datalist>
-
       <div style={{ marginBottom: '1.5rem' }}>
         <h1 style={{ fontSize: '1.5rem', fontWeight: '700', color: 'var(--color-text-main)', marginBottom: '0.25rem' }}>
           📋 Kế hoạch lựa chọn nhà thầu

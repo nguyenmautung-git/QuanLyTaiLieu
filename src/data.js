@@ -245,5 +245,12 @@ export const LIST_CONFIGS = [
     name: 'Loại hình đối tác',
     description: 'Phân loại các công ty đối tác tham gia dự án.',
     initialData: ['Chủ đầu tư', 'Nhà thầu thi công', 'Đơn vị tư vấn', 'Nhà cung cấp vật tư', 'Đơn vị giám sát']
+  },
+  {
+    key: 'packageNames',
+    collectionName: 'packageNames',
+    name: 'Danh sách Tên gói thầu',
+    description: 'Danh sách tên gói thầu được gợi ý để tái sử dụng.',
+    initialData: []
   }
 ];
