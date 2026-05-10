@@ -97,6 +97,7 @@ const CellInput = ({ value, onChange, type, partners, pkg, statusOptions }) => {
     const options = statusOptions || STATUS_OPTIONS;
     const getBg = (s) => {
       const lowerS = (s || '').toLowerCase();
+      if (lowerS.includes('chưa')) return '#f1f5f9'; // gray
       if (lowerS.includes('nộp') || lowerS.includes('trúng')) return '#dcfce7'; // green
       if (lowerS.includes('đang làm')) return '#dbeafe'; // blue
       if (lowerS.includes('mời thầu')) return '#fef08a'; // yellow
@@ -106,6 +107,7 @@ const CellInput = ({ value, onChange, type, partners, pkg, statusOptions }) => {
     };
     const getColor = (s) => {
       const lowerS = (s || '').toLowerCase();
+      if (lowerS.includes('chưa')) return '#475569';
       if (lowerS.includes('nộp') || lowerS.includes('trúng')) return '#166534';
       if (lowerS.includes('đang làm')) return '#1e40af';
       if (lowerS.includes('mời thầu')) return '#854d0e';
