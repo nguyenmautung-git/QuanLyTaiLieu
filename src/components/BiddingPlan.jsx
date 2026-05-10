@@ -238,6 +238,16 @@ const EditPackageModal = ({ pkg, onSave, onClose, projectCode, projectName }) =>
           <button onClick={() => { if(formData.name.trim()) onSave(formData); }} disabled={!formData.name.trim()} style={{ padding: '6px 12px', borderRadius: '6px', border: 'none', background: 'var(--color-primary)', color: '#fff', cursor: formData.name.trim() ? 'pointer' : 'not-allowed', fontWeight: '600', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '4px' }}><Save size={14}/> Lưu thay đổi</button>
         </div>
       </div>
+
+      {showTemplateModal && (
+        <TemplateListModal 
+          onClose={() => setShowTemplateModal(false)}
+          onConfirm={async (names) => {
+            setShowTemplateModal(false);
+            await onAddMultiple(project.id, names);
+          }}
+        />
+      )}
     </div>
   );
 };
@@ -359,8 +369,71 @@ const NewRow = ({ onAdd, isAdmin, visibleCols, colWidths, projectCode, nextIdx }
   );
 };
 
+// ─── Template List Modal ─────────────────────────────────────────────────────
+const TemplateListModal = ({ onClose, onConfirm }) => {
+  const { globalLists } = useContext(DocumentContext);
+  const packageNames = globalLists?.packageNames || [];
+  const [selected, setSelected] = useState(new Set());
+
+  const toggleSelect = (id) => {
+    const next = new Set(selected);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    setSelected(next);
+  };
+
+  const handleConfirm = () => {
+    const selectedNames = packageNames.filter(p => selected.has(p.id)).map(p => p.name);
+    onConfirm(selectedNames);
+  };
+
+  return (
+    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div className="card fade-in" style={{ width: '600px', maxWidth: '90vw', maxHeight: '90vh', display: 'flex', flexDirection: 'column', backgroundColor: 'var(--color-bg-surface)', padding: 0 }}>
+        <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f8fafc' }}>
+          <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--color-text-main)', fontWeight: '700' }}>Danh sách gói thầu mẫu</h3>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer', color: 'var(--color-text-muted)' }}>&times;</button>
+        </div>
+        
+        <div style={{ padding: 0, overflowY: 'auto', flex: 1 }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+            <thead style={{ position: 'sticky', top: 0, backgroundColor: '#f1f5f9', zIndex: 1 }}>
+              <tr>
+                <th style={{ padding: '10px 16px', borderBottom: '1px solid var(--color-border)', width: '60px', textAlign: 'center' }}>STT</th>
+                <th style={{ padding: '10px 16px', borderBottom: '1px solid var(--color-border)', textAlign: 'left' }}>Tên gói thầu</th>
+                <th style={{ padding: '10px 16px', borderBottom: '1px solid var(--color-border)', width: '90px', textAlign: 'center' }}>Lựa chọn</th>
+              </tr>
+            </thead>
+            <tbody>
+              {packageNames.length === 0 ? (
+                <tr><td colSpan={3} style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>Chưa có gói thầu mẫu nào.</td></tr>
+              ) : (
+                packageNames.map((pkg, idx) => (
+                  <tr key={pkg.id} style={{ borderBottom: '1px solid var(--color-border)', backgroundColor: selected.has(pkg.id) ? '#f0f9ff' : 'transparent', cursor: 'pointer', transition: 'background-color 0.15s' }} onClick={() => toggleSelect(pkg.id)}>
+                    <td style={{ padding: '10px 16px', textAlign: 'center', color: 'var(--color-text-muted)' }}>{idx + 1}</td>
+                    <td style={{ padding: '10px 16px', fontWeight: '500', color: 'var(--color-text-main)' }}>{pkg.name}</td>
+                    <td style={{ padding: '10px 16px', textAlign: 'center' }}>
+                      <input type="checkbox" checked={selected.has(pkg.id)} readOnly style={{ width: '16px', height: '16px', accentColor: 'var(--color-primary)', cursor: 'pointer' }} />
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', backgroundColor: '#f8fafc' }}>
+          <button onClick={onClose} style={{ padding: '8px 16px', borderRadius: '6px', border: '1px solid var(--color-border)', background: '#fff', cursor: 'pointer', fontWeight: '600' }}>Hủy</button>
+          <button onClick={handleConfirm} disabled={selected.size === 0} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', borderRadius: '6px', border: 'none', background: 'var(--color-primary)', color: '#fff', cursor: selected.size > 0 ? 'pointer' : 'not-allowed', fontWeight: '600' }}>
+            <Check size={16} /> Đồng ý ({selected.size})
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ─── Datasheet Card ──────────────────────────────────────────────────────────
-const ProjectDatasheet = ({ project, packages, isAdmin, onAdd, onSave, onDelete, onMoveUp, onMoveDown, projects, onEdit }) => {
+const ProjectDatasheet = ({ project, packages, isAdmin, onAdd, onAddMultiple, onSave, onDelete, onMoveUp, onMoveDown, projects, onEdit }) => {
   const [hiddenCols, setHiddenCols] = useState(new Set([
     'optionToBuy', 
     'fundSource', 
@@ -371,6 +444,7 @@ const ProjectDatasheet = ({ project, packages, isAdmin, onAdd, onSave, onDelete,
     'contractType', 
     'implementationTime'
   ]));
+  const [showTemplateModal, setShowTemplateModal] = useState(false);
   const [colWidths, setColWidths] = useState(() => Object.fromEntries(COLUMNS.map(c => [c.key, c.width])));
   const [showColPanel, setShowColPanel] = useState(false);
   const panelRef = useRef(null);
@@ -450,6 +524,12 @@ const ProjectDatasheet = ({ project, packages, isAdmin, onAdd, onSave, onDelete,
               <div style={{ color: 'var(--color-text-muted)' }}>{packages.length} gói thầu</div>
               {totalPrice > 0 && <div style={{ fontWeight: '700', color: 'var(--color-primary)' }}>{totalPrice.toLocaleString('vi-VN')} đ</div>}
             </div>
+            {isAdmin && (
+              <button onClick={() => setShowTemplateModal(true)}
+                style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#fff', background: 'var(--color-primary)', border: 'none', borderRadius: '8px', padding: '5px 12px', cursor: 'pointer', fontSize: '0.78rem', fontWeight: '600', whiteSpace: 'nowrap' }}>
+                <Plus size={14} /> Tạo gói thầu từ mẫu
+              </button>
+            )}
             {expanded && (
               <div style={{ position: 'relative' }} ref={panelRef}>
                 <button onClick={() => setShowColPanel(v => !v)}
@@ -602,6 +682,16 @@ const BiddingPlan = () => {
     if (data.name) await addListItem('packageNames', data.name);
   };
 
+  const handleAddMultiple = async (projectId, names) => {
+    const pkgs = getPackages(projectId);
+    let startOrder = pkgs.length;
+    for (const name of names) {
+      const { _new, ...data } = { ...EMPTY_ROW(), name };
+      await addBiddingPackage(projectId, { ...data, order: startOrder++ });
+      await addListItem('packageNames', name);
+    }
+  };
+
   const handleSave = async (projectId, pkgId, updated) => {
     await editBiddingPackage(projectId, pkgId, updated);
     if (updated.name) await addListItem('packageNames', updated.name);
@@ -658,6 +748,7 @@ const BiddingPlan = () => {
               packages={getPackages(project.id)}
               isAdmin={isAdmin}
               onAdd={handleAdd}
+              onAddMultiple={handleAddMultiple}
               onSave={handleSave}
               onDelete={handleDelete}
               onMoveUp={handleMoveUp}
