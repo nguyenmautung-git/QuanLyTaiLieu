@@ -255,7 +255,7 @@ const PackageDatasheet = ({ pkg, project, isAdmin, onSave, partners, onEmailPrev
       WebkitBackdropFilter: 'blur(20px)',
       border: '1px solid rgba(255, 255, 255, 0.7)', 
       borderRadius: '16px',
-      boxShadow: '0 10px 40px -10px rgba(31, 38, 135, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.9)' 
+      boxShadow: '0 15px 45px -5px rgba(31, 38, 135, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.9)' 
     }}>
       {/* Header */}
       <div style={{ padding: '1.25rem 1.5rem', background: `linear-gradient(135deg, ${bgColor}CC 0%, ${bgColor}66 100%)`, borderBottom: expanded ? '1px solid rgba(255, 255, 255, 0.4)' : 'none' }}>
@@ -407,7 +407,7 @@ const ContractorSelection = () => {
         background: 'rgba(255, 255, 255, 0.4)', 
         backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
         border: '1px solid rgba(255, 255, 255, 0.7)', borderRadius: '16px',
-        boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.05)'
+        boxShadow: '0 12px 40px 0 rgba(31, 38, 135, 0.12)'
       }}>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
           <div className="form-group" style={{ marginBottom: 0, flex: '1 1 250px' }}>
