@@ -16,6 +16,7 @@ const FUND_SOURCE_OPTIONS = [
   'Vốn của doanh nghiệp nhà nước', 'Vốn hỗn hợp (NSNN + vốn doanh nghiệp)',
   'Vốn hợp tác công tư (PPP)', 'Vốn tư nhân', 'Nguồn vốn hợp pháp khác',
 ];
+const STATUS_OPTIONS = ['Đang soạn thảo', 'Đang chờ duyệt', 'Đã phê duyệt'];
 
 const formatPrice = (val) => {
   const digits = String(val).replace(/\D/g, '');
@@ -33,12 +34,14 @@ const EMPTY_ROW = () => ({
   organizationTime: '', startTime: '',
   contractType: 'Hợp đồng trọn gói',
   implementationTime: '', optionToBuy: false,
+  status: 'Đang soạn thảo',
   attachment: [],
 });
 
 // ─── Column definitions ──────────────────────────────────────────────────────
 const COLUMNS = [
   { key: 'code',               label: 'Mã gói thầu',           width: 140, type: 'code' },
+  { key: 'status',             label: 'Trạng thái',            width: 130, type: 'status', options: STATUS_OPTIONS },
   { key: 'optionToBuy',        label: 'Tùy chọn mua thêm',     width: 90,  type: 'checkbox' },
   { key: 'name',               label: 'Tên gói thầu',          width: 180, required: true },
   { key: 'summary',            label: 'Tóm tắt CV chính',       width: 180 },
@@ -199,6 +202,26 @@ const CellInput = ({ col, value, onChange, isNew, projectCode }) => {
       {col.options.map(o => <option key={o} value={o}>{o}</option>)}
     </select>
   );
+  if (col.type === 'status') {
+    const getBg = (s) => {
+      if (s === 'Đã phê duyệt') return '#dcfce7'; // green
+      if (s === 'Đang chờ duyệt') return '#fef08a'; // yellow
+      return '#f1f5f9'; // gray
+    };
+    const getColor = (s) => {
+      if (s === 'Đã phê duyệt') return '#166534';
+      if (s === 'Đang chờ duyệt') return '#854d0e';
+      return '#475569';
+    };
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px' }}>
+        <select value={value} onChange={e => onChange(e.target.value)} 
+          style={{ width: '100%', border: 'none', background: getBg(value), color: getColor(value), borderRadius: '12px', padding: '2px 8px', outline: 'none', fontFamily: 'inherit', fontSize: '0.75rem', fontWeight: '600', cursor: 'pointer', appearance: 'none', textAlign: 'center' }}>
+          {col.options.map(o => <option key={o} value={o}>{o}</option>)}
+        </select>
+      </div>
+    );
+  }
   if (col.type === 'price') return <input type="text" value={formatPrice(value)} onChange={e => onChange(unformatPrice(e.target.value))} placeholder={isNew ? 'Nhập số tiền' : ''} style={{ ...base, textAlign: 'right' }} />;
   if (col.type === 'number') return <input type="number" min="0" value={value} onChange={e => onChange(e.target.value)} placeholder={isNew ? '0' : ''} style={{ ...base, textAlign: 'center' }} />;
   if (col.type === 'date') return <input type="date" value={value} onChange={e => onChange(e.target.value)} style={{ ...base }} />;
