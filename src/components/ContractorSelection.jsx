@@ -256,6 +256,12 @@ const PackageDatasheet = ({ pkg, project, isAdmin, onSave, partners }) => {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                   <Briefcase size={14} /> Dự án: {project.name}
                 </div>
+                {pkg.nature && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{ display: 'inline-block', width: '4px', height: '4px', borderRadius: '50%', backgroundColor: '#cbd5e1' }}></span>
+                    <span style={{ color: 'var(--color-primary)', fontWeight: '600' }}>{pkg.nature}</span>
+                  </div>
+                )}
               </div>
             </div>
           </div>
