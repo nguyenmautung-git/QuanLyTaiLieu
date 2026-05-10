@@ -11,6 +11,7 @@ import Overview from './components/Overview';
 import Partners from './components/Partners';
 import BiddingPackages from './components/BiddingPackages';
 import BiddingPlan from './components/BiddingPlan';
+import ContractorSelection from './components/ContractorSelection';
 import AIAssistant from './components/AIAssistant';
 import ComingSoon from './components/ComingSoon';
 import PhapLy from './components/PhapLy';
@@ -36,7 +37,7 @@ function App() {
       case 'biddingPlan':
         return <BiddingPlan />;
       case 'contractorSelection':
-        return <ComingSoon title="Lựa chọn nhà thầu" icon="🤝" description="Quản lý quá trình lựa chọn nhà thầu, đánh giá hồ sơ dự thầu, thương thảo và ký kết hợp đồng." />;
+        return <ContractorSelection />;
       // === Quản lý dự án ===
       case 'phapLy':
         return <PhapLy />;
