@@ -2,6 +2,8 @@ import React, { useState, useContext, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { DocumentContext } from '../context/DocumentContext';
 import { getPastelColor } from '../data';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { storage } from '../firebase';
 import { MapPin, Building, Plus, Trash2, Check, ChevronDown, ChevronUp, Briefcase, Save, ArrowUp, ArrowDown, Settings, Upload, X, Maximize2, Users } from 'lucide-react';// ─── Constants ──────────────────────────────────────────────────────────────
 const METHOD_OPTIONS = ['Đấu thầu rộng rãi', 'Đấu thầu hạn chế', 'Chỉ định thầu', 'Mua sắm trực tiếp', 'Chào hàng cạnh tranh', 'Tự thực hiện'];
 const PROCUREMENT_OPTIONS = ['Một giai đoạn một túi hồ sơ', 'Một giai đoạn hai túi hồ sơ', 'Hai giai đoạn'];
@@ -154,14 +156,34 @@ const NameCombobox = ({ value, onChange, isNew }) => {
 // ─── Custom File Upload ──────────────────────────────────────────────────────
 const FileUploadCell = ({ value, onChange }) => {
   const fileList = Array.isArray(value) ? value : [];
-  const handleUpload = (e) => {
+  const [uploading, setUploading] = useState(false);
+  const handleUpload = async (e) => {
     const files = Array.from(e.target.files);
     if (!files.length) return;
-    const newFiles = files.map(file => ({
-      name: file.name,
-      url: URL.createObjectURL(file)
-    }));
-    onChange([...fileList, ...newFiles]);
+    setUploading(true);
+    try {
+      const withTimeout = (promise, ms) =>
+        Promise.race([
+          promise,
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('TIMEOUT')), ms)
+          ),
+        ]);
+      const newFiles = await Promise.all(
+        files.map(async (file) => {
+          const storageRef = ref(storage, `biddingPlan/${Date.now()}_${file.name}`);
+          const snapshot = await withTimeout(uploadBytes(storageRef, file), 20000);
+          const url = await getDownloadURL(snapshot.ref);
+          return { name: file.name, url };
+        })
+      );
+      onChange([...fileList, ...newFiles]);
+    } catch (err) {
+      console.error('Upload error:', err);
+      alert(`Lỗi tải lên: ${err.message || 'Vui lòng thử lại'}`);
+    } finally {
+      setUploading(false);
+    }
   };
   const handleRemove = (idx) => {
     const next = [...fileList];

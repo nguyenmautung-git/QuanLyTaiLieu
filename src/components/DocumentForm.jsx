@@ -120,14 +120,24 @@ const DocumentForm = ({ onClose, initialData, previewMode = false }) => {
         attachmentsData.push({ name: 'Link liên kết', url: formData.attachmentLink });
       }
 
-      // Upload tất cả các file đã chọn
-      // Upload tất cả các file đã chọn
+      // Upload tất cả các file đã chọn lên Firebase Storage
       if (selectedFiles.length > 0) {
-        const uploadedFiles = selectedFiles.map((file) => {
-          // Bỏ qua Firebase Storage tạm thời để test cục bộ, dùng blob URL thay thế
-          const url = URL.createObjectURL(file);
-          return { name: file.name, url: url };
-        });
+        const withTimeout = (promise, ms) =>
+          Promise.race([
+            promise,
+            new Promise((_, reject) =>
+              setTimeout(() => reject(new Error('TIMEOUT')), ms)
+            ),
+          ]);
+
+        const uploadedFiles = await Promise.all(
+          selectedFiles.map(async (file) => {
+            const storageRef = ref(storage, `documents/${Date.now()}_${file.name}`);
+            const snapshot = await withTimeout(uploadBytes(storageRef, file), 20000);
+            const url = await getDownloadURL(snapshot.ref);
+            return { name: file.name, url };
+          })
+        );
         
         attachmentsData = [...attachmentsData, ...uploadedFiles];
       }

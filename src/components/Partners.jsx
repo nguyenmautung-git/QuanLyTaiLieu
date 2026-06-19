@@ -2,6 +2,8 @@ import React, { useState, useContext } from 'react';
 import Select from 'react-select';
 import { Building2, Mail, Phone, Globe, MapPin, Briefcase, CreditCard, Star, Paperclip, X, Share2 } from 'lucide-react';
 import { DocumentContext } from '../context/DocumentContext';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { storage } from '../firebase';
 import html2pdf from 'html2pdf.js';
 
 const RatingStars = ({ rating, setRating, readOnly = false }) => {
@@ -179,25 +181,42 @@ const Partners = () => {
     }
   };
 
-  const handleFileUpload = (e, isEdit = false) => {
+  const handleFileUpload = async (e, isEdit = false) => {
     const files = Array.from(e.target.files);
     if (!files.length) return;
     
-    const newAttachments = files.map(file => ({
-      name: file.name,
-      url: URL.createObjectURL(file)
-    }));
+    const withTimeout = (promise, ms) =>
+      Promise.race([
+        promise,
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('TIMEOUT')), ms)
+        ),
+      ]);
 
-    if (isEdit) {
-      setEditFormData(prev => ({ 
-        ...prev, 
-        attachments: [...(prev.attachments || []), ...newAttachments] 
-      }));
-    } else {
-      setNewPartner(prev => ({ 
-        ...prev, 
-        attachments: [...(prev.attachments || []), ...newAttachments] 
-      }));
+    try {
+      const newAttachments = await Promise.all(
+        files.map(async (file) => {
+          const storageRef = ref(storage, `partners/${Date.now()}_${file.name}`);
+          const snapshot = await withTimeout(uploadBytes(storageRef, file), 20000);
+          const url = await getDownloadURL(snapshot.ref);
+          return { name: file.name, url };
+        })
+      );
+
+      if (isEdit) {
+        setEditFormData(prev => ({ 
+          ...prev, 
+          attachments: [...(prev.attachments || []), ...newAttachments] 
+        }));
+      } else {
+        setNewPartner(prev => ({ 
+          ...prev, 
+          attachments: [...(prev.attachments || []), ...newAttachments] 
+        }));
+      }
+    } catch (err) {
+      console.error('Upload error:', err);
+      alert(`Lỗi tải lên: ${err.message || 'Vui lòng thử lại'}`);
     }
   };
 
