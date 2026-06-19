@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { DocumentProvider } from './context/DocumentContext';
+import InvitePage from './components/InvitePage';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import Dashboard from './components/Dashboard';
@@ -24,6 +25,23 @@ import Payment from './components/Payment';
 function App() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [currentView, setCurrentView] = useState('overview');
+  const [inviteToken, setInviteToken] = useState(null);
+
+  // Check for ?invite=TOKEN in URL on first load
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('invite');
+    if (token) setInviteToken(token);
+  }, []);
+
+  // Clear token and clean URL after activation
+  const handleInviteDone = () => {
+    setInviteToken(null);
+    // Remove ?invite= from URL without reloading
+    const url = new URL(window.location.href);
+    url.searchParams.delete('invite');
+    window.history.replaceState({}, '', url.toString());
+  };
 
   const renderContent = () => {
     switch (currentView) {
@@ -72,6 +90,16 @@ function App() {
         );
     }
   };
+
+  // Intercept invite flow — rendered OUTSIDE DocumentProvider is fine;
+  // InvitePage uses DocumentContext internally via its own provider below
+  if (inviteToken) {
+    return (
+      <DocumentProvider>
+        <InvitePage token={inviteToken} onDone={handleInviteDone} />
+      </DocumentProvider>
+    );
+  }
 
   return (
     <DocumentProvider>

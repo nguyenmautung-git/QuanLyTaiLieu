@@ -1,7 +1,9 @@
 import React, { createContext, useState, useEffect } from 'react';
-import { collection, onSnapshot, addDoc, doc, updateDoc, writeBatch, deleteDoc } from 'firebase/firestore';
-import { db } from '../firebase';
+import { collection, onSnapshot, addDoc, doc, updateDoc, writeBatch, deleteDoc, query, where, getDocs } from 'firebase/firestore';
+import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { db, auth } from '../firebase';
 import { mockProjects, mockMembers, mockPartners, LIST_CONFIGS } from '../data';
+import { generateToken, hashToken, getAppUrl } from '../utils/inviteUtils';
 
 export const DocumentContext = createContext();
 
@@ -18,9 +20,10 @@ export const DocumentProvider = ({ children }) => {
   const [members, setMembers] = useState([]);
   const [partners, setPartners] = useState([]);
   const [biddingPackages, setBiddingPackages] = useState([]);
-  const [legalSteps, setLegalSteps] = useState([]); // legal workflow steps per project
-  const [scheduleSteps, setScheduleSteps] = useState([]); // schedule workflow steps per project
-  const [acceptanceSteps, setAcceptanceSteps] = useState([]); // acceptance & payment workflow steps per project
+  const [legalSteps, setLegalSteps] = useState([]);
+  const [scheduleSteps, setScheduleSteps] = useState([]);
+  const [acceptanceSteps, setAcceptanceSteps] = useState([]);
+  const [invitations, setInvitations] = useState([]);
 
   useEffect(() => {
     // Theo dõi danh sách tài liệu
@@ -132,6 +135,17 @@ export const DocumentProvider = ({ children }) => {
       setAcceptanceSteps(data);
     });
 
+    // Theo dõi lời mời thành viên
+    const unsubscribeInvitations = onSnapshot(collection(db, 'invitations'), (snapshot) => {
+      const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      data.sort((a, b) => {
+        const tA = a.createdAt?.toDate?.() || new Date(a.createdAt || 0);
+        const tB = b.createdAt?.toDate?.() || new Date(b.createdAt || 0);
+        return tB - tA;
+      });
+      setInvitations(data);
+    });
+
     return () => {
       unsubscribeDocs();
       listUnsubscribes.forEach(unsub => unsub());
@@ -142,6 +156,7 @@ export const DocumentProvider = ({ children }) => {
       unsubscribeLegal();
       unsubscribeSchedule();
       unsubscribeAcceptance();
+      unsubscribeInvitations();
     };
   }, []);
 
@@ -395,6 +410,148 @@ export const DocumentProvider = ({ children }) => {
     await deleteDoc(doc(db, 'acceptanceSteps', id));
   };
 
+  // ==== Invitations ====
+
+  /** Gửi lời mời — trả về invite link để Admin copy */
+  const sendInvitation = async ({ email, name, role, level }) => {
+    // Rate limit: tối đa 5 lời mời trong 60 giây
+    const oneMinuteAgo = new Date(Date.now() - 60 * 1000);
+    const recentCount = invitations.filter(inv => {
+      const createdAt = inv.createdAt?.toDate?.() || new Date(inv.createdAt || 0);
+      return createdAt > oneMinuteAgo && inv.status === 'pending';
+    }).length;
+    if (recentCount >= 5) throw new Error('RATE_LIMITED');
+
+    // Kiểm tra email đã được mời chưa
+    const alreadyPending = invitations.find(
+      inv => inv.email === email && inv.status === 'pending'
+    );
+    if (alreadyPending) throw new Error('ALREADY_INVITED');
+
+    // Tạo token bảo mật
+    const plainToken = generateToken();
+    const tokenHash = await hashToken(plainToken);
+    const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000); // 48 giờ
+
+    // Lưu vào Firestore (chỉ lưu hash, KHÔNG lưu plainToken)
+    await addDoc(collection(db, 'invitations'), {
+      email,
+      name,
+      role,
+      level: Number(level),
+      tokenHash,          // hash SHA-256, không phải token gốc
+      expiresAt,
+      status: 'pending',
+      createdBy: 'Admin',
+      createdAt: new Date(),
+      activatedAt: null,
+    });
+
+    // Trả về link để Admin copy
+    return `${getAppUrl()}?invite=${plainToken}`;
+  };
+
+  /** Admin thu hồi lời mời */
+  const revokeInvitation = async (id) => {
+    await updateDoc(doc(db, 'invitations', id), {
+      status: 'revoked',
+      tokenHash: null, // Vô hiệu hóa hash
+    });
+  };
+
+  /** Gửi lại lời mời (tạo token mới) */
+  const resendInvitation = async (id) => {
+    // Rate limit check
+    const oneMinuteAgo = new Date(Date.now() - 60 * 1000);
+    const recentCount = invitations.filter(inv => {
+      const createdAt = inv.createdAt?.toDate?.() || new Date(inv.createdAt || 0);
+      return createdAt > oneMinuteAgo && inv.status === 'pending';
+    }).length;
+    if (recentCount >= 5) throw new Error('RATE_LIMITED');
+
+    const plainToken = generateToken();
+    const tokenHash = await hashToken(plainToken);
+    const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000);
+
+    await updateDoc(doc(db, 'invitations', id), {
+      tokenHash,
+      expiresAt,
+      status: 'pending',
+      createdAt: new Date(),
+      activatedAt: null,
+    });
+
+    // Lấy email/name từ invitations state để tạo link
+    const inv = invitations.find(i => i.id === id);
+    return `${getAppUrl()}?invite=${plainToken}`;
+  };
+
+  /**
+   * Xác minh token từ URL — gọi từ InvitePage
+   * Returns { valid, invitation, error }
+   */
+  const verifyInviteToken = async (plainToken) => {
+    try {
+      const tokenHash = await hashToken(plainToken);
+      const q = query(collection(db, 'invitations'), where('tokenHash', '==', tokenHash));
+      const snapshot = await getDocs(q);
+
+      if (snapshot.empty) return { valid: false, error: 'Link mời không hợp lệ hoặc đã được sử dụng.' };
+
+      const invDoc = snapshot.docs[0];
+      const inv = { id: invDoc.id, ...invDoc.data() };
+
+      if (inv.status === 'revoked') return { valid: false, error: 'Link mời đã bị thu hồi bởi Admin.' };
+      if (inv.status === 'active')  return { valid: false, error: 'Tài khoản đã được kích hoạt từ link này rồi.' };
+      if (inv.status !== 'pending') return { valid: false, error: 'Link mời không còn hiệu lực.' };
+
+      const expiresAt = inv.expiresAt?.toDate?.() || new Date(inv.expiresAt);
+      if (expiresAt < new Date()) {
+        await updateDoc(doc(db, 'invitations', inv.id), { status: 'expired', tokenHash: null });
+        return { valid: false, error: 'Link mời đã hết hạn (>48 giờ). Vui lòng yêu cầu Admin gửi lại.' };
+      }
+
+      return { valid: true, invitation: inv };
+    } catch (err) {
+      return { valid: false, error: 'Không thể xác minh link. Kiểm tra kết nối internet.' };
+    }
+  };
+
+  /**
+   * Kích hoạt tài khoản — đặt mật khẩu và tạo Firebase Auth user
+   * Gọi sau khi verifyInviteToken thành công
+   */
+  const activateAccount = async (plainToken, password) => {
+    // Xác minh lại token lần cuối
+    const { valid, invitation, error } = await verifyInviteToken(plainToken);
+    if (!valid) throw new Error(error);
+
+    // Tạo Firebase Auth user
+    const userCredential = await createUserWithEmailAndPassword(auth, invitation.email, password);
+    await updateProfile(userCredential.user, { displayName: invitation.name });
+
+    // Thêm vào members collection
+    await addDoc(collection(db, 'members'), {
+      name: invitation.name,
+      email: invitation.email,
+      phone: '',
+      role: invitation.role,
+      level: invitation.level,
+      avatar: `https://i.pravatar.cc/150?img=${Math.floor(Math.random() * 70) + 1}`,
+      locked: false,
+      createdAt: new Date(),
+    });
+
+    // Vô hiệu hóa token (single-use)
+    await updateDoc(doc(db, 'invitations', invitation.id), {
+      status: 'active',
+      activatedAt: new Date(),
+      tokenHash: null, // Xóa hash sau khi dùng
+    });
+
+    return userCredential.user;
+  };
+
   return (
     <DocumentContext.Provider value={{
       documents, addDocument, editDocument, deleteDocument, markAsRead, getNewCount,
@@ -407,7 +564,8 @@ export const DocumentProvider = ({ children }) => {
       biddingPackages, addBiddingPackage, editBiddingPackage, deleteBiddingPackage, reorderBiddingPackages,
       legalSteps, addLegalStep, updateLegalStep, deleteLegalStep,
       scheduleSteps, addScheduleStep, updateScheduleStep, deleteScheduleStep,
-      acceptanceSteps, addAcceptanceStep, updateAcceptanceStep, deleteAcceptanceStep
+      acceptanceSteps, addAcceptanceStep, updateAcceptanceStep, deleteAcceptanceStep,
+      invitations, sendInvitation, revokeInvitation, resendInvitation, verifyInviteToken, activateAccount,
     }}>
       {children}
     </DocumentContext.Provider>

@@ -4,6 +4,7 @@ import { EMPLOYEE_LEVELS } from '../data';
 import { DocumentContext } from '../context/DocumentContext';
 import html2pdf from 'html2pdf.js';
 import ProfileModal from './ProfileModal';
+import InviteUserModal from './InviteUserModal';
 
 const formatPhone = (phone) => {
   if (!phone) return '';
@@ -21,6 +22,7 @@ const Members = () => {
   const [editFormData, setEditFormData] = useState({});
   const [viewingMember, setViewingMember] = useState(null);
   const [filters, setFilters] = useState({ keyword: '', role: '', level: '' });
+  const [showInvite, setShowInvite] = useState(false);
 
   const handleAdd = async () => {
     if (newMember.name && newMember.email) {
@@ -134,9 +136,14 @@ const Members = () => {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
         <h2 style={{ fontSize: '1.25rem', fontWeight: '600' }}>Quản lý Thành viên</h2>
         {userRole === 'Admin' && (
-          <button className="btn btn-primary" onClick={() => setIsAdding(!isAdding)} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <UserPlus size={18} /> {isAdding ? 'Hủy' : 'Thêm thành viên'}
-          </button>
+          <div style={{ display: 'flex', gap: '0.75rem' }}>
+            <button className="btn btn-outline" onClick={() => setShowInvite(true)} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem' }}>
+              📨 Mời qua email
+            </button>
+            <button className="btn btn-primary" onClick={() => setIsAdding(!isAdding)} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <UserPlus size={18} /> {isAdding ? 'Hủy' : 'Thêm trực tiếp'}
+            </button>
+          </div>
         )}
       </div>
 
@@ -311,6 +318,8 @@ const Members = () => {
           onEdit={(member) => { handleEditClick(member); }}
         />
       )}
+
+      {showInvite && <InviteUserModal onClose={() => setShowInvite(false)} />}
     </div>
   );
 };
