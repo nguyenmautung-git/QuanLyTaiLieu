@@ -9,7 +9,7 @@ import { getPastelColor } from '../data';
 const DocumentCard = ({ document, viewMode }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [isPreview, setIsPreview] = useState(false);
-  const { userRole, deleteDocument } = useContext(DocumentContext);
+  const { userRole, deleteDocument, projects } = useContext(DocumentContext);
   const { 
     id, documentCode, documentNumber, documentType, issuingAgency, effectiveDate, 
     summary, relatedProjects, attachmentLink, attachments, accessLevels, quickViewImage, isNew 
@@ -27,7 +27,7 @@ const DocumentCard = ({ document, viewMode }) => {
   if (viewMode === 'list') {
     return (
       <>
-        <div className="card" style={{ display: 'flex', padding: '1rem', gap: '1.5rem', alignItems: 'center', backgroundColor: getPastelColor(document.id) }}>
+        <div className="card" style={{ display: 'flex', padding: '1rem', gap: '1.5rem', alignItems: 'center' }}>
           <div style={{ width: '120px', height: '80px', borderRadius: 'var(--radius-md)', overflow: 'hidden', flexShrink: 0 }}>
           <img src={quickViewImage} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         </div>
@@ -51,12 +51,7 @@ const DocumentCard = ({ document, viewMode }) => {
             <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Calendar size={14} /> Hiệu lực: {formattedDate}</span>
           </div>
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '150px' }}>
-          {relatedProjects.slice(0, 2).map((p, idx) => (
-            <span key={idx} className="badge badge-green" style={{ fontSize: '0.7rem' }}>{p}</span>
-          ))}
-          {relatedProjects.length > 2 && <span className="badge badge-yellow" style={{ fontSize: '0.7rem' }}>+{relatedProjects.length - 2} dự án khác</span>}
-        </div>
+
         <div style={{ display: 'flex', gap: '0.5rem', flexDirection: 'column' }}>
           {(attachments && attachments.length > 0) ? (
             <div style={{ display: 'flex', gap: '0.25rem', flexDirection: 'column' }}>
@@ -75,7 +70,7 @@ const DocumentCard = ({ document, viewMode }) => {
             <div style={{ display: 'flex', gap: '0.5rem', marginTop: 'auto' }}>
               <button 
                 className="btn-icon" 
-                style={{ backgroundColor: 'white', border: '1px solid var(--color-border)', color: 'var(--color-primary)', width: '32px', height: '32px' }} 
+                style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)', border: '1px solid var(--color-border)', color: 'var(--color-primary)', width: '32px', height: '32px' }} 
                 onClick={(e) => { e.stopPropagation(); setIsEditing(true); }}
                 title="Sửa thông tin"
               >
@@ -83,7 +78,7 @@ const DocumentCard = ({ document, viewMode }) => {
               </button>
               <button 
                 className="btn-icon" 
-                style={{ backgroundColor: 'white', border: '1px solid var(--color-border)', color: 'var(--color-danger)', width: '32px', height: '32px' }} 
+                style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)', border: '1px solid var(--color-border)', color: 'var(--color-danger)', width: '32px', height: '32px' }} 
                 onClick={handleDelete}
                 title="Xóa tài liệu"
               >
@@ -109,53 +104,17 @@ const DocumentCard = ({ document, viewMode }) => {
           cursor: 'pointer', 
           transition: 'transform 0.2s ease, box-shadow 0.2s ease', 
           padding: 0, 
-          overflow: 'hidden',
-          backgroundColor: getPastelColor(document.id)
+          overflow: 'hidden'
         }}
         onClick={() => setIsPreview(true)}
         onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 12px 24px rgba(0,0,0,0.1)'; }}
         onMouseOut={(e) => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06)'; }}
       >
-        <div style={{ height: '160px', width: '100%', overflow: 'hidden', position: 'relative', borderTopLeftRadius: 'var(--radius-lg)', borderTopRightRadius: 'var(--radius-lg)' }}>
-        <img src={quickViewImage} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-        <div style={{ position: 'absolute', top: '10px', right: '10px', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
-          {isNew && (
-            <span className="badge badge-pink" style={{ boxShadow: 'var(--shadow-sm)' }}>Mới cập nhật</span>
-          )}
-          {userRole === 'Admin' && (
-            <div style={{ display: 'flex', gap: '4px' }}>
-              <button 
-                className="btn-icon" 
-                style={{ backgroundColor: 'white', border: '1px solid var(--color-border)', color: 'var(--color-primary)', width: '32px', height: '32px' }} 
-                onClick={(e) => { e.stopPropagation(); setIsEditing(true); }}
-                title="Sửa thông tin"
-              >
-                <Edit size={16} />
-              </button>
-              <button 
-                className="btn-icon" 
-                style={{ backgroundColor: 'white', border: '1px solid var(--color-border)', color: 'var(--color-danger)', width: '32px', height: '32px' }} 
-                onClick={handleDelete}
-                title="Xóa tài liệu"
-              >
-                <Trash2 size={16} />
-              </button>
-            </div>
-          )}
-        </div>
-        <div style={{ position: 'absolute', bottom: '10px', left: '10px', right: '10px', display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
-          {relatedProjects.slice(0, 2).map((p, idx) => (
-            <span key={idx} className="badge badge-green" style={{ backdropFilter: 'blur(4px)', backgroundColor: 'rgba(168, 213, 186, 0.8)' }}>
-              {p}
-            </span>
-          ))}
-        </div>
-      </div>
-      
       <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', flex: 1 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
           <div>
-            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+              {isNew && <span className="badge badge-pink" style={{ fontSize: '0.65rem', padding: '0.15rem 0.4rem' }}>Mới</span>}
               <span style={{ fontSize: '0.75rem', color: 'var(--color-primary)', fontWeight: '600' }}>{documentCode}</span>
               {documentType && <span className="badge badge-yellow" style={{ fontSize: '0.65rem', padding: '0.15rem 0.4rem' }}>{documentType}</span>}
               {accessLevels && accessLevels.length > 0 && (
@@ -166,6 +125,26 @@ const DocumentCard = ({ document, viewMode }) => {
             </div>
             <h3 style={{ fontSize: '1.125rem', fontWeight: '700', marginTop: '0.25rem', marginBottom: '0' }}>Số: {documentNumber}</h3>
           </div>
+          {userRole === 'Admin' && (
+            <div style={{ display: 'flex', gap: '4px' }}>
+              <button 
+                className="btn-icon" 
+                style={{ backgroundColor: 'var(--color-bg-surface-hover)', border: '1px solid var(--color-border)', color: 'var(--color-primary)', width: '32px', height: '32px' }} 
+                onClick={(e) => { e.stopPropagation(); setIsEditing(true); }}
+                title="Sửa thông tin"
+              >
+                <Edit size={16} />
+              </button>
+              <button 
+                className="btn-icon" 
+                style={{ backgroundColor: 'var(--color-bg-surface-hover)', border: '1px solid var(--color-border)', color: 'var(--color-danger)', width: '32px', height: '32px' }} 
+                onClick={handleDelete}
+                title="Xóa tài liệu"
+              >
+                <Trash2 size={16} />
+              </button>
+            </div>
+          )}
         </div>
 
         <div 
@@ -175,7 +154,7 @@ const DocumentCard = ({ document, viewMode }) => {
             marginBottom: '1rem', 
             flex: 1, 
             display: '-webkit-box', 
-            WebkitLineClamp: 3, 
+            WebkitLineClamp: 6, 
             WebkitBoxOrient: 'vertical', 
             overflow: 'hidden'
           }}

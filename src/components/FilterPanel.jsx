@@ -10,7 +10,13 @@ const displayDate = (isoDateStr) => {
 };
 
 const FilterPanel = ({ filters, setFilters }) => {
-  const { documentTypes, projects } = useContext(DocumentContext);
+  const { documentTypes, projects, documents = [] } = useContext(DocumentContext);
+  
+  const uniqueAgencies = Array.from(new Set([
+    ...ALL_AGENCIES,
+    ...documents.map(d => d.issuingAgency).filter(Boolean)
+  ])).sort();
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFilters(prev => ({ ...prev, [name]: value }));
@@ -44,7 +50,7 @@ const FilterPanel = ({ filters, setFilters }) => {
           <label className="form-label" style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Cơ quan ban hành</label>
           <select name="agency" value={filters.agency} onChange={handleChange} className="input-field">
             <option value="">Tất cả cơ quan</option>
-            {ALL_AGENCIES.map(a => <option key={a} value={a}>{a}</option>)}
+            {uniqueAgencies.map(a => <option key={a} value={a}>{a}</option>)}
           </select>
         </div>
 

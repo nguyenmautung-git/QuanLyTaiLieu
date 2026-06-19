@@ -8,7 +8,7 @@ const STATUS_OPTIONS = ['Chưa mời thầu', 'Đã mời thầu', 'Đang làm t
 
 // Styles
 const cell = (w) => ({ padding: '6px 8px', borderBottom: '1px solid var(--color-border)', fontSize: '0.78rem', width: w ? `${w}px` : 'auto' });
-const thStyle = (w) => ({ padding: '10px 8px', borderBottom: '2px solid var(--color-border)', textAlign: 'left', fontWeight: '700', color: 'var(--color-text-main)', fontSize: '0.8rem', backgroundColor: '#f8fafc', width: w ? `${w}px` : 'auto' });
+const thStyle = (w) => ({ padding: '10px 8px', borderBottom: '2px solid var(--color-border)', textAlign: 'left', fontWeight: '700', color: 'var(--color-text-main)', fontSize: '0.8rem', backgroundColor: 'var(--color-bg-surface-hover)', width: w ? `${w}px` : 'auto' });
 const btn = { background: 'none', border: 'none', cursor: 'pointer', padding: '3px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '4px' };
 const inputBase = { width: '100%', border: 'none', outline: 'none', padding: '5px 8px', fontSize: '0.78rem', backgroundColor: 'transparent', color: 'var(--color-text-main)', fontFamily: 'inherit' };
 
@@ -88,7 +88,10 @@ const CellInput = ({ value, onChange, type, partners, pkg, statusOptions }) => {
           control: (base) => ({ ...base, minHeight: '32px', border: 'none', boxShadow: 'none', backgroundColor: 'transparent', cursor: 'pointer', fontSize: '0.78rem' }),
           valueContainer: (base) => ({ ...base, padding: '0 8px' }),
           menuPortal: (base) => ({ ...base, zIndex: 9999 }),
-          menu: (base) => ({ ...base, fontSize: '0.78rem' })
+          menu: (base) => ({ ...base, fontSize: '0.78rem', backgroundColor: 'var(--color-bg-surface)', border: '1px solid var(--color-border)' }),
+          option: (base, state) => ({ ...base, backgroundColor: state.isFocused ? 'var(--color-bg-surface-hover)' : 'transparent', color: 'var(--color-text-main)', cursor: 'pointer' }),
+          singleValue: (base) => ({ ...base, color: 'var(--color-primary)' }),
+          input: (base) => ({ ...base, color: 'var(--color-text-main)' })
         }}
       />
     );
@@ -97,29 +100,29 @@ const CellInput = ({ value, onChange, type, partners, pkg, statusOptions }) => {
     const options = statusOptions || STATUS_OPTIONS;
     const getBg = (s) => {
       const lowerS = (s || '').toLowerCase();
-      if (lowerS.includes('chưa')) return '#f1f5f9'; // gray
-      if (lowerS.includes('nộp') || lowerS.includes('trúng')) return '#dcfce7'; // green
-      if (lowerS.includes('đang làm')) return '#dbeafe'; // blue
-      if (lowerS.includes('mời thầu')) return '#fef08a'; // yellow
-      if (lowerS.includes('chấm')) return '#f3e8ff'; // purple
-      if (lowerS.includes('rút') || lowerS.includes('trượt') || lowerS.includes('không')) return '#fee2e2'; // red
-      return '#f1f5f9'; // gray
+      if (lowerS.includes('chưa')) return 'rgba(148, 163, 184, 0.2)'; // gray
+      if (lowerS.includes('nộp') || lowerS.includes('trúng')) return 'rgba(16, 185, 129, 0.2)'; // green
+      if (lowerS.includes('đang làm')) return 'rgba(59, 130, 246, 0.2)'; // blue
+      if (lowerS.includes('mời thầu')) return 'rgba(245, 158, 11, 0.2)'; // yellow
+      if (lowerS.includes('chấm')) return 'rgba(139, 92, 246, 0.2)'; // purple
+      if (lowerS.includes('rút') || lowerS.includes('trượt') || lowerS.includes('không')) return 'rgba(239, 68, 68, 0.2)'; // red
+      return 'rgba(148, 163, 184, 0.2)'; // gray
     };
     const getColor = (s) => {
       const lowerS = (s || '').toLowerCase();
-      if (lowerS.includes('chưa')) return '#475569';
-      if (lowerS.includes('nộp') || lowerS.includes('trúng')) return '#166534';
-      if (lowerS.includes('đang làm')) return '#1e40af';
-      if (lowerS.includes('mời thầu')) return '#854d0e';
-      if (lowerS.includes('chấm')) return '#6b21a8';
-      if (lowerS.includes('rút') || lowerS.includes('trượt') || lowerS.includes('không')) return '#991b1b';
-      return '#475569';
+      if (lowerS.includes('chưa')) return '#cbd5e1';
+      if (lowerS.includes('nộp') || lowerS.includes('trúng')) return '#6ee7b7';
+      if (lowerS.includes('đang làm')) return '#93c5fd';
+      if (lowerS.includes('mời thầu')) return '#fcd34d';
+      if (lowerS.includes('chấm')) return '#c4b5fd';
+      if (lowerS.includes('rút') || lowerS.includes('trượt') || lowerS.includes('không')) return '#fca5a5';
+      return '#cbd5e1';
     };
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px' }}>
         <select value={value || options[0]} onChange={e => onChange(e.target.value)}
           style={{ width: '100%', border: 'none', background: getBg(value || options[0]), color: getColor(value || options[0]), borderRadius: '12px', padding: '2px 8px', outline: 'none', fontFamily: 'inherit', fontSize: '0.75rem', fontWeight: '600', cursor: 'pointer', appearance: 'none', textAlign: 'center' }}>
-          {options.map(o => <option key={o} value={o}>{o}</option>)}
+          {options.map(o => <option key={o} value={o} style={{ backgroundColor: 'var(--color-bg-body)', color: 'var(--color-text-main)' }}>{o}</option>)}
         </select>
       </div>
     );
@@ -128,30 +131,15 @@ const CellInput = ({ value, onChange, type, partners, pkg, statusOptions }) => {
 };
 
 // ─── DataRow ─────────────────────────────────────────────────────────────────
-const DataRow = ({ bidder, idx, total, isAdmin, onUpdate, onDelete, onMoveUp, onMoveDown, partners, pkg, onEmailPreview, statusOptions }) => {
-  const bg = idx % 2 === 0 ? 'rgba(255, 255, 255, 0.5)' : 'rgba(248, 250, 252, 0.3)';
+const DataRow = ({ bidder, idx, total, onUpdate, partners, pkg, onEmailPreview, statusOptions }) => {
+  const bg = idx % 2 === 0 ? 'transparent' : 'rgba(255, 255, 255, 0.05)';
 
   return (
     <tr style={{ backgroundColor: bg, transition: 'background-color 0.15s' }}>
-      {isAdmin && (
-        <td style={{ ...cell(72), padding: '3px 4px', textAlign: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '2px' }}>
-            <button onClick={onMoveUp} disabled={idx === 0}
-              style={{ ...btn, color: idx === 0 ? '#cbd5e1' : 'var(--color-primary)', cursor: idx === 0 ? 'default' : 'pointer' }}>
-              <ArrowUp size={13} />
-            </button>
-            <button onClick={onMoveDown} disabled={idx === total - 1}
-              style={{ ...btn, color: idx === total - 1 ? '#cbd5e1' : 'var(--color-primary)', cursor: idx === total - 1 ? 'default' : 'pointer' }}>
-              <ArrowDown size={13} />
-            </button>
-          </div>
-        </td>
-      )}
-
       <td style={{ ...cell(50), textAlign: 'center', color: 'var(--color-text-muted)' }}>{idx + 1}</td>
 
       <td style={{ ...cell() }}>
-        <CellInput type="partner" value={bidder.partnerId} onChange={v => onUpdate('partnerId', v)} partners={partners} pkg={pkg} />
+        <CellInput type="partner" value={bidder.partnerId} partners={partners} pkg={pkg} />
       </td>
 
       <td style={{ ...cell(160) }}>
@@ -170,136 +158,51 @@ const DataRow = ({ bidder, idx, total, isAdmin, onUpdate, onDelete, onMoveUp, on
           }}
         />
       </td>
-
-      {isAdmin && (
-        <td style={{ ...cell(46), textAlign: 'center' }}>
-          <button onClick={onDelete} style={{ ...btn, color: 'var(--color-danger)', margin: '0 auto' }}>
-            <Trash2 size={14} />
-          </button>
-        </td>
-      )}
     </tr>
   );
 };
 
-// ─── NewRow ──────────────────────────────────────────────────────────────────
-const NewRow = ({ onAdd, isAdmin, partners, pkg, statusOptions }) => {
-  const defaultStatus = statusOptions && statusOptions.length > 0 ? statusOptions[0] : 'Chưa mời thầu';
-  const [data, setData] = useState({ partnerId: '', status: defaultStatus });
 
-  const handleAdd = () => {
-    if (!data.partnerId) return;
-    onAdd({ id: crypto.randomUUID(), ...data, createdAt: new Date().toISOString() });
-    setData({ partnerId: '', status: defaultStatus });
-  };
-
-  return (
-    <tr style={{ backgroundColor: '#f8fafc' }}>
-      {isAdmin && <td style={{ ...cell(72), borderRight: '1px solid var(--color-border)' }} />}
-      <td style={{ ...cell(50), textAlign: 'center', color: '#94a3b8', fontSize: '0.7rem' }}>+</td>
-
-      <td style={{ ...cell() }}>
-        <CellInput type="partner" value={data.partnerId} onChange={v => setData({ ...data, partnerId: v })} partners={partners} pkg={pkg} />
-      </td>
-
-      <td style={{ ...cell(160) }}>
-        <CellInput type="status" value={data.status} onChange={v => setData({ ...data, status: v })} statusOptions={statusOptions} />
-      </td>
-
-      {isAdmin && (
-        <td style={{ ...cell(46), textAlign: 'center' }}>
-          <button onClick={handleAdd} disabled={!data.partnerId}
-            style={{ ...btn, color: '#fff', background: data.partnerId ? 'var(--color-primary)' : '#cbd5e1', cursor: data.partnerId ? 'pointer' : 'not-allowed', padding: '4px', margin: '0 auto' }}>
-            <Plus size={14} />
-          </button>
-        </td>
-      )}
-    </tr>
-  );
-};
 
 // ─── Package Datasheet ───────────────────────────────────────────────────────
 const PackageDatasheet = ({ pkg, project, isAdmin, onSave, partners, onEmailPreview, statusOptions }) => {
-  const [expanded, setExpanded] = useState(true);
-  const bgColor = getPastelColor(pkg.id || pkg.name);
-  const bidders = pkg.bidders || [];
-
-  const handleAdd = (newBidder) => {
-    const newBidders = [...bidders, { ...newBidder, order: bidders.length }];
-    onSave({ ...pkg, bidders: newBidders });
-  };
+  const [expanded, setExpanded] = useState(false);
+  
+  const bidders = pkg.invitedBidders || [];
 
   const handleUpdate = (idx, key, val) => {
     const newBidders = [...bidders];
     newBidders[idx] = { ...newBidders[idx], [key]: val };
-    onSave({ ...pkg, bidders: newBidders });
-  };
-
-  const handleDelete = (id) => {
-    const newBidders = bidders.filter(b => b.id !== id);
-    onSave({ ...pkg, bidders: newBidders });
-  };
-
-  const handleMoveUp = (idx) => {
-    if (idx === 0) return;
-    const newBidders = [...bidders];
-    [newBidders[idx - 1], newBidders[idx]] = [newBidders[idx], newBidders[idx - 1]];
-    // Cập nhật lại order
-    newBidders.forEach((b, i) => b.order = i);
-    onSave({ ...pkg, bidders: newBidders });
-  };
-
-  const handleMoveDown = (idx) => {
-    if (idx === bidders.length - 1) return;
-    const newBidders = [...bidders];
-    [newBidders[idx + 1], newBidders[idx]] = [newBidders[idx], newBidders[idx + 1]];
-    newBidders.forEach((b, i) => b.order = i);
-    onSave({ ...pkg, bidders: newBidders });
+    onSave({ ...pkg, invitedBidders: newBidders });
   };
 
   return (
     <div className="card fade-in" style={{ 
       padding: 0, 
-      overflow: 'hidden', 
-      background: 'rgba(255, 255, 255, 0.3)',
-      backdropFilter: 'blur(20px)',
-      WebkitBackdropFilter: 'blur(20px)',
-      border: '1px solid rgba(255, 255, 255, 0.7)', 
-      borderRadius: '16px',
-      boxShadow: '0 15px 45px -5px rgba(31, 38, 135, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.9)' 
+      overflow: 'hidden',
+      flexShrink: 0
     }}>
       {/* Header */}
-      <div style={{ padding: '1.25rem 1.5rem', background: `linear-gradient(135deg, ${bgColor}CC 0%, ${bgColor}66 100%)`, borderBottom: expanded ? '1px solid rgba(255, 255, 255, 0.4)' : 'none' }}>
+      <div style={{ padding: '1.25rem 1.5rem', background: 'var(--color-bg-surface-hover)', borderBottom: expanded ? '1px solid var(--color-border)' : 'none' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px' }}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', flex: 1 }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: '700', padding: '3px 8px', backgroundColor: 'var(--color-bg-surface-hover)', color: 'var(--color-text-muted)', borderRadius: '6px', flexShrink: 0, marginTop: '2px' }}>
-                {pkg.code || 'Chưa có mã'}
-              </span>
-              <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--color-text-main)', fontWeight: '700', lineHeight: '1.3' }}>{pkg.name}</h3>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0 }}>
-              <div style={{ textAlign: 'right', fontSize: '0.75rem' }}>
-                <div style={{ color: 'var(--color-text-muted)' }}>{bidders.length} nhà thầu tham dự</div>
-              </div>
+          {/* Top Row: Badge and Actions */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.75rem', fontWeight: '700', padding: '3px 8px', backgroundColor: 'var(--color-bg-body)', border: '1px solid var(--color-border)', color: 'var(--color-text-muted)', borderRadius: '6px' }}>
+              {pkg.code || 'Chưa có mã'}
+            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <div style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>{bidders.length} nhà thầu tham dự</div>
               <button onClick={() => setExpanded(v => !v)}
-                style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--color-primary)', backgroundColor: 'rgba(255,255,255,0.6)', border: '1px solid rgba(0,0,0,0.05)', borderRadius: '8px', padding: '5px 12px', cursor: 'pointer', fontSize: '0.78rem', fontWeight: '600', whiteSpace: 'nowrap' }}>
+                style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--color-primary)', backgroundColor: 'var(--color-bg-body)', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '5px 12px', cursor: 'pointer', fontSize: '0.78rem', fontWeight: '600', whiteSpace: 'nowrap' }}>
                 {expanded ? <><ChevronUp size={14} /> Thu gọn</> : <><ChevronDown size={14} /> Mở datasheet</>}
               </button>
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', color: 'var(--color-text-muted)', fontSize: '0.8rem', width: '100%' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', overflow: 'hidden' }}>
-              <Briefcase size={14} style={{ flexShrink: 0 }} /> 
-              <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Dự án: {project.name}</span>
-            </div>
-            {pkg.nature && (
-              <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
-                <span style={{ color: 'var(--color-primary)', fontWeight: '600', backgroundColor: '#eff6ff', padding: '3px 8px', borderRadius: '4px', fontSize: '0.75rem', border: '1px solid #bfdbfe' }}>{pkg.nature}</span>
-              </div>
-            )}
-          </div>
+          {/* Middle Row: Package Name */}
+          <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--color-text-main)', fontWeight: '700', lineHeight: '1.4' }}>
+            {pkg.name}
+          </h3>
         </div>
       </div>
 
@@ -309,36 +212,26 @@ const PackageDatasheet = ({ pkg, project, isAdmin, onSave, partners, onEmailPrev
           <table style={{ borderCollapse: 'collapse', fontSize: '0.78rem', tableLayout: 'fixed', minWidth: '100%' }}>
             <thead>
               <tr>
-                {isAdmin && <th style={{ ...thStyle(72) }}>Di chuyển</th>}
                 <th style={{ ...thStyle(50), textAlign: 'center' }}>STT</th>
                 <th style={{ ...thStyle() }}>Danh sách nhà thầu tham dự</th>
                 <th style={{ ...thStyle(160) }}>Trạng thái</th>
-                {isAdmin && <th style={{ ...thStyle(46), textAlign: 'center' }}>Xóa</th>}
               </tr>
             </thead>
             <tbody>
-              {bidders.length === 0 && !isAdmin && (
+              {bidders.length === 0 && (
                 <tr>
-                  <td colSpan={5} style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-muted)', fontStyle: 'italic', fontSize: '0.82rem' }}>
-                    Chưa có nhà thầu nào tham dự.
+                  <td colSpan={3} style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-muted)', fontStyle: 'italic', fontSize: '0.82rem' }}>
+                    Chưa có nhà thầu nào được mời.
                   </td>
                 </tr>
               )}
               {bidders.sort((a, b) => a.order - b.order).map((bidder, idx) => (
-                <DataRow key={bidder.id} bidder={bidder} idx={idx} total={bidders.length} isAdmin={isAdmin} partners={partners} pkg={pkg}
+                <DataRow key={bidder.id} bidder={bidder} idx={idx} total={bidders.length} partners={partners} pkg={pkg}
                   statusOptions={statusOptions}
                   onUpdate={(k, v) => handleUpdate(idx, k, v)}
-                  onDelete={() => handleDelete(bidder.id)}
-                  onMoveUp={() => handleMoveUp(idx)}
-                  onMoveDown={() => handleMoveDown(idx)}
                   onEmailPreview={onEmailPreview}
                 />
               ))}
-
-              {/* New row */}
-              {isAdmin && (
-                <NewRow onAdd={handleAdd} isAdmin={isAdmin} partners={partners} pkg={pkg} statusOptions={statusOptions} />
-              )}
             </tbody>
           </table>
         </div>
@@ -401,7 +294,7 @@ const ContractorSelection = () => {
   };
 
   return (
-    <div className="fade-in" style={{ padding: '1.5rem', position: 'relative', zIndex: 1, minHeight: 'calc(100vh - 60px)' }}>
+    <div className="fade-in" style={{ padding: '1.5rem', position: 'relative', zIndex: 1, height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxSizing: 'border-box' }}>
       {/* Background blobs for Glassmorphism */}
       <div style={{ position: 'fixed', top: '-10%', left: '-5%', width: '500px', height: '500px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(147,197,253,0.35) 0%, rgba(255,255,255,0) 70%)', zIndex: -1, pointerEvents: 'none' }}></div>
       <div style={{ position: 'fixed', bottom: '10%', right: '-10%', width: '600px', height: '600px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(249,168,212,0.25) 0%, rgba(255,255,255,0) 70%)', zIndex: -1, pointerEvents: 'none' }}></div>
@@ -417,11 +310,7 @@ const ContractorSelection = () => {
       </div>
 
       <div className="card" style={{ 
-        padding: '1.25rem', marginBottom: '1.5rem', 
-        background: 'rgba(255, 255, 255, 0.4)', 
-        backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
-        border: '1px solid rgba(255, 255, 255, 0.7)', borderRadius: '16px',
-        boxShadow: '0 12px 40px 0 rgba(31, 38, 135, 0.12)'
+        padding: '1.25rem', marginBottom: '1.5rem'
       }}>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
           <div className="form-group" style={{ marginBottom: 0, flex: '1 1 250px' }}>
@@ -472,20 +361,39 @@ const ContractorSelection = () => {
           Chưa có gói thầu nào. Vui lòng tạo gói thầu ở trang "Kế hoạch LCNT".
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1.5rem', alignItems: 'start' }}>
-          {validPackages.map(pkg => {
-            const project = projects.find(proj => String(proj.id) === String(pkg.projectId));
+        <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'stretch', overflowX: 'auto', paddingBottom: '1rem', width: '100%', flex: 1, minHeight: 0 }}>
+          {projects.map(project => {
+            const projectPkgs = validPackages.filter(p => String(p.projectId) === String(project.id));
+            if (projectPkgs.length === 0) return null;
             return (
-              <PackageDatasheet
-                key={pkg.id}
-                pkg={pkg}
-                project={project}
-                isAdmin={isAdmin}
-                onSave={handleSavePackage}
-                partners={partners}
-                onEmailPreview={setEmailPreview}
-                statusOptions={statusOptions}
-              />
+              <div key={project.id} style={{ display: 'flex', flexDirection: 'column', width: 'calc((100% - 3rem) / 3)', minWidth: 'calc((100% - 3rem) / 3)', flex: '0 0 auto', height: '100%', paddingRight: '4px' }}>
+                {/* Project Header */}
+                <div style={{ marginBottom: '1rem', paddingBottom: '0.75rem', borderBottom: '2px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+                  <h3 style={{ fontSize: '1rem', fontWeight: '700', color: 'var(--color-text-main)', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Briefcase size={16} color="var(--color-primary)" />
+                    {project.name}
+                  </h3>
+                  <span style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--color-primary)', backgroundColor: 'rgba(59,130,246,0.15)', padding: '2px 8px', borderRadius: '12px' }}>
+                    {projectPkgs.length} gói thầu
+                  </span>
+                </div>
+                
+                {/* Scrollable Package List */}
+                <div className="scroll-container" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', overflowY: 'auto', overflowX: 'hidden', flex: 1, minHeight: 0 }}>
+                  {projectPkgs.slice().reverse().map(pkg => (
+                    <PackageDatasheet
+                      key={pkg.id}
+                      pkg={pkg}
+                      project={project}
+                      isAdmin={isAdmin}
+                      onSave={handleSavePackage}
+                      partners={partners}
+                      onEmailPreview={setEmailPreview}
+                      statusOptions={statusOptions}
+                    />
+                  ))}
+                </div>
+              </div>
             );
           })}
         </div>
@@ -494,7 +402,7 @@ const ContractorSelection = () => {
       {/* Email Preview Modal */}
       {emailPreview && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div className="card fade-in" style={{ width: '640px', maxWidth: '95%', backgroundColor: '#fff', borderRadius: '12px', overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)' }}>
+          <div className="card fade-in" style={{ width: '640px', maxWidth: '95%', backgroundColor: 'var(--color-bg-surface)', borderRadius: '12px', overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: 'var(--shadow-lg)' }}>
             <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f8fafc' }}>
               <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '700', color: 'var(--color-text-main)' }}>Nội dung thư mời thầu</h3>
               <button onClick={() => setEmailPreview(null)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-text-muted)' }}><X size={20} /></button>

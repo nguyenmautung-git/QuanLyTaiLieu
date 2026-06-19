@@ -2,9 +2,7 @@ import React, { useState, useContext, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { DocumentContext } from '../context/DocumentContext';
 import { getPastelColor } from '../data';
-import { MapPin, Building, Plus, Trash2, Check, ChevronDown, ChevronUp, Briefcase, Save, ArrowUp, ArrowDown, Settings, Upload } from 'lucide-react';
-
-// ─── Constants ──────────────────────────────────────────────────────────────
+import { MapPin, Building, Plus, Trash2, Check, ChevronDown, ChevronUp, Briefcase, Save, ArrowUp, ArrowDown, Settings, Upload, X, Maximize2, Users } from 'lucide-react';// ─── Constants ──────────────────────────────────────────────────────────────
 const METHOD_OPTIONS = ['Đấu thầu rộng rãi', 'Đấu thầu hạn chế', 'Chỉ định thầu', 'Mua sắm trực tiếp', 'Chào hàng cạnh tranh', 'Tự thực hiện'];
 const PROCUREMENT_OPTIONS = ['Một giai đoạn một túi hồ sơ', 'Một giai đoạn hai túi hồ sơ', 'Hai giai đoạn'];
 const CONTRACT_OPTIONS = ['Hợp đồng trọn gói', 'Hợp đồng theo đơn giá cố định', 'Hợp đồng theo đơn giá điều chỉnh', 'Hợp đồng theo thời gian', 'Hợp đồng theo chi phí cộng phí'];
@@ -43,9 +41,10 @@ const COLUMNS = [
   { key: 'code',               label: 'Mã gói thầu',           width: 140, type: 'code' },
   { key: 'status',             label: 'Trạng thái',            width: 130, type: 'status', options: STATUS_OPTIONS },
   { key: 'name',               label: 'Tên gói thầu',          width: 180, required: true },
+  { key: 'invitedBidders',     label: 'Danh sách mời thầu',    width: 140, type: 'bidders_list' },
   { key: 'nature',             label: 'Tính chất gói thầu',    width: 160, type: 'nature_select' },
   { key: 'summary',            label: 'Tóm tắt CV chính',       width: 180, type: 'textarea' },
-  { key: 'price',              label: 'Giá gói thầu (VNĐ)',     width: 150, type: 'price' },
+  { key: 'price',              label: 'Giá dự toán (VNĐ)',     width: 150, type: 'price' },
   { key: 'fundSource',         label: 'Nguồn vốn',              width: 180, type: 'select', options: FUND_SOURCE_OPTIONS },
   { key: 'selectionMethod',    label: 'Hình thức LCNT',         width: 160, type: 'select', options: METHOD_OPTIONS },
   { key: 'procurementMethod',  label: 'Phương thức LCNT',       width: 160, type: 'select', options: PROCUREMENT_OPTIONS },
@@ -122,22 +121,22 @@ const NameCombobox = ({ value, onChange, isNew }) => {
         style={base}
       />
       {isOpen && filtered.length > 0 && createPortal(
-        <div id="name-combobox-dropdown" style={{ ...dropdownStyle, background: '#fff', border: '1px solid var(--color-border)', borderRadius: '4px', overflowY: 'auto' }}>
+        <div id="name-combobox-dropdown" style={{ ...dropdownStyle, background: 'rgba(15, 23, 42, 0.9)', backdropFilter: 'blur(16px)', border: '1px solid var(--color-border)', borderRadius: '4px', overflowY: 'auto' }}>
           {filtered.map(opt => (
-            <div key={opt.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', cursor: 'pointer', borderBottom: '1px solid #f1f5f9' }}
+            <div key={opt.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', cursor: 'pointer', borderBottom: '1px solid var(--color-border)' }}
               onMouseDown={(e) => {
                 e.preventDefault(); // Prevent input blur
                 onChange(opt.name);
                 setIsOpen(false);
               }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-bg-surface-hover)'}
               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
             >
               <span style={{ fontSize: '0.8rem', color: 'var(--color-text-main)', fontWeight: '500' }}>{opt.name}</span>
               <button
                 onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); deleteListItem('packageNames', opt.id); }}
                 style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', borderRadius: '4px' }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#fee2e2'}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.2)'}
                 onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                 title="Xóa gợi ý này"
               >
@@ -172,12 +171,12 @@ const FileUploadCell = ({ value, onChange }) => {
   return (
     <div style={{ padding: '4px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
       {fileList.map((f, i) => (
-        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', backgroundColor: '#e2e8f0', padding: '2px 4px', borderRadius: '4px' }}>
+        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', backgroundColor: 'var(--color-bg-surface-hover)', padding: '2px 4px', borderRadius: '4px' }}>
           <a href={f.url} target="_blank" rel="noreferrer" style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: '120px', color: 'var(--color-primary)', textDecoration: 'none' }} title={f.name}>{f.name}</a>
           <button onClick={() => handleRemove(i)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: 0, display: 'flex', alignItems: 'center' }} title="Xóa file"><Trash2 size={12} /></button>
         </div>
       ))}
-      <label style={{ cursor: 'pointer', fontSize: '0.75rem', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 6px', backgroundColor: '#f0f9ff', borderRadius: '4px', alignSelf: 'flex-start', border: '1px dashed var(--color-primary)' }}>
+      <label style={{ cursor: 'pointer', fontSize: '0.75rem', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 6px', backgroundColor: 'rgba(59, 130, 246, 0.1)', borderRadius: '4px', alignSelf: 'flex-start', border: '1px dashed var(--color-primary)' }}>
         <Upload size={12} /> Tải file
         <input type="file" multiple style={{ display: 'none' }} onChange={handleUpload} />
       </label>
@@ -186,8 +185,18 @@ const FileUploadCell = ({ value, onChange }) => {
 };
 
 // ─── Cell renderer ───────────────────────────────────────────────────────────
-const CellInput = ({ col, value, onChange, isNew, projectCode }) => {
+const CellInput = ({ col, value, onChange, isNew, projectCode, onOpenInvitedBidders }) => {
   const base = { width: '100%', border: 'none', outline: 'none', padding: '5px 8px', fontSize: '0.78rem', backgroundColor: 'transparent', color: 'var(--color-text-main)', fontFamily: 'inherit' };
+  if (col.type === 'bidders_list') return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px' }}>
+      <button 
+        disabled={isNew}
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (onOpenInvitedBidders) onOpenInvitedBidders(); }}
+        style={{ background: isNew ? 'var(--color-bg-body)' : 'var(--color-bg-surface-hover)', border: '1px solid var(--color-border)', borderRadius: '4px', padding: '2px 8px', cursor: isNew ? 'not-allowed' : 'pointer', fontSize: '0.85rem', color: isNew ? '#94a3b8' : 'var(--color-text-main)' }}>
+        ...
+      </button>
+    </div>
+  );
   if (col.type === 'checkbox') return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px' }}>
       <input type="checkbox" checked={!!value} onChange={e => onChange(e.target.checked)}
@@ -196,39 +205,39 @@ const CellInput = ({ col, value, onChange, isNew, projectCode }) => {
   );
   if (col.type === 'code') return <input type="text" value={value} disabled
     placeholder={isNew && projectCode ? `${projectCode}.GT.01` : ''}
-    style={{ ...base, color: '#64748b', backgroundColor: '#f1f5f9', cursor: 'not-allowed' }} />;
+    style={{ ...base, color: 'var(--color-text-muted)', backgroundColor: 'var(--color-bg-surface-hover)', cursor: 'not-allowed' }} />;
   if (col.type === 'nature_select') {
     const { globalLists } = useContext(DocumentContext);
     const options = globalLists?.packageNatures || [];
     return (
       <select value={value} onChange={e => onChange(e.target.value)} style={{ ...base, cursor: 'pointer' }}>
-        <option value="">— Chọn tính chất —</option>
-        {options.map(o => <option key={o.id} value={o.name}>{o.name}</option>)}
+        <option value="" style={{ backgroundColor: 'var(--color-bg-body)', color: 'var(--color-text-main)' }}>— Chọn tính chất —</option>
+        {options.map(o => <option key={o.id} value={o.name} style={{ backgroundColor: 'var(--color-bg-body)', color: 'var(--color-text-main)' }}>{o.name}</option>)}
       </select>
     );
   }
   if (col.type === 'select') return (
     <select value={value} onChange={e => onChange(e.target.value)} style={{ ...base, cursor: 'pointer' }}>
-      <option value="">—</option>
-      {col.options.map(o => <option key={o} value={o}>{o}</option>)}
+      <option value="" style={{ backgroundColor: 'var(--color-bg-body)', color: 'var(--color-text-main)' }}>—</option>
+      {col.options.map(o => <option key={o} value={o} style={{ backgroundColor: 'var(--color-bg-body)', color: 'var(--color-text-main)' }}>{o}</option>)}
     </select>
   );
   if (col.type === 'status') {
     const getBg = (s) => {
-      if (s === '✅ Đã phê duyệt') return '#dcfce7'; // green
-      if (s === '⏳ Đang chờ duyệt') return '#fef08a'; // yellow
-      return '#f1f5f9'; // gray
+      if (s === '✅ Đã phê duyệt') return 'rgba(16, 185, 129, 0.2)'; // green
+      if (s === '⏳ Đang chờ duyệt') return 'rgba(245, 158, 11, 0.2)'; // yellow
+      return 'rgba(148, 163, 184, 0.2)'; // gray
     };
     const getColor = (s) => {
-      if (s === '✅ Đã phê duyệt') return '#166534';
-      if (s === '⏳ Đang chờ duyệt') return '#854d0e';
-      return '#475569';
+      if (s === '✅ Đã phê duyệt') return '#6ee7b7';
+      if (s === '⏳ Đang chờ duyệt') return '#fcd34d';
+      return '#cbd5e1';
     };
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px' }}>
         <select value={value} onChange={e => onChange(e.target.value)} 
           style={{ width: '100%', border: 'none', background: getBg(value), color: getColor(value), borderRadius: '12px', padding: '2px 8px', outline: 'none', fontFamily: 'inherit', fontSize: '0.75rem', fontWeight: '600', cursor: 'pointer', appearance: 'none', textAlign: 'center' }}>
-          {col.options.map(o => <option key={o} value={o}>{o}</option>)}
+          {col.options.map(o => <option key={o} value={o} style={{ backgroundColor: 'var(--color-bg-body)', color: 'var(--color-text-main)' }}>{o}</option>)}
         </select>
       </div>
     );
@@ -273,10 +282,10 @@ const EditPackageModal = ({ pkg, onSave, onClose, projectCode, projectName }) =>
     if(formData.name.trim()) onSave(formData);
   };
 
-  return (
-    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+  return createPortal(
+    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div className="card fade-in" style={{ width: '600px', maxWidth: '90vw', maxHeight: '90vh', overflowY: 'auto', backgroundColor: 'var(--color-bg-surface)', padding: 0 }}>
-        <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', backgroundColor: '#f8fafc' }}>
+        <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', backgroundColor: 'var(--color-bg-surface-hover)' }}>
           <div>
             <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--color-text-main)', fontWeight: '700' }}>Chỉnh sửa gói thầu</h3>
             <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginTop: '4px', fontWeight: '500' }}>Dự án: {projectName}</div>
@@ -284,42 +293,48 @@ const EditPackageModal = ({ pkg, onSave, onClose, projectCode, projectName }) =>
           <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer', color: 'var(--color-text-muted)' }}>&times;</button>
         </div>
         {error && (
-          <div style={{ padding: '0.75rem 1.5rem', backgroundColor: '#fef2f2', color: '#ef4444', fontSize: '0.85rem', fontWeight: '500', borderBottom: '1px solid #fecaca' }}>
+          <div style={{ padding: '0.75rem 1.5rem', backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', fontSize: '0.85rem', fontWeight: '500', borderBottom: '1px solid rgba(239, 68, 68, 0.2)' }}>
             ⚠️ {error}
           </div>
         )}
         <div style={{ padding: '1.5rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
-          {COLUMNS.map(col => (
+          {COLUMNS.filter(c => c.key !== 'invitedBidders').map(col => (
             <div key={col.key} style={{ gridColumn: col.key === 'summary' ? '1 / -1' : 'auto' }}>
               <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.8rem', fontWeight: '600', color: 'var(--color-text-main)' }}>{col.label} {col.required && <span style={{color:'red'}}>*</span>}</label>
-              <div style={{ border: '1px solid var(--color-border)', borderRadius: '4px', backgroundColor: '#fff' }}>
+              <div style={{ border: '1px solid var(--color-border)', borderRadius: '4px', backgroundColor: 'var(--color-bg-body)' }}>
                 <CellInput col={col} value={formData[col.key] ?? ''} onChange={v => handleChange(col.key, v)} projectCode={projectCode} />
               </div>
             </div>
           ))}
         </div>
-        <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', backgroundColor: '#f8fafc' }}>
-          <button onClick={onClose} style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid var(--color-border)', background: '#fff', cursor: 'pointer', fontWeight: '600', fontSize: '0.85rem' }}>Hủy</button>
+        <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', backgroundColor: 'var(--color-bg-surface-hover)' }}>
+          <button onClick={onClose} style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid var(--color-border)', background: 'var(--color-bg-body)', color: 'var(--color-text-main)', cursor: 'pointer', fontWeight: '600', fontSize: '0.85rem' }}>Hủy</button>
           <button onClick={handleSave} disabled={!formData.name.trim()} style={{ padding: '6px 12px', borderRadius: '6px', border: 'none', background: 'var(--color-primary)', color: '#fff', cursor: formData.name.trim() ? 'pointer' : 'not-allowed', fontWeight: '600', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '4px' }}><Save size={14}/> Lưu thay đổi</button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 
 // ─── Datasheet row (existing package) ────────────────────────────────────────
-const DataRow = ({ pkg, idx, total, isAdmin, onEdit, onDelete, onMoveUp, onMoveDown, visibleCols, colWidths }) => {
-  const bg = idx % 2 === 0 ? '#ffffff' : 'var(--color-bg-surface)';
+const DataRow = ({ pkg, idx, total, isAdmin, onEdit, onDelete, onMoveUp, onMoveDown, visibleCols, colWidths, onOpenInvitedBidders, isSelected, onToggleSelect }) => {
+  const bg = isSelected ? 'rgba(59, 130, 246, 0.15)' : (idx % 2 === 0 ? 'var(--color-bg-body)' : 'var(--color-bg-surface)');
   const cell = (w) => ({
-    padding: 0, minWidth: w, maxWidth: w,
+    padding: 0, width: w,
     borderRight: '1px solid var(--color-border)',
     borderBottom: '1px solid var(--color-border)',
     overflow: 'hidden', backgroundColor: bg, transition: 'background-color 0.15s',
   });
   const btn = { background: 'none', border: 'none', cursor: 'pointer', padding: '3px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '4px' };
 
+  const handleRowClick = (e) => {
+    if (['INPUT', 'SELECT', 'BUTTON', 'TEXTAREA'].includes(e.target.tagName)) return;
+    if (onToggleSelect) onToggleSelect(pkg.id);
+  };
+
   return (
-    <tr onDoubleClick={() => isAdmin && onEdit(pkg)}
+    <tr onClick={handleRowClick} onDoubleClick={() => isAdmin && onEdit(pkg)}
       style={{ cursor: isAdmin ? 'pointer' : 'default' }}>
 
       {/* LEFT: Up/Down */}
@@ -346,11 +361,15 @@ const DataRow = ({ pkg, idx, total, isAdmin, onEdit, onDelete, onMoveUp, onMoveD
         const align = col.type === 'price' || col.type === 'date' ? 'right'
                     : col.type === 'number' || col.type === 'checkbox' ? 'center' : 'left';
         return (
-          <td key={col.key} style={{ ...cell(w), minWidth: w, maxWidth: w }}>
+          <td key={col.key} style={cell(w)}>
             {col.type === 'checkbox' ? (
               <div style={{ textAlign: 'center', padding: '4px' }}>
                 <input type="checkbox" checked={!!pkg[col.key]} readOnly
                   style={{ width: '14px', height: '14px', accentColor: 'var(--color-primary)', cursor: 'default' }} />
+              </div>
+            ) : col.type === 'bidders_list' ? (
+              <div style={{ textAlign: 'center', cursor: 'pointer', color: 'var(--color-primary)' }} onClick={() => onOpenInvitedBidders(pkg)}>
+                {Array.isArray(pkg[col.key]) ? pkg[col.key].length : 0}
               </div>
             ) : col.type === 'file' ? (
               <div style={{ padding: '4px 6px', display: 'flex', flexDirection: 'column', gap: '3px', overflow: 'hidden' }}>
@@ -408,7 +427,7 @@ const NewRow = ({ onAdd, isAdmin, visibleCols, colWidths, projectCode, nextIdx }
     onAdd({ ...row }); 
     setRow({ ...EMPTY_ROW(), code: getDefaultCode(nextIdx + 1) }); 
   };
-  const cell = (w) => ({ padding: 0, minWidth: w, maxWidth: w, borderRight: '1px solid var(--color-border)', borderBottom: '1px solid var(--color-border)', backgroundColor: '#f0f9ff', overflow: 'hidden' });
+  const cell = (w) => ({ padding: 0, width: w, borderRight: '1px solid var(--color-border)', borderBottom: '1px solid var(--color-border)', backgroundColor: 'var(--color-bg-surface-hover)', overflow: 'hidden' });
 
   return (
     <tr>
@@ -433,11 +452,60 @@ const NewRow = ({ onAdd, isAdmin, visibleCols, colWidths, projectCode, nextIdx }
   );
 };
 
+// ─── Local Text Input to prevent cursor jumping ────────────────────────────────
+const LocalTextInput = ({ value, onChange, style, placeholder }) => {
+  const [localValue, setLocalValue] = useState(value || '');
+
+  useEffect(() => {
+    setLocalValue(value || '');
+  }, [value]);
+
+  const handleBlur = () => {
+    if (localValue !== value) {
+      onChange(localValue);
+    }
+  };
+
+  return (
+    <input
+      type="text"
+      value={localValue}
+      onChange={(e) => setLocalValue(e.target.value)}
+      onBlur={handleBlur}
+      style={style}
+      placeholder={placeholder}
+    />
+  );
+};
+
 // ─── Template List Modal ─────────────────────────────────────────────────────
 const TemplateListModal = ({ onClose, onConfirm }) => {
-  const { globalLists } = useContext(DocumentContext);
+  const { globalLists, addListItem, editListItem, deleteListItem } = useContext(DocumentContext);
   const packageNames = globalLists?.packageNames || [];
+  const packageNatures = globalLists?.packageNatures || [];
   const [selected, setSelected] = useState(new Set());
+  const [newTemplate, setNewTemplate] = useState({ name: '', nature: '', summary: '' });
+  const [editingSummary, setEditingSummary] = useState(null);
+
+  const [colWidths, setColWidths] = useState({
+    stt: 50,
+    select: 35,
+    name: 'auto',
+    nature: 200,
+    summary: 75,
+    actions: 50
+  });
+
+  const startResize = (key, e) => {
+    e.preventDefault(); e.stopPropagation();
+    const th = e.currentTarget.parentElement;
+    const startX = e.clientX;
+    const startW = typeof colWidths[key] === 'number' ? colWidths[key] : th.offsetWidth;
+    const onMove = (me) => setColWidths(prev => ({ ...prev, [key]: Math.max(40, startW + me.clientX - startX) }));
+    const onUp = () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  };
 
   const toggleSelect = (id) => {
     const next = new Set(selected);
@@ -446,58 +514,253 @@ const TemplateListModal = ({ onClose, onConfirm }) => {
   };
 
   const handleConfirm = () => {
-    const selectedNames = packageNames.filter(p => selected.has(p.id)).map(p => p.name);
-    onConfirm(selectedNames);
+    const selectedTemplates = packageNames.filter(p => selected.has(p.id));
+    onConfirm(selectedTemplates);
   };
 
-  return (
-    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div className="card fade-in" style={{ width: '600px', maxWidth: '90vw', maxHeight: '90vh', display: 'flex', flexDirection: 'column', backgroundColor: 'var(--color-bg-surface)', padding: 0 }}>
-        <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f8fafc' }}>
+  const handleAddNew = () => {
+    if (newTemplate.name.trim()) {
+      addListItem('packageNames', { ...newTemplate });
+      setNewTemplate({ name: '', nature: '', summary: '' });
+    }
+  };
+
+  const updateExisting = (id, field, value) => {
+    const tmpl = packageNames.find(p => p.id === id);
+    if (tmpl) {
+      editListItem('packageNames', id, { ...tmpl, [field]: value });
+    }
+  };
+
+  const thStyle = { 
+    padding: '8px 10px', 
+    backgroundColor: 'var(--color-bg-surface-hover)', 
+    borderRight: '1px solid var(--color-border)', 
+    borderBottom: '2px solid var(--color-border)', 
+    fontWeight: '700', 
+    fontSize: '0.73rem', 
+    color: 'var(--color-text-main)', 
+    whiteSpace: 'nowrap', 
+    textAlign: 'center', 
+    position: 'sticky', 
+    top: 0, 
+    zIndex: 1, 
+    overflow: 'hidden' 
+  };
+  const tdStyle = { 
+    padding: '4px 10px', 
+    borderRight: '1px solid var(--color-border)', 
+    borderBottom: '1px solid var(--color-border)', 
+    overflow: 'hidden' 
+  };
+  const inputStyle = { 
+    width: '100%', 
+    border: 'none', 
+    background: 'transparent', 
+    outline: 'none', 
+    color: 'inherit', 
+    fontSize: '0.78rem', 
+    fontFamily: 'inherit',
+    padding: '4px 0' 
+  };
+  const selectStyle = { ...inputStyle, cursor: 'pointer' };
+  const resizerStyle = { position: 'absolute', right: 0, top: 0, bottom: 0, width: '5px', cursor: 'col-resize', backgroundColor: 'transparent', zIndex: 2 };
+
+  return createPortal(
+    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div className="card fade-in" style={{ width: '1000px', maxWidth: '95vw', maxHeight: '90vh', display: 'flex', flexDirection: 'column', backgroundColor: 'var(--color-bg-surface)', padding: 0 }}>
+        <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'var(--color-bg-surface-hover)' }}>
           <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--color-text-main)', fontWeight: '700' }}>Danh sách gói thầu mẫu</h3>
           <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer', color: 'var(--color-text-muted)' }}>&times;</button>
         </div>
         
-        <div style={{ padding: 0, overflowY: 'auto', flex: 1 }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
-            <thead style={{ position: 'sticky', top: 0, backgroundColor: '#f1f5f9', zIndex: 1 }}>
+        <div style={{ padding: 0, overflowY: 'auto', overflowX: 'auto', flex: 1 }}>
+          <table style={{ minWidth: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', tableLayout: 'fixed' }}>
+            <thead style={{ position: 'sticky', top: 0, backgroundColor: 'var(--color-bg-surface-hover)', zIndex: 1 }}>
               <tr>
-                <th style={{ padding: '10px 16px', borderBottom: '1px solid var(--color-border)', width: '60px', textAlign: 'center' }}>STT</th>
-                <th style={{ padding: '10px 16px', borderBottom: '1px solid var(--color-border)', textAlign: 'left' }}>Tên gói thầu</th>
-                <th style={{ padding: '10px 16px', borderBottom: '1px solid var(--color-border)', width: '90px', textAlign: 'center' }}>Lựa chọn</th>
+                <th style={{ ...thStyle, width: colWidths.stt, textAlign: 'center', position: 'relative' }}>
+                  STT
+                  <div onMouseDown={e => startResize('stt', e)} style={resizerStyle} onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--color-primary)'} onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'} />
+                </th>
+                <th style={{ ...thStyle, width: colWidths.select, textAlign: 'center', position: 'relative' }}>
+                  Lựa chọn
+                  <div onMouseDown={e => startResize('select', e)} style={resizerStyle} onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--color-primary)'} onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'} />
+                </th>
+                <th style={{ ...thStyle, width: colWidths.name, position: 'relative' }}>
+                  Tên gói thầu
+                  <div onMouseDown={e => startResize('name', e)} style={resizerStyle} onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--color-primary)'} onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'} />
+                </th>
+                <th style={{ ...thStyle, width: colWidths.nature, position: 'relative' }}>
+                  Tính chất gói thầu
+                  <div onMouseDown={e => startResize('nature', e)} style={resizerStyle} onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--color-primary)'} onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'} />
+                </th>
+                <th style={{ ...thStyle, width: colWidths.summary, position: 'relative' }}>
+                  Tóm tắt công việc chính
+                  <div onMouseDown={e => startResize('summary', e)} style={resizerStyle} onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--color-primary)'} onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'} />
+                </th>
+                <th style={{ ...thStyle, width: colWidths.actions, textAlign: 'center' }}>
+                  Xóa
+                </th>
               </tr>
             </thead>
             <tbody>
-              {packageNames.length === 0 ? (
-                <tr><td colSpan={3} style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>Chưa có gói thầu mẫu nào.</td></tr>
-              ) : (
-                packageNames.map((pkg, idx) => (
-                  <tr key={pkg.id} style={{ borderBottom: '1px solid var(--color-border)', backgroundColor: selected.has(pkg.id) ? '#f0f9ff' : 'transparent', cursor: 'pointer', transition: 'background-color 0.15s' }} onClick={() => toggleSelect(pkg.id)}>
-                    <td style={{ padding: '10px 16px', textAlign: 'center', color: 'var(--color-text-muted)' }}>{idx + 1}</td>
-                    <td style={{ padding: '10px 16px', fontWeight: '500', color: 'var(--color-text-main)' }}>{pkg.name}</td>
-                    <td style={{ padding: '10px 16px', textAlign: 'center' }}>
-                      <input type="checkbox" checked={selected.has(pkg.id)} readOnly style={{ width: '16px', height: '16px', accentColor: 'var(--color-primary)', cursor: 'pointer' }} />
-                    </td>
-                  </tr>
-                ))
-              )}
+              {packageNames.map((pkg, idx) => (
+                <tr key={pkg.id} style={{ backgroundColor: selected.has(pkg.id) ? 'rgba(59, 130, 246, 0.1)' : 'transparent', transition: 'background-color 0.15s' }}>
+                  <td style={{ ...tdStyle, textAlign: 'center', color: 'var(--color-text-muted)' }}>{idx + 1}</td>
+                  <td style={{ ...tdStyle, textAlign: 'center' }}>
+                    <input type="checkbox" checked={selected.has(pkg.id)} onChange={() => toggleSelect(pkg.id)} style={{ width: '16px', height: '16px', accentColor: 'var(--color-primary)', cursor: 'pointer' }} />
+                  </td>
+                  <td style={tdStyle}>
+                    <LocalTextInput value={pkg.name || ''} onChange={(newVal) => updateExisting(pkg.id, 'name', newVal)} style={inputStyle} />
+                  </td>
+                  <td style={tdStyle}>
+                    <select value={pkg.nature || ''} onChange={(e) => updateExisting(pkg.id, 'nature', e.target.value)} style={selectStyle}>
+                      <option value="" style={{ backgroundColor: 'var(--color-bg-body)', color: 'var(--color-text-main)' }}>— Chọn tính chất —</option>
+                      {packageNatures.map(o => <option key={o.id} value={o.name} style={{ backgroundColor: 'var(--color-bg-body)', color: 'var(--color-text-main)' }}>{o.name}</option>)}
+                    </select>
+                  </td>
+                  <td style={{ ...tdStyle, textAlign: 'center' }}>
+                    <button onClick={() => setEditingSummary({ id: pkg.id, value: pkg.summary || '' })} style={{ background: 'var(--color-bg-surface-hover)', border: '1px solid var(--color-border)', borderRadius: '4px', padding: '2px 8px', cursor: 'pointer', fontSize: '0.85rem', color: 'var(--color-text-main)' }}>...</button>
+                  </td>
+                  <td style={{ ...tdStyle, textAlign: 'center' }}>
+                    <button onClick={() => deleteListItem('packageNames', pkg.id)} style={{ background: 'none', border: 'none', color: 'var(--color-danger)', cursor: 'pointer' }}><Trash2 size={14} /></button>
+                  </td>
+                </tr>
+              ))}
+              <tr style={{ backgroundColor: 'var(--color-bg-surface-hover)' }}>
+                <td style={{ ...tdStyle, textAlign: 'center' }}>
+                  <button onClick={handleAddNew} disabled={!newTemplate.name.trim()} style={{ background: newTemplate.name.trim() ? 'var(--color-primary)' : '#e2e8f0', color: newTemplate.name.trim() ? '#fff' : '#94a3b8', border: 'none', borderRadius: '4px', padding: '3px 8px', cursor: newTemplate.name.trim() ? 'pointer' : 'not-allowed', fontSize: '0.7rem' }}>
+                    <Plus size={10} />
+                  </button>
+                </td>
+                <td style={tdStyle}></td>
+                <td style={tdStyle}>
+                  <input type="text" value={newTemplate.name} onChange={e => setNewTemplate({...newTemplate, name: e.target.value})} placeholder="Tên gói thầu mới..." style={inputStyle} />
+                </td>
+                <td style={tdStyle}>
+                  <select value={newTemplate.nature} onChange={e => setNewTemplate({...newTemplate, nature: e.target.value})} style={selectStyle}>
+                    <option value="" style={{ backgroundColor: 'var(--color-bg-body)', color: 'var(--color-text-main)' }}>— Chọn tính chất —</option>
+                    {packageNatures.map(o => <option key={o.id} value={o.name} style={{ backgroundColor: 'var(--color-bg-body)', color: 'var(--color-text-main)' }}>{o.name}</option>)}
+                  </select>
+                </td>
+                <td style={{ ...tdStyle, textAlign: 'center' }}>
+                  <button onClick={() => setEditingSummary({ id: 'new', value: newTemplate.summary || '' })} style={{ background: 'var(--color-bg-surface-hover)', border: '1px solid var(--color-border)', borderRadius: '4px', padding: '2px 8px', cursor: 'pointer', fontSize: '0.85rem', color: 'var(--color-text-main)' }}>...</button>
+                </td>
+                <td style={tdStyle}></td>
+              </tr>
             </tbody>
           </table>
         </div>
 
-        <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', backgroundColor: '#f8fafc' }}>
-          <button onClick={onClose} style={{ padding: '8px 16px', borderRadius: '6px', border: '1px solid var(--color-border)', background: '#fff', cursor: 'pointer', fontWeight: '600' }}>Hủy</button>
+        <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', backgroundColor: 'var(--color-bg-surface-hover)' }}>
+          <button onClick={onClose} style={{ padding: '8px 16px', borderRadius: '6px', border: '1px solid var(--color-border)', background: 'var(--color-bg-body)', color: 'var(--color-text-main)', cursor: 'pointer', fontWeight: '600' }}>Hủy</button>
           <button onClick={handleConfirm} disabled={selected.size === 0} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', borderRadius: '6px', border: 'none', background: 'var(--color-primary)', color: '#fff', cursor: selected.size > 0 ? 'pointer' : 'not-allowed', fontWeight: '600' }}>
-            <Check size={16} /> Đồng ý ({selected.size})
+            <Save size={16} /> Thêm từ mẫu ({selected.size})
           </button>
+        </div>
+      </div>
+
+      {editingSummary && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1100, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="card fade-in" style={{ width: '500px', maxWidth: '90vw', backgroundColor: 'var(--color-bg-surface)', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', border: '1px solid var(--color-border)' }}>
+            <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--color-text-main)', fontWeight: '600' }}>Tóm tắt công việc chính</h3>
+            <textarea 
+              value={editingSummary.value}
+              onChange={(e) => setEditingSummary({ ...editingSummary, value: e.target.value })}
+              placeholder="Nhập nội dung tóm tắt..."
+              style={{ width: '100%', minHeight: '150px', padding: '0.75rem', borderRadius: '6px', border: '1px solid var(--color-border)', backgroundColor: 'var(--color-bg-body)', color: 'var(--color-text-main)', resize: 'vertical', fontSize: '0.875rem', outline: 'none', fontFamily: 'inherit' }}
+            />
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+              <button onClick={() => setEditingSummary(null)} style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid var(--color-border)', background: 'var(--color-bg-body)', color: 'var(--color-text-main)', cursor: 'pointer', fontWeight: '500' }}>Hủy</button>
+              <button onClick={() => {
+                if (editingSummary.id === 'new') {
+                  setNewTemplate({ ...newTemplate, summary: editingSummary.value });
+                } else {
+                  updateExisting(editingSummary.id, 'summary', editingSummary.value);
+                }
+                setEditingSummary(null);
+              }} style={{ padding: '6px 12px', borderRadius: '6px', border: 'none', background: 'var(--color-primary)', color: '#fff', cursor: 'pointer', fontWeight: '500' }}>Lưu thay đổi</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>,
+    document.body
+  );
+};
+
+// ─── Package Card ────────────────────────────────────────────────────────────
+const PackageCard = ({ pkg, onEdit }) => {
+  const bidders = pkg.invitedBidders || [];
+  
+  const getStatusColor = (s) => {
+    if (s === '✅ Đã phê duyệt') return { bg: 'rgba(16, 185, 129, 0.1)', color: '#10b981', border: '#a7f3d0' };
+    if (s === '⏳ Đang chờ duyệt') return { bg: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', border: '#fde68a' };
+    return { bg: 'rgba(148, 163, 184, 0.1)', color: '#64748b', border: '#e2e8f0' };
+  };
+  const statusStyles = getStatusColor(pkg.status);
+
+  return (
+    <div 
+      className="card fade-in" 
+      onDoubleClick={() => onEdit(pkg)}
+      style={{ 
+        padding: '1.25rem', 
+        display: 'flex', 
+        flexDirection: 'column', 
+        gap: '0.75rem', 
+        cursor: 'pointer',
+        border: '1px solid var(--color-border)',
+        boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
+        transition: 'transform 0.2s, box-shadow 0.2s',
+        backgroundColor: 'var(--color-bg-surface)'
+      }}
+      onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 6px 12px rgba(0,0,0,0.05)'; }}
+      onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.02)'; }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <span style={{ fontSize: '0.75rem', fontWeight: '700', padding: '3px 8px', backgroundColor: 'var(--color-bg-surface-hover)', color: 'var(--color-text-muted)', borderRadius: '6px' }}>
+          {pkg.code || 'Chưa có mã'}
+        </span>
+        <span style={{ fontSize: '0.75rem', fontWeight: '600', padding: '3px 8px', backgroundColor: statusStyles.bg, color: statusStyles.color, border: `1px solid ${statusStyles.border}`, borderRadius: '12px' }}>
+          {pkg.status || '📝 Đang soạn thảo'}
+        </span>
+      </div>
+      
+      <h4 style={{ margin: 0, fontSize: '1rem', color: 'var(--color-text-main)', fontWeight: '700', lineHeight: '1.4' }}>
+        {pkg.name || 'Gói thầu chưa có tên'}
+      </h4>
+      
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
+        {pkg.nature && (
+          <span style={{ backgroundColor: '#eff6ff', color: 'var(--color-primary)', padding: '2px 6px', borderRadius: '4px', border: '1px solid #bfdbfe' }}>
+            {pkg.nature}
+          </span>
+        )}
+        {pkg.selectionMethod && (
+          <span style={{ backgroundColor: 'var(--color-bg-surface-hover)', padding: '2px 6px', borderRadius: '4px' }}>
+            {pkg.selectionMethod}
+          </span>
+        )}
+      </div>
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem', paddingTop: '0.75rem', borderTop: '1px dashed var(--color-border)' }}>
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Giá dự toán</span>
+          <span style={{ fontSize: '0.9rem', fontWeight: '700', color: 'var(--color-text-main)' }}>
+            {pkg.price ? formatPrice(pkg.price) + ' đ' : '—'}
+          </span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+          <Users size={14} /> {bidders.length} nhà thầu
         </div>
       </div>
     </div>
   );
 };
 
-// ─── Datasheet Card ──────────────────────────────────────────────────────────
-const ProjectDatasheet = ({ project, packages, isAdmin, onAdd, onOpenTemplateModal, onSave, onDelete, onMoveUp, onMoveDown, projects, onEdit }) => {
+// ─── Datasheet Modal ─────────────────────────────────────────────────────────
+const DatasheetModal = ({ project, projects, packages, isAdmin, onAdd, onAddMultiple, onOpenTemplateModal, onSave, onDelete, onMoveUp, onMoveDown, onEdit, onOpenInvitedBidders, onClose }) => {
   const [hiddenCols, setHiddenCols] = useState(new Set([
     'optionToBuy', 
     'fundSource', 
@@ -510,8 +773,16 @@ const ProjectDatasheet = ({ project, packages, isAdmin, onAdd, onOpenTemplateMod
   ]));
   const [colWidths, setColWidths] = useState(() => Object.fromEntries(COLUMNS.map(c => [c.key, c.width])));
   const [showColPanel, setShowColPanel] = useState(false);
+  const [selectedRows, setSelectedRows] = useState(new Set());
   const panelRef = useRef(null);
   const visibleCols = COLUMNS.filter(c => !hiddenCols.has(c.key));
+
+  const toggleRowSelect = (id) => {
+    setSelectedRows(prev => {
+      if (prev.has(id)) return new Set();
+      return new Set([id]);
+    });
+  };
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -541,7 +812,6 @@ const ProjectDatasheet = ({ project, packages, isAdmin, onAdd, onOpenTemplateMod
     document.addEventListener('mousemove', onMove);
     document.addEventListener('mouseup', onUp);
   };
-  const [expanded, setExpanded] = useState(false);
 
   const totalPrice = packages.reduce((s, p) => {
     const n = parseFloat(String(p.price || '').replace(/\D/g, ''));
@@ -550,8 +820,7 @@ const ProjectDatasheet = ({ project, packages, isAdmin, onAdd, onOpenTemplateMod
 
   const thStyle = (col) => ({
     padding: '8px 10px',
-    minWidth: col.width,
-    maxWidth: col.width,
+    width: col.width,
     backgroundColor: 'var(--color-bg-surface-hover)',
     borderRight: '1px solid var(--color-border)',
     borderBottom: '2px solid var(--color-border)',
@@ -565,66 +834,48 @@ const ProjectDatasheet = ({ project, packages, isAdmin, onAdd, onOpenTemplateMod
     zIndex: 1,
   });
 
-  return (
-    <div className="card" style={{ padding: 0, overflow: 'hidden', backgroundColor: getPastelColor(project.id) }}>
-      {/* Card Header */}
-      {project.image && (
-        <div style={{ height: '100px', backgroundImage: `url(${project.image})`, backgroundSize: 'cover', backgroundPosition: 'center' }} />
-      )}
-      <div style={{ padding: '1.25rem 1.5rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
+  return createPortal(
+    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', flexDirection: 'column', padding: '1rem', boxSizing: 'border-box' }}>
+      <div className="card fade-in" style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)', borderRadius: '12px' }}>
+        {/* Header Modal */}
+        <div style={{ padding: '0.75rem 1.25rem', backgroundColor: 'var(--color-bg-surface)', borderBottom: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
-            <span className="badge badge-blue" style={{ marginBottom: '0.4rem' }}>{project.code || 'N/A'}</span>
-            <h3 style={{ fontSize: '1rem', fontWeight: '700', margin: 0 }}>{project.name}</h3>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', marginTop: '0.5rem', fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>
-              <span><MapPin size={12} style={{ verticalAlign: 'middle', marginRight: '3px' }} />{project.location || '—'}</span>
-              <span><Building size={12} style={{ verticalAlign: 'middle', marginRight: '3px' }} />CĐT: {project.investor}</span>
-              {project.parentId && <span><Briefcase size={12} style={{ verticalAlign: 'middle', marginRight: '3px' }} />DA cha: {projects.find(p => p.id?.toString() === project.parentId)?.name || '—'}</span>}
-            </div>
+            <h2 style={{ margin: 0, fontSize: '1.25rem', color: 'var(--color-text-main)', fontWeight: '700' }}>Bảng dữ liệu Kế hoạch LCNT</h2>
+            <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>Dự án: {project.name} • {packages.length} gói thầu</div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0 }}>
-            <div style={{ textAlign: 'right', fontSize: '0.75rem' }}>
-              <div style={{ color: 'var(--color-text-muted)' }}>{packages.length} gói thầu</div>
-              {totalPrice > 0 && <div style={{ fontWeight: '700', color: 'var(--color-primary)' }}>{totalPrice.toLocaleString('vi-VN')} đ</div>}
-            </div>
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
             {isAdmin && (
-              <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); onOpenTemplateModal(project.id); }}
-                style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#fff', background: 'var(--color-primary)', border: 'none', borderRadius: '8px', padding: '5px 12px', cursor: 'pointer', fontSize: '0.78rem', fontWeight: '600', whiteSpace: 'nowrap' }}>
-                <Plus size={14} /> Tạo gói thầu từ mẫu
+              <button onClick={() => onOpenTemplateModal(project.id)}
+                style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#fff', background: 'var(--color-primary)', border: 'none', borderRadius: '8px', padding: '6px 12px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: '600' }}>
+                <Plus size={14} /> Thêm từ mẫu
               </button>
             )}
-            {expanded && (
-              <div style={{ position: 'relative' }} ref={panelRef}>
-                <button onClick={() => setShowColPanel(v => !v)}
-                  style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--color-text-muted)', background: 'var(--color-bg-surface)', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '5px 10px', cursor: 'pointer', fontSize: '0.78rem' }}
-                  title="Ẩn/hiện cột">
-                  <Settings size={13} /> Cột
-                </button>
-                {showColPanel && (
-                  <div style={{ position: 'absolute', right: 0, top: '110%', zIndex: 100, background: 'var(--color-bg-surface)', border: '1px solid var(--color-border)', borderRadius: '10px', padding: '0.75rem', minWidth: '200px', maxHeight: '300px', overflowY: 'auto', boxShadow: '0 8px 24px rgba(0,0,0,0.12)' }}>
-                    <div style={{ fontWeight: '700', fontSize: '0.75rem', marginBottom: '0.5rem', color: 'var(--color-text-muted)' }}>Hiển thị cột</div>
-                    {COLUMNS.map(col => (
-                      <label key={col.key} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 0', fontSize: '0.8rem', cursor: 'pointer' }}>
-                        <input type="checkbox" checked={!hiddenCols.has(col.key)} onChange={() => toggleCol(col.key)}
-                          style={{ accentColor: 'var(--color-primary)', width: '14px', height: '14px' }} />
-                        {col.label}
-                      </label>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-            <button onClick={() => { setExpanded(v => !v); setShowColPanel(false); }}
-              style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--color-primary)', background: 'var(--color-bg-surface)', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '5px 12px', cursor: 'pointer', fontSize: '0.78rem', fontWeight: '600', whiteSpace: 'nowrap' }}>
-              {expanded ? <><ChevronUp size={14} /> Thu gọn</> : <><ChevronDown size={14} /> Mở datasheet</>}
+            <div style={{ position: 'relative' }} ref={panelRef}>
+              <button onClick={() => setShowColPanel(v => !v)}
+                style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--color-text-muted)', background: 'var(--color-bg-surface-hover)', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '6px 12px', cursor: 'pointer', fontSize: '0.8rem' }}>
+                <Settings size={14} /> Ẩn/hiện cột
+              </button>
+              {showColPanel && (
+                <div style={{ position: 'absolute', right: 0, top: '110%', zIndex: 100, background: 'var(--color-bg-surface)', border: '1px solid var(--color-border)', borderRadius: '10px', padding: '0.75rem', minWidth: '200px', maxHeight: '300px', overflowY: 'auto', boxShadow: '0 8px 24px rgba(0,0,0,0.12)' }}>
+                  <div style={{ fontWeight: '700', fontSize: '0.75rem', marginBottom: '0.5rem', color: 'var(--color-text-muted)' }}>Cột hiển thị</div>
+                  {COLUMNS.map(col => (
+                    <label key={col.key} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 0', fontSize: '0.8rem', cursor: 'pointer' }}>
+                      <input type="checkbox" checked={!hiddenCols.has(col.key)} onChange={() => toggleCol(col.key)}
+                        style={{ accentColor: 'var(--color-primary)', width: '14px', height: '14px' }} />
+                      {col.label}
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+            <button onClick={onClose} style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: 'none', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }} title="Đóng bảng dữ liệu">
+              <X size={18} />
             </button>
           </div>
         </div>
-      </div>
-
-      {/* Datasheet */}
-      {expanded && (
-        <div style={{ overflowX: 'auto', borderTop: '2px solid var(--color-border)' }}>
+        
+        {/* Table Area */}
+        <div style={{ flex: 1, overflow: 'auto', backgroundColor: 'var(--color-bg-surface)', padding: '0' }}>
           <table style={{ borderCollapse: 'collapse', fontSize: '0.78rem', tableLayout: 'fixed', minWidth: '100%' }}>
             <thead>
               <tr>
@@ -634,7 +885,7 @@ const ProjectDatasheet = ({ project, packages, isAdmin, onAdd, onOpenTemplateMod
                   const align = col.type === 'price' || col.type === 'date' ? 'right'
                               : col.type === 'number' ? 'center' : 'left';
                   return (
-                    <th key={col.key} style={{ ...thStyle({ width: w }), minWidth: w, maxWidth: w, position: 'relative', userSelect: 'none', textAlign: align }}>
+                    <th key={col.key} style={{ ...thStyle({ width: w }), position: 'relative', userSelect: 'none', textAlign: align }}>
                       {col.label}
                       <div onMouseDown={e => startResize(col.key, e)}
                         style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: '5px', cursor: 'col-resize', backgroundColor: 'transparent' }}
@@ -664,15 +915,15 @@ const ProjectDatasheet = ({ project, packages, isAdmin, onAdd, onOpenTemplateMod
                     onEdit={(pkg) => onEdit(project, pkg)}
                     onDelete={(id) => onDelete(project, id)}
                     onMoveUp={() => onMoveUp(project, packages, idx)}
-                    onMoveDown={() => onMoveDown(project, packages, idx)} />
+                    onMoveDown={() => onMoveDown(project, packages, idx)} 
+                    onOpenInvitedBidders={onOpenInvitedBidders} 
+                    isSelected={selectedRows.has(pkg.id)}
+                    onToggleSelect={toggleRowSelect} />
                 );
               })}
-              {/* Tổng giá — căn dưới cột "Giá gói thầu" */}
               {packages.length > 0 && (() => {
-                // Đếm số cột trước cột "price" trong visibleCols
                 const priceIdx = visibleCols.findIndex(c => c.key === 'price');
                 const colsAfterPrice = priceIdx >= 0 ? visibleCols.length - priceIdx - 1 : 0;
-                // Cột cố định trái: Di chuyển(1) + các cột trước price
                 const fixedLeft = (isAdmin ? 1 : 0) + (priceIdx >= 0 ? priceIdx : visibleCols.length);
                 const bdr = '1px solid var(--color-border)';
                 const bdrTop = '2px solid var(--color-border)';
@@ -680,7 +931,7 @@ const ProjectDatasheet = ({ project, packages, isAdmin, onAdd, onOpenTemplateMod
                 return (
                   <tr>
                     <td colSpan={fixedLeft} style={{ ...baseTd, textAlign: 'right', borderRight: bdr }}>
-                      Tổng giá gói thầu:
+                      Tổng giá dự toán:
                     </td>
                     {priceIdx >= 0 && (
                       <td style={{ ...baseTd, color: 'var(--color-primary)', textAlign: 'right', borderRight: bdr }}>
@@ -691,25 +942,101 @@ const ProjectDatasheet = ({ project, packages, isAdmin, onAdd, onOpenTemplateMod
                   </tr>
                 );
               })()}
-              {/* New row */}
               {isAdmin && (
                 <NewRow onAdd={(row) => onAdd(project.id, row)} isAdmin={isAdmin} visibleCols={visibleCols} colWidths={colWidths} projectCode={project.code} nextIdx={packages.length + 1} />
               )}
             </tbody>
           </table>
         </div>
+      </div>
+    </div>,
+    document.body
+  );
+};
+
+// ─── Project Column ──────────────────────────────────────────────────────────
+const ProjectDatasheet = ({ project, projects, packages, isAdmin, onAdd, onAddMultiple, onOpenTemplateModal, onSave, onDelete, onMoveUp, onMoveDown, onEdit, onOpenInvitedBidders }) => {
+  const [showDatasheet, setShowDatasheet] = useState(false);
+
+  const totalPrice = packages.reduce((s, p) => {
+    const n = parseFloat(String(p.price || '').replace(/\D/g, ''));
+    return s + (isNaN(n) ? 0 : n);
+  }, 0);
+
+  return (
+    <>
+      <div className="card fade-in" style={{ padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', border: '1px solid var(--color-border)' }}>
+        {/* Card Header */}
+        {project.image && (
+          <div style={{ height: '100px', flexShrink: 0, backgroundImage: `url(${project.image})`, backgroundSize: 'cover', backgroundPosition: 'center' }} />
+        )}
+        <div style={{ padding: '1.25rem 1.5rem', flexShrink: 0, backgroundColor: 'var(--color-bg-surface-hover)', borderBottom: '2px solid var(--color-border)', cursor: 'pointer' }} 
+             onDoubleClick={() => setShowDatasheet(true)}
+             title="Click đúp để mở bảng dữ liệu">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span className="badge badge-blue">{project.code || 'N/A'}</span>
+                <span style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--color-primary)', backgroundColor: 'rgba(59,130,246,0.15)', padding: '2px 8px', borderRadius: '12px' }}>
+                  {packages.length} gói thầu
+                </span>
+              </div>
+              {totalPrice > 0 && <div style={{ fontWeight: '700', color: 'var(--color-primary)', fontSize: '0.85rem' }}>{totalPrice.toLocaleString('vi-VN')} đ</div>}
+            </div>
+            
+            <h3 style={{ fontSize: '1rem', fontWeight: '700', margin: 0, color: 'var(--color-text-main)', lineHeight: '1.4', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+              {project.name}
+            </h3>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+              <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={project.location}><MapPin size={12} style={{ verticalAlign: 'middle', marginRight: '3px' }} />{project.location || '—'}</span>
+              <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={project.investor}><Building size={12} style={{ verticalAlign: 'middle', marginRight: '3px' }} />CĐT: {project.investor}</span>
+            </div>
+            
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.25rem', paddingTop: '0.5rem', borderTop: '1px dashed var(--color-border)' }}>
+              <button onClick={(e) => { e.stopPropagation(); setShowDatasheet(true); }}
+                style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-text-main)', background: 'var(--color-bg-surface)', border: '1px solid var(--color-border)', borderRadius: '6px', padding: '5px 10px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: '600', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}
+                title="Mở bảng dữ liệu toàn màn hình">
+                <Maximize2 size={12} /> Datasheet
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {showDatasheet && (
+        <DatasheetModal
+          project={project}
+          projects={projects}
+          packages={packages}
+          isAdmin={isAdmin}
+          onAdd={onAdd}
+          onAddMultiple={onAddMultiple}
+          onOpenTemplateModal={onOpenTemplateModal}
+          onSave={onSave}
+          onDelete={onDelete}
+          onMoveUp={onMoveUp}
+          onMoveDown={onMoveDown}
+          onEdit={(p) => onEdit(project, p)}
+          onOpenInvitedBidders={onOpenInvitedBidders}
+          onClose={() => setShowDatasheet(false)}
+        />
       )}
-    </div>
+    </>
   );
 };
 
 // ─── Main Page ───────────────────────────────────────────────────────────────
 const BiddingPlan = () => {
-  const { projects, userRole, biddingPackages = [], addBiddingPackage, editBiddingPackage, deleteBiddingPackage, reorderBiddingPackages, addListItem, globalLists } = useContext(DocumentContext);
+  const { projects, userRole, biddingPackages = [], addBiddingPackage, editBiddingPackage, deleteBiddingPackage, reorderBiddingPackages, addListItem, globalLists, partners = [] } = useContext(DocumentContext);
   const isAdmin = userRole === 'Admin';
   const didFixCodes = useRef(false);
   const [editingData, setEditingData] = useState(null);
   const [templateModalProjectId, setTemplateModalProjectId] = useState(null);
+  const [editingInvitedBidders, setEditingInvitedBidders] = useState(null);
+
+  // Filters state
+  const [filters, setFilters] = useState({ keyword: '', project: '', nature: '' });
 
   const getPackages = (projectId) =>
     [...biddingPackages.filter(p => String(p.projectId) === String(projectId))]
@@ -721,6 +1048,20 @@ const BiddingPlan = () => {
         if (st === 'Đã phê duyệt') st = '✅ Đã phê duyệt';
         return { ...p, status: st };
       });
+
+  // Filter packages logic
+  const filterPackages = (pkgs) => {
+    return pkgs.filter(pkg => {
+      if (filters.nature && pkg.nature !== filters.nature) return false;
+      if (filters.keyword) {
+        const kw = filters.keyword.toLowerCase();
+        const codeMatch = (pkg.code || '').toLowerCase().includes(kw);
+        const nameMatch = (pkg.name || '').toLowerCase().includes(kw);
+        if (!codeMatch && !nameMatch) return false;
+      }
+      return true;
+    });
+  };
 
   // Migration script to populate packageNames from existing packages if empty
   useEffect(() => {
@@ -753,13 +1094,17 @@ const BiddingPlan = () => {
     if (data.name) await addListItem('packageNames', data.name);
   };
 
-  const handleAddMultiple = async (projectId, names) => {
+  const handleAddMultiple = async (projectId, templates) => {
     const pkgs = getPackages(projectId);
     let startOrder = pkgs.length;
-    for (const name of names) {
-      const { _new, ...data } = { ...EMPTY_ROW(), name };
+    for (const tmpl of templates) {
+      const { _new, ...data } = { 
+        ...EMPTY_ROW(), 
+        name: tmpl.name || '', 
+        nature: tmpl.nature || '', 
+        summary: tmpl.summary || '' 
+      };
       await addBiddingPackage(projectId, { ...data, order: startOrder++ });
-      await addListItem('packageNames', name);
     }
   };
 
@@ -771,14 +1116,11 @@ const BiddingPlan = () => {
   const handleDelete = async (project, pkgId) => {
     if (window.confirm('Xóa gói thầu này?')) {
       await deleteBiddingPackage(project.id, pkgId);
-      // Wait for deletion to propagate to state, then migration effect or next action will fix codes.
-      // To be strictly correct, we reorder remaining manually:
       const remaining = getPackages(project.id).filter(p => p.id !== pkgId);
       if (remaining.length > 0) await reorderBiddingPackages(remaining, project.code);
     }
   };
 
-  // Reassign all order values after swap using batch
   const handleMoveUp = async (project, pkgs, idx) => {
     if (idx === 0) return;
     const reordered = [...pkgs];
@@ -793,57 +1135,276 @@ const BiddingPlan = () => {
     await reorderBiddingPackages(reordered, project.code);
   };
 
+  const handleFilterChange = (e) => {
+    const { name, value } = e.target;
+    setFilters(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleClearFilters = () => {
+    setFilters({ keyword: '', project: '', nature: '' });
+  };
+
+  const hasFilter = filters.keyword || filters.project || filters.nature;
+
+  const displayProjects = projects.filter(p => {
+    if (filters.project && p.name !== filters.project) return false;
+    return true;
+  });
+
   return (
-    <div className="fade-in" style={{ padding: '1.5rem' }}>
+    <div className="fade-in" style={{ padding: '1.5rem', position: 'relative', zIndex: 1, height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxSizing: 'border-box' }}>
+      {/* Background blobs for Glassmorphism */}
+      <div style={{ position: 'fixed', top: '-10%', left: '-5%', width: '500px', height: '500px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(147,197,253,0.35) 0%, rgba(255,255,255,0) 70%)', zIndex: -1, pointerEvents: 'none' }}></div>
+      <div style={{ position: 'fixed', bottom: '10%', right: '-10%', width: '600px', height: '600px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(249,168,212,0.25) 0%, rgba(255,255,255,0) 70%)', zIndex: -1, pointerEvents: 'none' }}></div>
+      <div style={{ position: 'fixed', top: '30%', left: '30%', width: '700px', height: '700px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(167,243,208,0.25) 0%, rgba(255,255,255,0) 70%)', zIndex: -1, pointerEvents: 'none' }}></div>
+
       <div style={{ marginBottom: '1.5rem' }}>
         <h1 style={{ fontSize: '1.5rem', fontWeight: '700', color: 'var(--color-text-main)', marginBottom: '0.25rem' }}>
           📋 Kế hoạch lựa chọn nhà thầu
         </h1>
         <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
-          {projects.length} dự án • {biddingPackages.length} gói thầu
+          {displayProjects.length} dự án • {biddingPackages.length} gói thầu
           {isAdmin && ' — Nhấp vào hàng để chỉnh sửa, hàng cuối để thêm mới'}
         </p>
       </div>
 
-      {projects.length === 0 ? (
+      <div className="card" style={{ padding: '1.25rem', marginBottom: '1.5rem' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
+          <div className="form-group" style={{ marginBottom: 0, flex: '1 1 250px' }}>
+            <label className="form-label" style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Từ khóa (Mã, Tên gói thầu)</label>
+            <input
+              type="text"
+              name="keyword"
+              value={filters.keyword}
+              onChange={handleFilterChange}
+              className="input-field"
+              placeholder="Nhập mã hoặc tên gói thầu..."
+            />
+          </div>
+          <div className="form-group" style={{ marginBottom: 0, flex: '1 1 200px' }}>
+            <label className="form-label" style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Dự án liên quan</label>
+            <select name="project" value={filters.project} onChange={handleFilterChange} className="input-field">
+              <option value="">Tất cả dự án</option>
+              {projects.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
+            </select>
+          </div>
+          <div className="form-group" style={{ marginBottom: 0, flex: '1 1 200px', display: 'flex', alignItems: 'flex-end', gap: '8px' }}>
+            <div style={{ flex: 1 }}>
+              <label className="form-label" style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Tính chất gói thầu</label>
+              <select name="nature" value={filters.nature} onChange={handleFilterChange} className="input-field">
+                <option value="">Tất cả tính chất</option>
+                {(globalLists?.packageNatures || []).map(n => <option key={n.id} value={n.name}>{n.name}</option>)}
+              </select>
+            </div>
+            {hasFilter && (
+              <button
+                onClick={handleClearFilters}
+                title="Bỏ lọc"
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  backgroundColor: '#fef2f2', color: '#ef4444', border: '1px solid #fca5a5',
+                  width: '35px', height: '35px', borderRadius: '4px', cursor: 'pointer',
+                  flexShrink: 0
+                }}>
+                <X size={18} />
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {displayProjects.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '4rem', color: 'var(--color-text-muted)' }}>
-          Chưa có dự án nào. Vui lòng tạo dự án ở trang "Dự án".
+          Chưa có dự án nào khớp với điều kiện lọc.
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          {projects.map(project => (
-            <ProjectDatasheet
-              key={project.id}
-              project={project}
-              projects={projects}
-              packages={getPackages(project.id)}
-              isAdmin={isAdmin}
-              onAdd={handleAdd}
-              onAddMultiple={handleAddMultiple}
-              onSave={handleSave}
-              onDelete={handleDelete}
-              onMoveUp={handleMoveUp}
-              onMoveDown={handleMoveDown}
-              onEdit={(project, pkg) => setEditingData({ project, pkg })}
-            />
-          ))}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: '1.5rem', overflowY: 'auto', paddingBottom: '1rem', width: '100%', flex: 1, minHeight: 0, alignContent: 'start' }}>
+          {displayProjects.map(project => {
+            const projectPackages = getPackages(project.id);
+            const filteredPackages = filterPackages(projectPackages);
+            
+            return (
+              <div key={project.id} style={{ display: 'flex', flexDirection: 'column' }}>
+                <ProjectDatasheet
+                  project={project}
+                  projects={projects}
+                  packages={filteredPackages}
+                  isAdmin={isAdmin}
+                  onAdd={handleAdd}
+                  onAddMultiple={handleAddMultiple}
+                  onOpenTemplateModal={setTemplateModalProjectId}
+                  onSave={handleSave}
+                  onDelete={handleDelete}
+                  onMoveUp={handleMoveUp}
+                  onMoveDown={handleMoveDown}
+                  onEdit={(project, pkg) => setEditingData({ project, pkg })}
+                  onOpenInvitedBidders={setEditingInvitedBidders}
+                />
+              </div>
+            );
+          })}
         </div>
       )}
 
-      {/* Edit Modal Overlay (Rendered at Root) */}
+      {templateModalProjectId && (
+        <TemplateListModal 
+          onClose={() => setTemplateModalProjectId(null)} 
+          onConfirm={(templates) => {
+            handleAddMultiple(templateModalProjectId, templates);
+            setTemplateModalProjectId(null);
+          }}
+        />
+      )}
+
       {editingData && (
         <EditPackageModal
           pkg={editingData.pkg}
           projectCode={editingData.project.code}
           projectName={editingData.project.name}
-          onClose={() => setEditingData(null)}
           onSave={(updated) => {
-            handleSave(editingData.project.id, editingData.pkg.id, updated);
+            handleSave(editingData.project.id, updated.id, updated);
             setEditingData(null);
           }}
+          onClose={() => setEditingData(null)}
+        />
+      )}
+
+      {editingInvitedBidders && (
+        <InvitedBiddersModal 
+          pkg={editingInvitedBidders} 
+          partners={partners}
+          onSave={(updatedPkg) => {
+            editBiddingPackage(updatedPkg.projectId, updatedPkg.id, updatedPkg);
+            setEditingInvitedBidders(null);
+          }} 
+          onClose={() => setEditingInvitedBidders(null)} 
         />
       )}
     </div>
+  );
+};
+
+// ─── Invited Bidders Modal ───────────────────────────────────────────────────
+const InvitedBiddersModal = ({ pkg, partners, onSave, onClose }) => {
+  const [bidders, setBidders] = useState(pkg.invitedBidders || []);
+  const [newPartnerId, setNewPartnerId] = useState('');
+
+  const thStyle = { padding: '8px 10px', backgroundColor: 'var(--color-bg-surface-hover)', borderRight: '1px solid var(--color-border)', borderBottom: '2px solid var(--color-border)', fontWeight: '700', fontSize: '0.73rem', color: 'var(--color-text-main)', textAlign: 'center' };
+  const tdStyle = { padding: '4px 10px', borderRight: '1px solid var(--color-border)', borderBottom: '1px solid var(--color-border)' };
+
+  const handleAdd = () => {
+    if (!newPartnerId) return;
+    const partner = partners.find(p => String(p.id) === String(newPartnerId));
+    if (!partner) return;
+    setBidders([...bidders, { id: crypto.randomUUID(), partnerId: newPartnerId, order: bidders.length }]);
+    setNewPartnerId('');
+  };
+
+  const handleRemove = (id) => {
+    setBidders(bidders.filter(b => b.id !== id));
+  };
+
+  const handleMoveUp = (idx) => {
+    if (idx === 0) return;
+    const next = [...bidders];
+    [next[idx - 1], next[idx]] = [next[idx], next[idx - 1]];
+    next.forEach((b, i) => b.order = i);
+    setBidders(next);
+  };
+
+  const handleMoveDown = (idx) => {
+    if (idx === bidders.length - 1) return;
+    const next = [...bidders];
+    [next[idx + 1], next[idx]] = [next[idx], next[idx + 1]];
+    next.forEach((b, i) => b.order = i);
+    setBidders(next);
+  };
+
+  const btn = { background: 'none', border: 'none', cursor: 'pointer', padding: '3px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '4px' };
+
+  return createPortal(
+    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div className="card fade-in" style={{ width: '600px', maxWidth: '95vw', maxHeight: '90vh', display: 'flex', flexDirection: 'column', backgroundColor: 'var(--color-bg-surface)', padding: 0 }}>
+        <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'var(--color-bg-surface-hover)' }}>
+          <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--color-text-main)', fontWeight: '700' }}>Danh sách nhà thầu được mời</h3>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer', color: 'var(--color-text-muted)' }}>&times;</button>
+        </div>
+        
+        <div style={{ padding: '1.5rem', overflowY: 'auto', flex: 1 }}>
+          <div style={{ marginBottom: '1rem', fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
+            Gói thầu: <strong style={{ color: 'var(--color-text-main)' }}>{pkg.code} - {pkg.name}</strong>
+          </div>
+          
+          <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid var(--color-border)', fontSize: '0.85rem' }}>
+            <thead>
+              <tr>
+                <th style={{ ...thStyle, width: '70px' }}>Di chuyển</th>
+                <th style={{ ...thStyle, width: '50px' }}>STT</th>
+                <th style={{ ...thStyle, textAlign: 'left' }}>Tên nhà thầu được mời</th>
+                <th style={{ ...thStyle, width: '50px', borderRight: 'none' }}>Xóa</th>
+              </tr>
+            </thead>
+            <tbody>
+              {bidders.length === 0 && (
+                <tr>
+                  <td colSpan={4} style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--color-text-muted)', fontStyle: 'italic', fontSize: '0.8rem' }}>
+                    Chưa có nhà thầu nào được mời.
+                  </td>
+                </tr>
+              )}
+              {bidders.sort((a, b) => a.order - b.order).map((bidder, idx) => {
+                const partnerName = partners.find(p => String(p.id) === String(bidder.partnerId))?.name || 'Nhà thầu không tồn tại';
+                return (
+                  <tr key={bidder.id}>
+                    <td style={{ ...tdStyle, textAlign: 'center' }}>
+                      <div style={{ display: 'flex', justifyContent: 'center', gap: '2px' }}>
+                        <button onClick={() => handleMoveUp(idx)} disabled={idx === 0} style={{ ...btn, color: idx === 0 ? '#cbd5e1' : 'var(--color-primary)', cursor: idx === 0 ? 'default' : 'pointer' }}><ArrowUp size={13} /></button>
+                        <button onClick={() => handleMoveDown(idx)} disabled={idx === bidders.length - 1} style={{ ...btn, color: idx === bidders.length - 1 ? '#cbd5e1' : 'var(--color-primary)', cursor: idx === bidders.length - 1 ? 'default' : 'pointer' }}><ArrowDown size={13} /></button>
+                      </div>
+                    </td>
+                    <td style={{ ...tdStyle, textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>{idx + 1}</td>
+                    <td style={{ ...tdStyle, fontSize: '0.85rem', fontWeight: '500' }}>{partnerName}</td>
+                    <td style={{ ...tdStyle, textAlign: 'center', borderRight: 'none' }}>
+                      <button onClick={() => handleRemove(bidder.id)} style={{ ...btn, color: 'var(--color-danger)', margin: '0 auto' }}><Trash2 size={14} /></button>
+                    </td>
+                  </tr>
+                );
+              })}
+              {/* Thêm mới */}
+              <tr style={{ backgroundColor: 'var(--color-bg-surface-hover)' }}>
+                <td style={{ ...tdStyle }}></td>
+                <td style={{ ...tdStyle, textAlign: 'center', color: '#94a3b8', fontSize: '0.8rem' }}>+</td>
+                <td style={{ ...tdStyle }}>
+                  <select 
+                    value={newPartnerId} 
+                    onChange={e => setNewPartnerId(e.target.value)}
+                    style={{ width: '100%', padding: '6px', border: '1px solid var(--color-border)', borderRadius: '4px', fontSize: '0.8rem', backgroundColor: 'var(--color-bg-body)', color: 'var(--color-text-main)' }}
+                  >
+                    <option value="">— Chọn nhà thầu —</option>
+                    {partners.map(p => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
+                </td>
+                <td style={{ ...tdStyle, textAlign: 'center', borderRight: 'none' }}>
+                  <button onClick={handleAdd} disabled={!newPartnerId} style={{ ...btn, color: '#fff', background: newPartnerId ? 'var(--color-primary)' : '#cbd5e1', cursor: newPartnerId ? 'pointer' : 'not-allowed', padding: '4px 8px', margin: '0 auto', fontSize: '0.7rem' }}>
+                    <Plus size={12} />
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        
+        <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', backgroundColor: 'var(--color-bg-surface-hover)' }}>
+          <button onClick={onClose} style={{ padding: '8px 16px', borderRadius: '6px', border: '1px solid var(--color-border)', background: 'var(--color-bg-body)', color: 'var(--color-text-main)', cursor: 'pointer', fontWeight: '600' }}>Hủy</button>
+          <button onClick={() => onSave({ ...pkg, invitedBidders: bidders })} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', borderRadius: '6px', border: 'none', background: 'var(--color-primary)', color: '#fff', cursor: 'pointer', fontWeight: '600' }}>
+            <Save size={16} /> Lưu thay đổi
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
   );
 };
 

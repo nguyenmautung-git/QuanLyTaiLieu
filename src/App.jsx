@@ -16,6 +16,10 @@ import AIAssistant from './components/AIAssistant';
 import ComingSoon from './components/ComingSoon';
 import PhapLy from './components/PhapLy';
 import TienDo from './components/TienDo';
+import KhoiLuong from './components/KhoiLuong';
+import NghiemThu from './components/NghiemThu';
+import DanhMucLoi from './components/DanhMucLoi';
+import Payment from './components/Payment';
 
 function App() {
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -45,13 +49,15 @@ function App() {
       case 'tienDo':
         return <TienDo />;
       case 'khoiLuong':
-        return <ComingSoon title="Khối lượng & Chất lượng" icon="📊" description="Theo dõi khối lượng thực hiện, kết quả kiểm định chất lượng và các biên bản nghiệm thu." />;
+        return <KhoiLuong />;
       case 'atld':
         return <ComingSoon title="ATLĐ & VSMT" icon="🪦" description="Quản lý an toàn lao động, vệ sinh môi trường thi công, biên bản kiểm tra định kỳ." />;
       case 'nghiemThu':
-        return <ComingSoon title="Nghiệm thu - Thanh quyết toán" icon="✅" description="Quản lý hồ sơ nghiệm thu hạng mục, thanh toán theo tiến độ và quyết toán hợp đồng." />;
+        return <NghiemThu />;
+      case 'payment':
+        return <Payment />;
       case 'danhMucLoi':
-        return <ComingSoon title="Danh mục lỗi" icon="📋" description="Ghi nhận, theo dõi và xử lý các lỗi phát sinh trong quá trình thi công và nghiệm thu." />;
+        return <DanhMucLoi />;
       case 'settings':
         return <Settings />;
       default:

@@ -18,9 +18,9 @@ const DEFAULT_STEPS = [
 ];
 
 const STATUS_CONFIG = {
-  done:       { label: 'Hoàn thành', color: '#10b981', bg: '#d1fae5', icon: Check },
-  inprogress: { label: 'Đang thực hiện', color: '#f59e0b', bg: '#fef3c7', icon: Clock },
-  pending:    { label: 'Chưa thực hiện', color: '#94a3b8', bg: '#f1f5f9', icon: Circle },
+  done:       { label: 'Hoàn thành', color: '#34d399', bg: 'rgba(16, 185, 129, 0.15)', icon: Check },
+  inprogress: { label: 'Đang thực hiện', color: '#fbbf24', bg: 'rgba(245, 158, 11, 0.15)', icon: Clock },
+  pending:    { label: 'Chưa thực hiện', color: '#94a3b8', bg: 'rgba(148, 163, 184, 0.15)', icon: Circle },
 };
 
 /* ─── Step Badge ─── */
@@ -35,7 +35,7 @@ const StepBadge = ({ status }) => {
 };
 
 /* ─── Workflow Step Row ─── */
-const StepRow = ({ step, index, total, onEdit, onDelete, onMoveUp, onMoveDown, isAdmin }) => {
+const StepRow = ({ step, index, total, onEdit, onDelete, onMoveUp, onMoveDown, isAdmin, partners }) => {
   const cfg = STATUS_CONFIG[step.status] || STATUS_CONFIG.pending;
   const Icon = cfg.icon;
   const isFirst = index === 0;
@@ -87,7 +87,7 @@ const StepRow = ({ step, index, total, onEdit, onDelete, onMoveUp, onMoveDown, i
         <div style={{ width: '28px', height: '28px', borderRadius: '50%', backgroundColor: cfg.bg, border: `2px solid ${cfg.color}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, zIndex: 1 }}>
           <Icon size={13} color={cfg.color} />
         </div>
-        {!isLast && <div style={{ width: '2px', flex: 1, backgroundColor: step.status === 'done' ? '#10b981' : '#e2e8f0', minHeight: '20px', marginTop: '2px' }} />}
+        {!isLast && <div style={{ width: '2px', flex: 1, backgroundColor: step.status === 'done' ? 'var(--color-success)' : 'var(--color-border)', minHeight: '20px', marginTop: '2px' }} />}
       </div>
 
       {/* Content */}
@@ -97,10 +97,12 @@ const StepRow = ({ step, index, total, onEdit, onDelete, onMoveUp, onMoveDown, i
           {step.name}
         </div>
 
-        {/* Row 2: Ngày hiệu lực | Trạng thái + Sửa/Xóa */}
+        {/* Row 2: Ngày mục tiêu, Ngày hiệu lực | Trạng thái + Sửa/Xóa */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap' }}>
-          <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
-            {step.effectiveDate ? `📅 ${step.effectiveDate}` : ''}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
+            {step.targetDate && <div>🎯 Mục tiêu: {step.targetDate}</div>}
+            {step.effectiveDate && <div>📅 Hiệu lực: {step.effectiveDate}</div>}
+            {step.implementingUnit && <div>🏢 ĐVTH: {partners?.find(p => p.id === step.implementingUnit)?.name || step.implementingUnit}</div>}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
             <StepBadge status={step.status} />
@@ -118,7 +120,7 @@ const StepRow = ({ step, index, total, onEdit, onDelete, onMoveUp, onMoveDown, i
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '6px' }}>
             {attachments.map((att, i) => (
               <a key={i} href={att.url} target="_blank" rel="noreferrer"
-                style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '2px 8px', borderRadius: '6px', backgroundColor: '#eff6ff', color: '#2563eb', fontSize: '0.7rem', textDecoration: 'none', border: '1px solid #bfdbfe' }}>
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '2px 8px', borderRadius: '6px', backgroundColor: 'rgba(59, 130, 246, 0.15)', color: '#93c5fd', fontSize: '0.7rem', textDecoration: 'none', border: '1px solid rgba(59, 130, 246, 0.3)' }}>
                 <Paperclip size={10} /> {att.name}
               </a>
             ))}
@@ -130,19 +132,17 @@ const StepRow = ({ step, index, total, onEdit, onDelete, onMoveUp, onMoveDown, i
 };
 
 /* ─── Project Legal Card ─── */
-const ProjectLegalCard = ({ project, steps, isAdmin, onAddStep, onEditStep, onDeleteStep, onMoveStep }) => {
+const ProjectLegalCard = ({ project, steps, isAdmin, onAddStep, onEditStep, onDeleteStep, onMoveStep, partners }) => {
   const [expanded, setExpanded] = useState(false);
   const done = steps.filter(s => s.status === 'done').length;
   const progress = steps.length > 0 ? Math.round((done / steps.length) * 100) : 0;
   const sorted = [...steps].sort((a, b) => (a.order || 0) - (b.order || 0));
 
   return (
-    <div style={{ backgroundColor: '#fff', borderRadius: '16px', overflow: 'hidden', border: '1px solid var(--color-border)', boxShadow: '0 2px 12px rgba(0,0,0,0.07)', transition: 'box-shadow 0.2s' }}
-      onMouseEnter={e => e.currentTarget.style.boxShadow = '0 6px 24px rgba(0,0,0,0.12)'}
-      onMouseLeave={e => e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.07)'}>
+    <div className="card" style={{ overflow: 'hidden' }}>
 
       {/* Header image */}
-      <div style={{ position: 'relative', height: '140px', overflow: 'hidden', backgroundColor: '#e2e8f0' }}>
+      <div style={{ position: 'relative', height: '140px', overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.05)' }}>
         {project.image
           ? <img src={project.image} alt={project.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg,#667eea,#764ba2)', color: 'white', fontSize: '2rem' }}>🏗️</div>
@@ -158,8 +158,8 @@ const ProjectLegalCard = ({ project, steps, isAdmin, onAddStep, onEditStep, onDe
       {/* Body */}
       <div style={{ padding: '1rem' }}>
         <h3 style={{ fontWeight: '700', fontSize: '0.95rem', color: 'var(--color-text-main)', marginBottom: '0.5rem', lineHeight: '1.3' }}>{project.name}</h3>
-        <div style={{ height: '6px', borderRadius: '3px', backgroundColor: '#e2e8f0', marginBottom: '0.75rem', overflow: 'hidden' }}>
-          <div style={{ height: '100%', width: `${progress}%`, borderRadius: '3px', background: progress === 100 ? '#10b981' : 'linear-gradient(90deg,#6366f1,#8b5cf6)', transition: 'width 0.5s ease' }} />
+        <div style={{ height: '6px', borderRadius: '3px', backgroundColor: 'var(--color-bg-surface-hover)', marginBottom: '0.75rem', overflow: 'hidden' }}>
+          <div style={{ height: '100%', width: `${progress}%`, borderRadius: '3px', background: progress === 100 ? 'var(--color-success)' : 'linear-gradient(90deg,#6366f1,#8b5cf6)', transition: 'width 0.5s ease' }} />
         </div>
         <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginBottom: '0.75rem' }}>
           {done}/{steps.length} bước pháp lý • {steps.filter(s => s.status === 'inprogress').length} đang thực hiện
@@ -191,6 +191,7 @@ const ProjectLegalCard = ({ project, steps, isAdmin, onAddStep, onEditStep, onDe
                   onDelete={onDeleteStep}
                   onMoveUp={() => onMoveStep(sorted, i, i - 1)}
                   onMoveDown={() => onMoveStep(sorted, i, i + 1)}
+                  partners={partners}
                 />
               ))
             }
@@ -202,9 +203,10 @@ const ProjectLegalCard = ({ project, steps, isAdmin, onAddStep, onEditStep, onDe
 };
 
 /* ─── Step Form Modal ─── */
-const StepFormModal = ({ project, editingStep, onClose, onSave, savedCount }) => {
+const StepFormModal = ({ project, editingStep, onClose, onSave, savedCount, partners }) => {
   const fileInputRef = useRef(null);
   const [uploading, setUploading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [uploadError, setUploadError] = useState('');
   const [savedMsg, setSavedMsg] = useState(false);
 
@@ -212,6 +214,8 @@ const StepFormModal = ({ project, editingStep, onClose, onSave, savedCount }) =>
     name: '',
     status: 'pending',
     effectiveDate: '',
+    targetDate: '',
+    implementingUnit: '',
     summary: '',
     order: 0,
     attachments: [],
@@ -223,6 +227,8 @@ const StepFormModal = ({ project, editingStep, onClose, onSave, savedCount }) =>
           name: editingStep.name || '',
           status: editingStep.status || 'pending',
           effectiveDate: editingStep.effectiveDate || editingStep.completedDate || '',
+          targetDate: editingStep.targetDate || '',
+          implementingUnit: editingStep.implementingUnit || '',
           summary: editingStep.summary || editingStep.note || '',
           order: editingStep.order ?? 0,
           attachments: editingStep.attachments || [],
@@ -280,6 +286,17 @@ const StepFormModal = ({ project, editingStep, onClose, onSave, savedCount }) =>
     setForm(f => ({ ...f, attachments: f.attachments.filter((_, i) => i !== idx) }));
   };
 
+  const handleSaveClick = async () => {
+    setIsSaving(true);
+    try {
+      await onSave(form);
+    } catch (error) {
+      // Error is already alerted in parent
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '520px', padding: '2rem' }}>
@@ -306,6 +323,17 @@ const StepFormModal = ({ project, editingStep, onClose, onSave, savedCount }) =>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label">Ngày mục tiêu</label>
+              <input type="date" className="input-field" value={form.targetDate} onChange={e => setForm({ ...form, targetDate: e.target.value })} />
+            </div>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label">Ngày hiệu lực</label>
+              <input type="date" className="input-field" value={form.effectiveDate} onChange={e => setForm({ ...form, effectiveDate: e.target.value })} />
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div className="form-group" style={{ marginBottom: 0 }}>
               <label className="form-label">Trạng thái</label>
               <select className="input-field" value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}>
                 <option value="pending">⚪ Chưa thực hiện</option>
@@ -314,8 +342,13 @@ const StepFormModal = ({ project, editingStep, onClose, onSave, savedCount }) =>
               </select>
             </div>
             <div className="form-group" style={{ marginBottom: 0 }}>
-              <label className="form-label">Ngày hiệu lực</label>
-              <input type="date" className="input-field" value={form.effectiveDate} onChange={e => setForm({ ...form, effectiveDate: e.target.value })} />
+              <label className="form-label">Đơn vị thực hiện</label>
+              <select className="input-field" value={form.implementingUnit} onChange={e => setForm({ ...form, implementingUnit: e.target.value })}>
+                <option value="">-- Chọn đối tác --</option>
+                {partners?.map(p => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
             </div>
           </div>
 
@@ -325,7 +358,7 @@ const StepFormModal = ({ project, editingStep, onClose, onSave, savedCount }) =>
           </div>
 
           {savedMsg && (
-            <div style={{ padding: '0.5rem 0.75rem', backgroundColor: '#d1fae5', borderRadius: '8px', fontSize: '0.78rem', color: '#065f46', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div style={{ padding: '0.5rem 0.75rem', backgroundColor: 'rgba(16, 185, 129, 0.15)', borderRadius: '8px', fontSize: '0.78rem', color: '#34d399', display: 'flex', alignItems: 'center', gap: '6px' }}>
               ✅ Đã lưu! Nhập tiếp bước pháp lý mới...
             </div>
           )}
@@ -338,20 +371,20 @@ const StepFormModal = ({ project, editingStep, onClose, onSave, savedCount }) =>
                 {uploading ? <><Loader size={14} style={{ animation: 'spin 1s linear infinite' }} /> Đang tải lên...</> : <><Paperclip size={14} /> Chọn tệp đính kèm</>}
               </button>
               {uploadError && (
-                <div style={{ marginTop: '0.5rem', padding: '6px 10px', backgroundColor: '#fee2e2', borderRadius: '6px', fontSize: '0.75rem', color: '#dc2626' }}>
+                <div style={{ marginTop: '0.5rem', padding: '6px 10px', backgroundColor: 'rgba(239, 68, 68, 0.15)', borderRadius: '6px', fontSize: '0.75rem', color: '#f87171' }}>
                   ⚠️ {uploadError}
                 </div>
               )}
               {form.attachments.length > 0 && (
                 <div style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                   {form.attachments.map((att, idx) => (
-                    <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 8px', backgroundColor: '#eff6ff', borderRadius: '6px', fontSize: '0.78rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#2563eb', overflow: 'hidden' }}>
+                    <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 8px', backgroundColor: 'rgba(59, 130, 246, 0.15)', borderRadius: '6px', fontSize: '0.78rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#93c5fd', overflow: 'hidden' }}>
                         <FileText size={12} />
                         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{att.name}</span>
                       </div>
                       <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
-                        <a href={att.url} target="_blank" rel="noreferrer" style={{ color: '#2563eb' }} title="Tải xuống"><Download size={12} /></a>
+                        <a href={att.url} target="_blank" rel="noreferrer" style={{ color: '#93c5fd' }} title="Tải xuống"><Download size={12} /></a>
                         <button type="button" onClick={() => removeAttachment(idx)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-danger)', padding: 0 }} title="Xóa"><X size={12} /></button>
                       </div>
                     </div>
@@ -363,9 +396,10 @@ const StepFormModal = ({ project, editingStep, onClose, onSave, savedCount }) =>
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid var(--color-border)' }}>
-          <button className="btn btn-outline" onClick={onClose}>Hủy</button>
-          <button className="btn btn-primary" onClick={() => onSave(form)} style={{ display: 'flex', alignItems: 'center', gap: '6px' }} disabled={!form.name.trim() || uploading}>
-            <Save size={15} /> {editingStep ? 'Cập nhật' : 'Lưu bước'}
+          <button className="btn btn-outline" onClick={onClose} disabled={isSaving}>Hủy</button>
+          <button className="btn btn-primary" onClick={handleSaveClick} style={{ display: 'flex', alignItems: 'center', gap: '6px' }} disabled={!form.name.trim() || uploading || isSaving}>
+            {isSaving ? <Loader size={15} style={{ animation: 'spin 1s linear infinite' }} /> : <Save size={15} />}
+            {editingStep ? 'Cập nhật' : 'Lưu bước'}
           </button>
         </div>
       </div>
@@ -375,7 +409,7 @@ const StepFormModal = ({ project, editingStep, onClose, onSave, savedCount }) =>
 
 /* ─── Main Page ─── */
 const PhapLy = () => {
-  const { projects, legalSteps, addLegalStep, updateLegalStep, deleteLegalStep, userRole } = useContext(DocumentContext);
+  const { projects, legalSteps, addLegalStep, updateLegalStep, deleteLegalStep, userRole, partners } = useContext(DocumentContext);
   const isAdmin = userRole === 'Admin';
   const [addingToProject, setAddingToProject] = useState(null);
   const [editingStep, setEditingStep] = useState(null);
@@ -384,13 +418,21 @@ const PhapLy = () => {
   const [savedCount, setSavedCount] = useState(0);
 
   const handleSave = async (form) => {
-    if (editingStep) {
-      await updateLegalStep(editingStep.id, form);
-      setEditingStep(null);
-      setEditingProject(null);
-    } else {
-      await addLegalStep(addingToProject.id, form);
-      setSavedCount(c => c + 1); // reset form, giữ modal mở
+    try {
+      if (editingStep) {
+        await updateLegalStep(editingStep.id, form);
+        setEditingStep(null);
+        setEditingProject(null);
+      } else {
+        const projectSteps = legalSteps.filter(s => s.projectId === addingToProject.id || s.projectId === addingToProject.id?.toString());
+        const maxOrder = projectSteps.reduce((max, s) => Math.max(max, s.order ?? 0), -1);
+        await addLegalStep(addingToProject.id, { ...form, order: maxOrder + 1 });
+        setSavedCount(c => c + 1); // reset form, giữ modal mở
+      }
+    } catch (err) {
+      console.error("Lỗi khi lưu:", err);
+      alert("Đã có lỗi xảy ra khi lưu: " + err.message + "\n(Vui lòng kiểm tra quyền ghi của Firebase Firestore hoặc kết nối mạng)");
+      throw err;
     }
   };
 
@@ -405,17 +447,20 @@ const PhapLy = () => {
     }
   };
 
-  // Swap order values between two adjacent steps
+  // Di chuyển vị trí và cập nhật lại order cho tất cả các item nếu cần để sửa lỗi trùng order
   const handleMoveStep = async (sortedSteps, fromIdx, toIdx) => {
     if (toIdx < 0 || toIdx >= sortedSteps.length) return;
-    const a = sortedSteps[fromIdx];
-    const b = sortedSteps[toIdx];
-    const orderA = a.order ?? fromIdx;
-    const orderB = b.order ?? toIdx;
-    await Promise.all([
-      updateLegalStep(a.id, { ...a, order: orderB }),
-      updateLegalStep(b.id, { ...b, order: orderA }),
-    ]);
+    const newSteps = [...sortedSteps];
+    const [moved] = newSteps.splice(fromIdx, 1);
+    newSteps.splice(toIdx, 0, moved);
+
+    const promises = [];
+    newSteps.forEach((step, index) => {
+      if (step.order !== index) {
+        promises.push(updateLegalStep(step.id, { ...step, order: index }));
+      }
+    });
+    await Promise.all(promises);
   };
 
   return (
@@ -432,7 +477,7 @@ const PhapLy = () => {
       {projects.length === 0
         ? <div style={{ textAlign: 'center', padding: '4rem', color: 'var(--color-text-muted)' }}>Chưa có dự án nào. Vui lòng tạo dự án ở trang "Dự án".</div>
         : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '1.5rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '1.5rem', alignItems: 'start' }}>
             {projects.map(project => {
               const steps = legalSteps.filter(s => s.projectId === project.id || s.projectId === project.id?.toString());
               return (
@@ -445,6 +490,7 @@ const PhapLy = () => {
                   onEditStep={(step) => handleEdit(project, step)}
                   onDeleteStep={handleDelete}
                   onMoveStep={handleMoveStep}
+                  partners={partners}
                 />
               );
             })}
@@ -460,6 +506,7 @@ const PhapLy = () => {
           onClose={() => { setAddingToProject(null); setEditingStep(null); setEditingProject(null); setSavedCount(0); }}
           onSave={handleSave}
           savedCount={savedCount}
+          partners={partners}
         />
       )}
     </div>

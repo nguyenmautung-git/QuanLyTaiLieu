@@ -1,5 +1,5 @@
 import React, { useState, useContext } from 'react';
-import { X, Upload, Check } from 'lucide-react';
+import { X, Upload, Check, Calendar, ChevronDown } from 'lucide-react';
 import { DocumentContext } from '../context/DocumentContext';
 import { ALL_AGENCIES, EMPLOYEE_LEVELS } from '../data';
 import { v4 as uuidv4 } from 'uuid';
@@ -16,6 +16,11 @@ const displayDate = (isoDateStr) => {
 const DocumentForm = ({ onClose, initialData, previewMode = false }) => {
   const { addDocument, editDocument, documents, documentTypes, projects, legalSteps = [] } = useContext(DocumentContext);
   
+  const uniqueAgencies = Array.from(new Set([
+    ...ALL_AGENCIES,
+    ...(documents || []).map(d => d.issuingAgency).filter(Boolean)
+  ])).sort();
+
   // Tự động tạo mã tài liệu theo ngày mới nhất và reset số thứ tự
   const today = new Date();
   const dateStr = format(today, 'dd.MM.yyyy');
@@ -37,6 +42,8 @@ const DocumentForm = ({ onClose, initialData, previewMode = false }) => {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState([]);
+  const [dateInputText, setDateInputText] = useState(displayDate(initialData ? initialData.effectiveDate : ''));
+  const [showAgencyDropdown, setShowAgencyDropdown] = useState(false);
   
   const [formData, setFormData] = useState(initialData || {
     documentCode: autoCode,
@@ -72,20 +79,33 @@ const DocumentForm = ({ onClose, initialData, previewMode = false }) => {
 
   const handleAccessLevelToggle = (levelId) => {
     setFormData(prev => {
-      const levels = [...prev.accessLevels];
+      let levels = [...prev.accessLevels];
       if (levels.includes(levelId)) {
-        return { ...prev, accessLevels: levels.filter(l => l !== levelId) };
+        levels = levels.filter(l => l !== levelId);
       } else {
         levels.push(levelId);
-        return { ...prev, accessLevels: levels };
+        EMPLOYEE_LEVELS.forEach(lvl => {
+          if (lvl.id > levelId && !levels.includes(lvl.id)) {
+            levels.push(lvl.id);
+          }
+        });
       }
+      return { ...prev, accessLevels: levels };
     });
+  };
+
+  const removeOldAttachment = (indexToRemove) => {
+    setFormData(prev => ({
+      ...prev,
+      attachments: (prev.attachments || []).filter((_, index) => index !== indexToRemove)
+    }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (selectedFiles.length === 0 && !formData.attachmentLink && (!initialData || (!initialData.attachments && !initialData.attachmentLink))) {
+    const hasOldAttachments = formData.attachments && formData.attachments.length > 0;
+    if (selectedFiles.length === 0 && !formData.attachmentLink && !hasOldAttachments) {
       alert("Vui lòng chọn file đính kèm!");
       return;
     }
@@ -164,50 +184,124 @@ const DocumentForm = ({ onClose, initialData, previewMode = false }) => {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <div className="form-group">
               <label className="form-label">Phân loại tài liệu {(!previewMode) && <span style={{ color: 'var(--color-danger)' }}>*</span>}</label>
-              <input disabled={previewMode} required list="docTypes" name="documentType" value={formData.documentType} onChange={handleChange} className="input-field" placeholder="Chọn hoặc nhập mới" />
-              <datalist id="docTypes">
-                {documentTypes.map(t => <option key={t.id} value={t.name} />)}
-              </datalist>
+              <select disabled={previewMode} required name="documentType" value={formData.documentType} onChange={handleChange} className="input-field">
+                <option value="">-- Chọn phân loại --</option>
+                {documentTypes.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
+              </select>
             </div>
             <div className="form-group">
               <label className="form-label">Cơ quan ban hành {(!previewMode) && <span style={{ color: 'var(--color-danger)' }}>*</span>}</label>
-              <input disabled={previewMode} required list="agencies" name="issuingAgency" value={formData.issuingAgency} onChange={handleChange} className="input-field" placeholder="Chọn hoặc nhập mới" />
-              <datalist id="agencies">
-                {ALL_AGENCIES.map(a => <option key={a} value={a} />)}
-              </datalist>
+              <div style={{ position: 'relative' }}>
+                <input 
+                  disabled={previewMode} 
+                  required 
+                  name="issuingAgency" 
+                  value={formData.issuingAgency} 
+                  onChange={handleChange} 
+                  onFocus={() => setShowAgencyDropdown(true)}
+                  onBlur={() => setShowAgencyDropdown(false)}
+                  className="input-field" 
+                  placeholder="Chọn hoặc nhập mới" 
+                  style={{ paddingRight: !previewMode ? '2rem' : undefined }}
+                  autoComplete="off"
+                />
+                {!previewMode && (
+                  <button 
+                    type="button"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      setShowAgencyDropdown(!showAgencyDropdown);
+                    }}
+                    style={{ position: 'absolute', right: '0.5rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', padding: '4px' }}
+                  >
+                    <ChevronDown size={18} />
+                  </button>
+                )}
+                {showAgencyDropdown && !previewMode && uniqueAgencies.length > 0 && (
+                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: 'var(--color-bg-surface)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', marginTop: '4px', maxHeight: '200px', overflowY: 'auto', zIndex: 10, boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.5)' }}>
+                    {uniqueAgencies.map((agency, idx) => (
+                      <div 
+                        key={idx}
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          setFormData(prev => ({ ...prev, issuingAgency: agency }));
+                          setShowAgencyDropdown(false);
+                        }}
+                        style={{ padding: '0.5rem 1rem', cursor: 'pointer', borderBottom: idx < uniqueAgencies.length - 1 ? '1px solid var(--color-bg-surface-hover)' : 'none', color: 'var(--color-text-main)' }}
+                        onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'var(--color-bg-surface-hover)'}
+                        onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                      >
+                        {agency}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', alignItems: 'start' }}>
             <div className="form-group" style={{ position: 'relative', marginBottom: 0 }}>
               <label className="form-label">Ngày hiệu lực {(!previewMode) && <span style={{ color: 'var(--color-danger)' }}>*</span>}</label>
-              <input 
-                disabled={previewMode} 
-                type="text" 
-                className="input-field" 
-                value={displayDate(formData.effectiveDate)} 
-                placeholder="dd/mm/yyyy" 
-                readOnly 
-                onClick={(e) => {
-                  if (!previewMode) {
-                    const dateInput = e.currentTarget.nextElementSibling;
-                    if (dateInput && dateInput.showPicker) {
-                      try { dateInput.showPicker(); } catch (err) {}
-                    }
-                  }
-                }}
-                style={{ cursor: previewMode ? 'default' : 'pointer' }}
-              />
-              {!previewMode && (
+              <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
                 <input 
-                  required 
-                  type="date" 
-                  name="effectiveDate" 
-                  value={formData.effectiveDate} 
-                  onChange={handleChange} 
-                  style={{ position: 'absolute', bottom: 0, right: 0, opacity: 0, pointerEvents: 'none', width: '10px', height: '10px', padding: 0, margin: 0, border: 0 }} 
+                  disabled={previewMode} 
+                  type="text" 
+                  className="input-field" 
+                  value={dateInputText} 
+                  onChange={(e) => {
+                    const text = e.target.value;
+                    setDateInputText(text);
+                    const regex = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/;
+                    const match = text.match(regex);
+                    if (match) {
+                      const d = parseInt(match[1], 10);
+                      const m = parseInt(match[2], 10);
+                      const y = parseInt(match[3], 10);
+                      if (d > 0 && d <= 31 && m > 0 && m <= 12 && y > 1000) {
+                        const isoStr = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                        setFormData(prev => ({ ...prev, effectiveDate: isoStr }));
+                      }
+                    }
+                  }}
+                  onBlur={() => {
+                    if (formData.effectiveDate) {
+                      setDateInputText(displayDate(formData.effectiveDate));
+                    } else {
+                      setDateInputText('');
+                    }
+                  }}
+                  placeholder="dd/mm/yyyy" 
+                  style={{ paddingRight: !previewMode ? '2.5rem' : '1rem' }}
                 />
-              )}
+                {!previewMode && (
+                  <button 
+                    type="button"
+                    onClick={(e) => {
+                      const dateInput = e.currentTarget.nextElementSibling;
+                      if (dateInput && dateInput.showPicker) {
+                        try { dateInput.showPicker(); } catch (err) {}
+                      }
+                    }}
+                    style={{ position: 'absolute', right: '0.5rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', padding: '4px' }}
+                  >
+                    <Calendar size={18} />
+                  </button>
+                )}
+                {!previewMode && (
+                  <input 
+                    required 
+                    type="date" 
+                    name="effectiveDate" 
+                    value={formData.effectiveDate} 
+                    onChange={(e) => {
+                      handleChange(e);
+                      setDateInputText(displayDate(e.target.value));
+                    }}
+                    style={{ position: 'absolute', bottom: 0, right: 0, opacity: 0, pointerEvents: 'none', width: '10px', height: '10px', padding: 0, margin: 0, border: 0 }} 
+                  />
+                )}
+              </div>
             </div>
 
             {/* Bước pháp lý */}
@@ -327,7 +421,7 @@ const DocumentForm = ({ onClose, initialData, previewMode = false }) => {
             <div className="form-group">
               <label className="form-label">Tài liệu đính kèm mới (Tuỳ chọn nếu đã có) <span style={{ color: 'var(--color-danger)' }}>*</span></label>
               <input 
-                required={!initialData && selectedFiles.length === 0} 
+                required={(!formData.attachments || formData.attachments.length === 0) && selectedFiles.length === 0} 
                 type="file" 
                 multiple
                 onChange={(e) => setSelectedFiles(Array.from(e.target.files))} 
@@ -335,9 +429,24 @@ const DocumentForm = ({ onClose, initialData, previewMode = false }) => {
                 style={{ padding: '0.5rem', backgroundColor: 'var(--color-bg-surface-hover)' }}
                 accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg"
               />
-              {initialData && initialData.attachments && initialData.attachments.length > 0 && (
+              {formData.attachments && formData.attachments.length > 0 && (
                 <div style={{ marginTop: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>
-                  Tệp cũ đã lưu: {initialData.attachments.map(f => f.name).join(', ')}
+                  <div style={{ marginBottom: '0.25rem' }}>Tệp cũ đã lưu:</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                    {formData.attachments.map((f, idx) => (
+                      <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', padding: '0.25rem 0.5rem', backgroundColor: 'var(--color-bg-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)' }}>
+                        <span style={{ wordBreak: 'break-all' }}>{f.name}</span>
+                        <button 
+                          type="button" 
+                          onClick={() => removeOldAttachment(idx)}
+                          style={{ background: 'none', border: 'none', color: 'var(--color-danger)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0.125rem' }}
+                          title="Xóa tệp này"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
               {selectedFiles.length > 0 && (

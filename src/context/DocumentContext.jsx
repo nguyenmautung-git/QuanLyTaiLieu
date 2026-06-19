@@ -20,6 +20,7 @@ export const DocumentProvider = ({ children }) => {
   const [biddingPackages, setBiddingPackages] = useState([]);
   const [legalSteps, setLegalSteps] = useState([]); // legal workflow steps per project
   const [scheduleSteps, setScheduleSteps] = useState([]); // schedule workflow steps per project
+  const [acceptanceSteps, setAcceptanceSteps] = useState([]); // acceptance & payment workflow steps per project
 
   useEffect(() => {
     // Theo dõi danh sách tài liệu
@@ -39,9 +40,14 @@ export const DocumentProvider = ({ children }) => {
         if (!snapshot.empty) {
           const listData = snapshot.docs.map(doc => ({
             id: doc.id,
-            name: doc.data().name
-          })).sort((a, b) => a.name.localeCompare(b.name));
-          setGlobalLists(prev => ({ ...prev, [config.key]: listData }));
+            ...doc.data()
+          })).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+          
+          const uniqueData = listData.filter((item, index, self) => 
+            index === self.findIndex((t) => t.name === item.name)
+          );
+
+          setGlobalLists(prev => ({ ...prev, [config.key]: uniqueData }));
         } else {
           // Nạp dữ liệu mẫu lên Firebase
           config.initialData.forEach(async (item) => {
@@ -120,6 +126,12 @@ export const DocumentProvider = ({ children }) => {
       setScheduleSteps(data);
     });
 
+    // Theo dõi nghiệm thu thanh toán theo dự án
+    const unsubscribeAcceptance = onSnapshot(collection(db, 'acceptanceSteps'), (snapshot) => {
+      const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      setAcceptanceSteps(data);
+    });
+
     return () => {
       unsubscribeDocs();
       listUnsubscribes.forEach(unsub => unsub());
@@ -129,6 +141,7 @@ export const DocumentProvider = ({ children }) => {
       unsubscribeBidding();
       unsubscribeLegal();
       unsubscribeSchedule();
+      unsubscribeAcceptance();
     };
   }, []);
 
@@ -136,16 +149,18 @@ export const DocumentProvider = ({ children }) => {
     setUserRole(prev => prev === 'Admin' ? 'User' : 'Admin');
   };
 
-  const addListItem = async (collectionName, name) => {
+  const addListItem = async (collectionName, dataOrName) => {
     // Kiểm tra trùng lặp
     const config = LIST_CONFIGS.find(c => c.collectionName === collectionName);
     if (!config) return;
 
+    const name = typeof dataOrName === 'string' ? dataOrName : dataOrName.name;
     const currentList = globalLists[config.key];
     const exists = currentList.find(t => t.name.toLowerCase() === name.toLowerCase());
     if (name && !exists) {
       try {
-        await addDoc(collection(db, collectionName), { name });
+        const payload = typeof dataOrName === 'string' ? { name } : dataOrName;
+        await addDoc(collection(db, collectionName), payload);
       } catch (error) {
         console.error(`Lỗi khi thêm vào ${collectionName}: `, error);
       }
@@ -160,9 +175,10 @@ export const DocumentProvider = ({ children }) => {
     }
   };
 
-  const editListItem = async (collectionName, id, newName) => {
+  const editListItem = async (collectionName, id, newData) => {
     try {
-      await updateDoc(doc(db, collectionName, id), { name: newName });
+      const payload = typeof newData === 'string' ? { name: newData } : newData;
+      await updateDoc(doc(db, collectionName, id), payload);
     } catch (error) {
       console.error(`Lỗi khi sửa ${collectionName}: `, error);
     }
@@ -368,6 +384,17 @@ export const DocumentProvider = ({ children }) => {
     await deleteDoc(doc(db, 'scheduleSteps', id));
   };
 
+  // ==== Acceptance Steps ====
+  const addAcceptanceStep = async (projectId, stepData) => {
+    await addDoc(collection(db, 'acceptanceSteps'), { projectId, ...stepData, createdAt: new Date().toISOString() });
+  };
+  const updateAcceptanceStep = async (id, stepData) => {
+    await updateDoc(doc(db, 'acceptanceSteps', id), { ...stepData, updatedAt: new Date().toISOString() });
+  };
+  const deleteAcceptanceStep = async (id) => {
+    await deleteDoc(doc(db, 'acceptanceSteps', id));
+  };
+
   return (
     <DocumentContext.Provider value={{
       documents, addDocument, editDocument, deleteDocument, markAsRead, getNewCount,
@@ -379,7 +406,8 @@ export const DocumentProvider = ({ children }) => {
       partners, addPartner, editPartner, deletePartner,
       biddingPackages, addBiddingPackage, editBiddingPackage, deleteBiddingPackage, reorderBiddingPackages,
       legalSteps, addLegalStep, updateLegalStep, deleteLegalStep,
-      scheduleSteps, addScheduleStep, updateScheduleStep, deleteScheduleStep
+      scheduleSteps, addScheduleStep, updateScheduleStep, deleteScheduleStep,
+      acceptanceSteps, addAcceptanceStep, updateAcceptanceStep, deleteAcceptanceStep
     }}>
       {children}
     </DocumentContext.Provider>
