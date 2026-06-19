@@ -7,9 +7,9 @@ import { generateToken, hashToken, getAppUrl } from '../utils/inviteUtils';
 
 export const DocumentContext = createContext();
 
-export const DocumentProvider = ({ children }) => {
+export const DocumentProvider = ({ children, currentUser }) => {
   const [documents, setDocuments] = useState([]);
-  const [userRole, setUserRole] = useState('Admin'); // 'Admin' hoặc 'User'
+  const [userRole, setUserRole] = useState('User');
   const [globalLists, setGlobalLists] = useState(
     LIST_CONFIGS.reduce((acc, config) => {
       acc[config.key] = [];
@@ -160,6 +160,15 @@ export const DocumentProvider = ({ children }) => {
     };
   }, []);
 
+  // Đồng bộ userRole từ member document của người đang đăng nhập
+  useEffect(() => {
+    if (currentUser && members.length > 0) {
+      const member = members.find(m => m.email === currentUser.email);
+      if (member) setUserRole(member.role || 'User');
+    }
+  }, [members, currentUser]);
+
+  // Giữ lại cho Admin để test giao diện User (debug)
   const toggleRole = () => {
     setUserRole(prev => prev === 'Admin' ? 'User' : 'Admin');
   };
