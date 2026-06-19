@@ -3,6 +3,7 @@ import { UserPlus, Mail, Phone, Shield, Star, X, Share2 } from 'lucide-react';
 import { EMPLOYEE_LEVELS } from '../data';
 import { DocumentContext } from '../context/DocumentContext';
 import html2pdf from 'html2pdf.js';
+import ProfileModal from './ProfileModal';
 
 const formatPhone = (phone) => {
   if (!phone) return '';
@@ -304,74 +305,11 @@ const Members = () => {
       </div>
 
       {viewingMember && (
-        <div className="modal-overlay" onClick={() => setViewingMember(null)}>
-          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ padding: '2rem', maxWidth: '500px' }}>
-            <div id="member-printable-area" style={{ padding: '2rem', margin: '-2rem', backgroundColor: '#1e293b', color: '#f8fafc', borderRadius: 'var(--radius-lg)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
-                <div style={{ display: 'flex', gap: '1.25rem', alignItems: 'center' }}>
-                  <div style={{ width: '80px', height: '80px', borderRadius: '50%', border: '3px solid white', boxShadow: 'var(--shadow-sm)', backgroundImage: `url(${viewingMember.avatar})`, backgroundSize: 'cover', backgroundPosition: 'center', flexShrink: 0 }} />
-                  <div>
-                    <h2 style={{ fontSize: '1.5rem', fontWeight: '700', margin: 0, color: '#f8fafc' }}>{viewingMember.name}</h2>
-                    <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
-                      <span style={{ 
-                        backgroundColor: viewingMember.role === 'Admin' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(59, 130, 246, 0.15)', 
-                        color: viewingMember.role === 'Admin' ? '#10b981' : '#3b82f6', 
-                        padding: '0.25rem 0.75rem', borderRadius: '1rem', fontSize: '0.75rem', fontWeight: '600' 
-                      }}>
-                        {viewingMember.role}
-                      </span>
-                      <span title={EMPLOYEE_LEVELS.find(l => l.id === viewingMember.level)?.fullName} style={{ 
-                        backgroundColor: 'rgba(240, 173, 78, 0.15)', 
-                        color: '#d97706', 
-                        padding: '0.25rem 0.75rem', borderRadius: '1rem', fontSize: '0.75rem', fontWeight: '600',
-                        display: 'flex', alignItems: 'center', gap: '4px'
-                      }}>
-                        <Star size={12} /> Cấp {viewingMember.level}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <button data-html2canvas-ignore="true" onClick={() => setViewingMember(null)} style={{ background: 'var(--color-bg-surface-hover)', border: 'none', color: 'var(--color-text-main)', cursor: 'pointer', padding: '0.5rem', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <X size={20} />
-                </button>
-              </div>
-              
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', backgroundColor: '#0f172a', padding: '1.5rem', borderRadius: 'var(--radius-lg)', border: '1px solid #334155' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                  <span style={{ fontSize: '0.75rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: '600' }}>Email</span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1rem', color: '#f8fafc' }}><Mail size={16} style={{ color: '#f59e0b' }}/> {viewingMember.email}</div>
-                </div>
-                
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', marginTop: '0.5rem' }}>
-                  <span style={{ fontSize: '0.75rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: '600' }}>Số điện thoại</span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1rem', color: '#f8fafc' }}><Phone size={16} style={{ color: '#10b981' }}/> {formatPhone(viewingMember.phone)}</div>
-                </div>
-              </div>
-            </div>
-
-            <div data-html2canvas-ignore="true" style={{ marginTop: '2rem', display: 'flex', justifyContent: 'space-between', gap: '1rem', alignItems: 'center' }}>
-              <button className="btn btn-primary" onClick={() => handleExportPDF(viewingMember)} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <Share2 size={16} /> Chia sẻ (PDF)
-              </button>
-
-              {userRole === 'Admin' ? (
-                <div style={{ display: 'flex', gap: '1rem' }}>
-                  <button className="btn btn-outline" onClick={() => { setEditingId(viewingMember.id); setEditFormData(viewingMember); setViewingMember(null); }}>
-                    Sửa thông tin
-                  </button>
-                  <button className="btn btn-outline" style={{ color: 'var(--color-danger)', borderColor: 'var(--color-border)' }} onClick={() => { 
-                    if (window.confirm('Bạn có chắc chắn muốn xóa thành viên này?')) {
-                      deleteMember(viewingMember.id);
-                      setViewingMember(null);
-                    }
-                  }}>
-                    Xóa
-                  </button>
-                </div>
-              ) : <div></div>}
-            </div>
-          </div>
-        </div>
+        <ProfileModal
+          member={viewingMember}
+          onClose={() => setViewingMember(null)}
+          onEdit={(member) => { handleEditClick(member); }}
+        />
       )}
     </div>
   );

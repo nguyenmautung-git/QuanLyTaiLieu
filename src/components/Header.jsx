@@ -1,11 +1,13 @@
 import React, { useContext, useState, useRef, useEffect } from 'react';
 import { Search, Bell, Plus, User, FileText, X, LogOut, Camera } from 'lucide-react';
 import { DocumentContext } from '../context/DocumentContext';
+import ProfileModal from './ProfileModal';
 
 const Header = ({ currentView, onOpenForm }) => {
-  const { getNewCount, markAsRead, documents, userRole, toggleRole } = useContext(DocumentContext);
+  const { getNewCount, markAsRead, documents, members, userRole, toggleRole } = useContext(DocumentContext);
   const [showNoti, setShowNoti] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
   const notiRef = useRef(null);
   const userMenuRef = useRef(null);
   
@@ -165,12 +167,15 @@ const Header = ({ currentView, onOpenForm }) => {
                 <h3 style={{ margin: '16px 0 8px', fontSize: '1.25rem', fontWeight: '400', color: 'var(--color-text-main)' }}>
                   Xin chào, {userRole === 'Admin' ? 'Mậu Tùng' : 'Người Dùng'}!
                 </h3>
-                <button style={{ 
-                  background: 'transparent', border: '1px solid var(--color-border)', 
-                  borderRadius: '100px', padding: '8px 16px', fontSize: '0.875rem', 
-                  color: 'var(--color-text-main)', cursor: 'pointer', fontWeight: '500'
-                }}>
-                  Quản lý tài khoản
+                <button
+                  onClick={() => { setShowProfile(true); setShowUserMenu(false); }}
+                  style={{ 
+                    background: 'transparent', border: '1px solid var(--color-border)', 
+                    borderRadius: '100px', padding: '8px 16px', fontSize: '0.875rem', 
+                    color: 'var(--color-text-main)', cursor: 'pointer', fontWeight: '500'
+                  }}
+                >
+                  Xem hồ sơ cá nhân
                 </button>
               </div>
 
@@ -209,6 +214,17 @@ const Header = ({ currentView, onOpenForm }) => {
           )}
         </div>
       </div>
+      {showProfile && (() => {
+        const currentMember = members?.find(m =>
+          userRole === 'Admin' ? m.role === 'Admin' : m.role !== 'Admin'
+        ) || members?.[0] || null;
+        return (
+          <ProfileModal
+            member={currentMember}
+            onClose={() => setShowProfile(false)}
+          />
+        );
+      })()}
     </header>
   );
 };
