@@ -1,9 +1,13 @@
 import React, { useContext, useState, useRef, useEffect } from 'react';
-import { Search, Bell, Plus, User, FileText, X, LogOut, Camera } from 'lucide-react';
+import { Search, Bell, Plus, User, FileText, X, LogOut } from 'lucide-react';
 import { DocumentContext } from '../context/DocumentContext';
 
-const Header = ({ currentView, onOpenForm }) => {
+const Header = ({ currentView, onOpenForm, user, onLogout }) => {
   const { getNewCount, markAsRead, documents, userRole, toggleRole } = useContext(DocumentContext);
+
+  const displayName = user?.displayName || user?.email?.split('@')[0] || 'Người dùng';
+  const userEmail = user?.email || '';
+  const avatarLetter = displayName.charAt(0).toUpperCase();
   const [showNoti, setShowNoti] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const notiRef = useRef(null);
@@ -118,8 +122,8 @@ const Header = ({ currentView, onOpenForm }) => {
               <User size={20} />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <span style={{ fontSize: '0.875rem', fontWeight: '600' }}>{userRole === 'Admin' ? 'Quản Trị Viên' : 'Người Dùng'}</span>
-              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{userRole}</span>
+              <span style={{ fontSize: '0.875rem', fontWeight: '600' }}>{displayName}</span>
+              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{userEmail}</span>
             </div>
           </div>
           
@@ -135,7 +139,7 @@ const Header = ({ currentView, onOpenForm }) => {
               {/* Top Bar */}
               <div style={{ display: 'flex', justifyContent: 'center', padding: '16px 16px 8px', position: 'relative' }}>
                 <span style={{ fontSize: '0.85rem', color: 'var(--color-text-main)', fontWeight: '500' }}>
-                  {userRole === 'Admin' ? 'admin@qltk.vn' : 'user@qltk.vn'}
+                  {userEmail}
                 </span>
                 <button onClick={() => setShowUserMenu(false)} style={{ position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer' }}>
                   <X size={20} />
@@ -145,25 +149,23 @@ const Header = ({ currentView, onOpenForm }) => {
               {/* Big Avatar */}
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '10px 20px 20px' }}>
                 <div style={{ position: 'relative' }}>
-                  <div style={{ 
-                    width: '80px', height: '80px', borderRadius: '50%', 
-                    backgroundColor: 'var(--color-bg-surface-hover)', display: 'flex', 
-                    alignItems: 'center', justifyContent: 'center', color: 'var(--color-primary)',
-                    border: '1px solid var(--color-border)'
-                  }}>
-                    <User size={40} />
-                  </div>
-                  <div style={{ 
-                    position: 'absolute', bottom: '0', right: '0', 
-                    width: '26px', height: '26px', borderRadius: '50%', backgroundColor: 'var(--color-bg-surface)', 
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', 
-                    cursor: 'pointer', border: '1px solid var(--color-border)', color: 'var(--color-text-main)'
-                  }}>
-                    <Camera size={14} />
-                  </div>
+                  {user?.photoURL ? (
+                    <img src={user.photoURL} alt={displayName}
+                      style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--color-border)' }} />
+                  ) : (
+                    <div style={{ 
+                      width: '80px', height: '80px', borderRadius: '50%', 
+                      background: 'linear-gradient(135deg, var(--color-primary), var(--color-secondary))',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      color: 'white', fontSize: '2rem', fontWeight: '700',
+                      border: '1px solid var(--color-border)'
+                    }}>
+                      {avatarLetter}
+                    </div>
+                  )}
                 </div>
                 <h3 style={{ margin: '16px 0 8px', fontSize: '1.25rem', fontWeight: '400', color: 'var(--color-text-main)' }}>
-                  Xin chào, {userRole === 'Admin' ? 'Mậu Tùng' : 'Người Dùng'}!
+                  Xin chào, {displayName}!
                 </h3>
                 <button style={{ 
                   background: 'transparent', border: '1px solid var(--color-border)', 
@@ -194,9 +196,14 @@ const Header = ({ currentView, onOpenForm }) => {
                   <span style={{ fontSize: '0.875rem', fontWeight: '500' }}>Thêm tài khoản khác</span>
                 </div>
                 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '14px 24px', cursor: 'pointer', color: 'var(--color-text-main)', borderTop: '1px solid var(--color-border)' }}>
+                <div
+                  onClick={onLogout}
+                  style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '14px 24px', cursor: 'pointer', color: '#f87171', borderTop: '1px solid var(--color-border)' }}
+                  onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(239,68,68,0.08)'}
+                  onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+                >
                   <LogOut size={20} />
-                  <span style={{ fontSize: '0.875rem', fontWeight: '500' }}>Đăng xuất khỏi tất cả tài khoản</span>
+                  <span style={{ fontSize: '0.875rem', fontWeight: '500' }}>Đăng xuất</span>
                 </div>
               </div>
               

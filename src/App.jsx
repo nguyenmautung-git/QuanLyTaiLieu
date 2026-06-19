@@ -1,5 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { auth } from './firebase';
 import { DocumentProvider } from './context/DocumentContext';
+import LoginPage from './components/LoginPage';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import Dashboard from './components/Dashboard';
@@ -24,6 +27,18 @@ import Payment from './components/Payment';
 function App() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [currentView, setCurrentView] = useState('overview');
+  const [user, setUser] = useState(undefined); // undefined = loading, null = not logged in
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      setUser(firebaseUser); // null if logged out, user object if logged in
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const handleLogout = async () => {
+    await signOut(auth);
+  };
 
   const renderContent = () => {
     switch (currentView) {
@@ -43,7 +58,6 @@ function App() {
         return <BiddingPlan />;
       case 'contractorSelection':
         return <ContractorSelection />;
-      // === Quản lý dự án ===
       case 'phapLy':
         return <PhapLy />;
       case 'tienDo':
@@ -73,12 +87,46 @@ function App() {
     }
   };
 
+  // Loading state while Firebase checks auth
+  if (user === undefined) {
+    return (
+      <div style={{
+        minHeight: '100vh', backgroundColor: '#0f172a',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        flexDirection: 'column', gap: '1rem',
+      }}>
+        <div style={{
+          width: '44px', height: '44px',
+          border: '3px solid rgba(59,130,246,0.2)',
+          borderTopColor: '#3b82f6',
+          borderRadius: '50%',
+          animation: 'spin 0.8s linear infinite',
+        }} />
+        <p style={{ color: '#475569', fontSize: '0.875rem', fontFamily: 'Inter, sans-serif' }}>
+          Đang tải...
+        </p>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
+
+  // Not logged in → show Login page
+  if (!user) {
+    return <LoginPage />;
+  }
+
+  // Logged in → show full app
   return (
     <DocumentProvider>
       <div className="app-container">
         <Sidebar currentView={currentView} setCurrentView={setCurrentView} />
         <main className="main-content">
-          <Header currentView={currentView} onOpenForm={() => setIsFormOpen(true)} />
+          <Header
+            currentView={currentView}
+            onOpenForm={() => setIsFormOpen(true)}
+            user={user}
+            onLogout={handleLogout}
+          />
           <div className="content-area">
             {renderContent()}
           </div>
