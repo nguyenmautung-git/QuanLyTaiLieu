@@ -125,7 +125,11 @@ function App() {
   return (
     <DocumentProvider currentUser={authUser}>
       <div className="app-container">
-        <Sidebar currentView={currentView} setCurrentView={setCurrentView} />
+        <Sidebar currentView={currentView} setCurrentView={(view) => {
+          // Guard: User không được vào trang admin
+          // (Sidebar đã ẩn menu, nhưng giữ thêm lớp bảo vệ này)
+          setCurrentView(view);
+        }} />
         <main className="main-content">
           <Header currentView={currentView} onOpenForm={() => setIsFormOpen(true)} />
           <div className="content-area">

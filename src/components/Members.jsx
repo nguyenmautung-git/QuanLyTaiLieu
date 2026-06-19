@@ -1,10 +1,23 @@
 import React, { useState, useContext } from 'react';
-import { UserPlus, Mail, Phone, Shield, Star, X, Share2 } from 'lucide-react';
+import { UserPlus, Mail, Phone, Shield, Star, X, Share2, ShieldOff } from 'lucide-react';
 import { EMPLOYEE_LEVELS } from '../data';
 import { DocumentContext } from '../context/DocumentContext';
 import html2pdf from 'html2pdf.js';
 import ProfileModal from './ProfileModal';
 import InviteUserModal from './InviteUserModal';
+
+const AccessDenied = () => (
+  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', textAlign: 'center', padding: '2rem' }}>
+    <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.5rem' }}>
+      <ShieldOff size={36} style={{ color: '#ef4444' }} />
+    </div>
+    <h2 style={{ fontSize: '1.4rem', fontWeight: '700', color: 'var(--color-text-main)', marginBottom: '0.5rem' }}>Không có quyền truy cập</h2>
+    <p style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem', maxWidth: '360px', lineHeight: '1.7' }}>
+      Trang <strong>Quản lý Thành viên</strong> chỉ dành cho Quản trị viên.<br />
+      Liên hệ Admin nếu bạn cần hỗ trợ.
+    </p>
+  </div>
+);
 
 const formatPhone = (phone) => {
   if (!phone) return '';
@@ -16,6 +29,9 @@ const formatPhone = (phone) => {
 
 const Members = () => {
   const { members, addMember, editMember, deleteMember, userRole } = useContext(DocumentContext);
+
+  // Guard: User không được vào trang này
+  if (userRole !== 'Admin') return <AccessDenied />;
   const [isAdding, setIsAdding] = useState(false);
   const [newMember, setNewMember] = useState({ name: '', email: '', phone: '', role: 'User', level: 1, avatar: '' });
   const [editingId, setEditingId] = useState(null);

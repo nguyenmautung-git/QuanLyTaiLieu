@@ -1,10 +1,22 @@
 import React, { useState, useContext } from 'react';
 import Select from 'react-select';
-import { Building2, Mail, Phone, Globe, MapPin, Briefcase, CreditCard, Star, Paperclip, X, Share2 } from 'lucide-react';
+import { Building2, Mail, Phone, Globe, MapPin, Briefcase, CreditCard, Star, Paperclip, X, Share2, ShieldOff } from 'lucide-react';
 import { DocumentContext } from '../context/DocumentContext';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '../firebase';
 import html2pdf from 'html2pdf.js';
+
+const AccessDenied = () => (
+  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', textAlign: 'center', padding: '2rem' }}>
+    <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.5rem' }}>
+      <ShieldOff size={36} style={{ color: '#ef4444' }} />
+    </div>
+    <h2 style={{ fontSize: '1.4rem', fontWeight: '700', color: 'var(--color-text-main)', marginBottom: '0.5rem' }}>Không có quyền truy cập</h2>
+    <p style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem', maxWidth: '360px', lineHeight: '1.7' }}>
+      Trang <strong>Đối tác</strong> chỉ dành cho Quản trị viên.
+    </p>
+  </div>
+);
 
 const RatingStars = ({ rating, setRating, readOnly = false }) => {
   return (
@@ -25,6 +37,8 @@ const RatingStars = ({ rating, setRating, readOnly = false }) => {
 
 const Partners = () => {
   const { partners, addPartner, editPartner, deletePartner, userRole, globalLists } = useContext(DocumentContext);
+
+  if (userRole !== 'Admin') return <AccessDenied />;
   const [isAdding, setIsAdding] = useState(false);
   const [newPartner, setNewPartner] = useState({ 
     name: '', shortName: '', taxCode: '', type: [], representative: '', 

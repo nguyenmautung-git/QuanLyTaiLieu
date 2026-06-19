@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { FolderOpen, LayoutDashboard, FileText, Settings, Users, HelpCircle, Briefcase, Building2, Package, ChevronDown, ChevronRight, ClipboardList, Scale, Clock, BarChart3, HardHat, CheckSquare, AlertCircle, UserCheck, PanelLeftClose, PanelLeftOpen, CreditCard } from 'lucide-react';
+import { DocumentContext } from '../context/DocumentContext';
 
 const Sidebar = ({ currentView, setCurrentView }) => {
+  const { userRole } = useContext(DocumentContext);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [openSection, setOpenSection] = useState(null);
 
@@ -50,11 +52,14 @@ const Sidebar = ({ currentView, setCurrentView }) => {
           <NavItem icon={<AlertCircle size={20} style={{ flexShrink: 0 }} />} label="Danh mục lỗi" active={currentView === 'danhMucLoi'} onClick={() => setCurrentView('danhMucLoi')} isChild isCollapsed={isCollapsed} />
         </NavAccordion>
 
-        <NavAccordion label="Quản trị" icon={<Settings size={20} style={{ flexShrink: 0 }} />} isOpen={openSection === 'admin'} onToggle={() => handleToggleSection('admin')} isCollapsed={isCollapsed}>
-          <NavItem icon={<Users size={20} style={{ flexShrink: 0 }} />} label="Thành viên CĐT" active={currentView === 'members'} onClick={() => setCurrentView('members')} isChild isCollapsed={isCollapsed} />
-          <NavItem icon={<Building2 size={20} style={{ flexShrink: 0 }} />} label="Đối tác" active={currentView === 'partners'} onClick={() => setCurrentView('partners')} isChild isCollapsed={isCollapsed} />
-          <NavItem icon={<Settings size={20} style={{ flexShrink: 0 }} />} label="Cài đặt" active={currentView === 'settings'} onClick={() => setCurrentView('settings')} isChild isCollapsed={isCollapsed} />
-        </NavAccordion>
+        {/* Quản trị — chỉ Admin */}
+        {userRole === 'Admin' && (
+          <NavAccordion label="Quản trị" icon={<Settings size={20} style={{ flexShrink: 0 }} />} isOpen={openSection === 'admin'} onToggle={() => handleToggleSection('admin')} isCollapsed={isCollapsed}>
+            <NavItem icon={<Users size={20} style={{ flexShrink: 0 }} />} label="Thành viên CĐT" active={currentView === 'members'} onClick={() => setCurrentView('members')} isChild isCollapsed={isCollapsed} />
+            <NavItem icon={<Building2 size={20} style={{ flexShrink: 0 }} />} label="Đối tác" active={currentView === 'partners'} onClick={() => setCurrentView('partners')} isChild isCollapsed={isCollapsed} />
+            <NavItem icon={<Settings size={20} style={{ flexShrink: 0 }} />} label="Cài đặt" active={currentView === 'settings'} onClick={() => setCurrentView('settings')} isChild isCollapsed={isCollapsed} />
+          </NavAccordion>
+        )}
       </nav>
 
       <div style={{ marginTop: 'auto', paddingTop: '1rem', borderTop: '1px solid var(--color-border)', width: '100%', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
