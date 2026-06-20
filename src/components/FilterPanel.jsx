@@ -2,6 +2,9 @@ import React, { useContext } from 'react';
 import { ALL_AGENCIES } from '../data';
 import { DocumentContext } from '../context/DocumentContext';
 import { format, parseISO, isValid } from 'date-fns';
+import { X } from 'lucide-react';
+
+const EMPTY_FILTERS = { keyword: '', project: '', agency: '', documentType: '', dateFrom: '', dateTo: '' };
 
 const displayDate = (isoDateStr) => {
   if (!isoDateStr) return '';
@@ -11,7 +14,7 @@ const displayDate = (isoDateStr) => {
 
 const FilterPanel = ({ filters, setFilters }) => {
   const { documentTypes, projects, documents = [] } = useContext(DocumentContext);
-  
+
   const uniqueAgencies = Array.from(new Set([
     ...ALL_AGENCIES,
     ...documents.map(d => d.issuingAgency).filter(Boolean)
@@ -22,19 +25,19 @@ const FilterPanel = ({ filters, setFilters }) => {
     setFilters(prev => ({ ...prev, [name]: value }));
   };
 
+  // Đếm số bộ lọc đang hoạt động
+  const activeCount = Object.values(filters).filter(v => v !== '').length;
+  const hasFilters = activeCount > 0;
+
   return (
     <div className="card" style={{ padding: '1.25rem' }}>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
-        
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'flex-end' }}>
+
         <div className="form-group" style={{ marginBottom: 0, flex: '1 1 180px' }}>
           <label className="form-label" style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Từ khóa (Mã, Số, Trích yếu)</label>
-          <input 
-            type="text" 
-            name="keyword" 
-            value={filters.keyword} 
-            onChange={handleChange} 
-            className="input-field" 
-            placeholder="Nhập từ khóa..." 
+          <input
+            type="text" name="keyword" value={filters.keyword}
+            onChange={handleChange} className="input-field" placeholder="Nhập từ khóa..."
           />
         </div>
 
@@ -65,53 +68,68 @@ const FilterPanel = ({ filters, setFilters }) => {
         <div style={{ display: 'flex', gap: '0.5rem', flex: '1 1 260px' }}>
           <div className="form-group" style={{ marginBottom: 0, flex: 1, position: 'relative' }}>
             <label className="form-label" style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Từ ngày</label>
-            <input 
-              type="text" 
-              className="input-field" 
-              value={displayDate(filters.dateFrom)} 
-              placeholder="dd/mm/yyyy" 
-              readOnly 
+            <input
+              type="text" className="input-field"
+              value={displayDate(filters.dateFrom)} placeholder="dd/mm/yyyy" readOnly
               onClick={(e) => {
                 const dateInput = e.currentTarget.nextElementSibling;
-                if (dateInput && dateInput.showPicker) {
-                  try { dateInput.showPicker(); } catch (err) {}
-                }
+                if (dateInput && dateInput.showPicker) { try { dateInput.showPicker(); } catch (err) {} }
               }}
               style={{ cursor: 'pointer' }}
             />
-            <input 
-              type="date" 
-              name="dateFrom" 
-              value={filters.dateFrom} 
-              onChange={handleChange} 
-              style={{ position: 'absolute', bottom: 0, right: 0, opacity: 0, pointerEvents: 'none', width: '10px', height: '10px', padding: 0, margin: 0, border: 0 }} 
+            <input type="date" name="dateFrom" value={filters.dateFrom} onChange={handleChange}
+              style={{ position: 'absolute', bottom: 0, right: 0, opacity: 0, pointerEvents: 'none', width: '10px', height: '10px', padding: 0, margin: 0, border: 0 }}
             />
           </div>
           <div className="form-group" style={{ marginBottom: 0, flex: 1, position: 'relative' }}>
             <label className="form-label" style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Đến ngày</label>
-            <input 
-              type="text" 
-              className="input-field" 
-              value={displayDate(filters.dateTo)} 
-              placeholder="dd/mm/yyyy" 
-              readOnly 
+            <input
+              type="text" className="input-field"
+              value={displayDate(filters.dateTo)} placeholder="dd/mm/yyyy" readOnly
               onClick={(e) => {
                 const dateInput = e.currentTarget.nextElementSibling;
-                if (dateInput && dateInput.showPicker) {
-                  try { dateInput.showPicker(); } catch (err) {}
-                }
+                if (dateInput && dateInput.showPicker) { try { dateInput.showPicker(); } catch (err) {} }
               }}
               style={{ cursor: 'pointer' }}
             />
-            <input 
-              type="date" 
-              name="dateTo" 
-              value={filters.dateTo} 
-              onChange={handleChange} 
-              style={{ position: 'absolute', bottom: 0, right: 0, opacity: 0, pointerEvents: 'none', width: '10px', height: '10px', padding: 0, margin: 0, border: 0 }} 
+            <input type="date" name="dateTo" value={filters.dateTo} onChange={handleChange}
+              style={{ position: 'absolute', bottom: 0, right: 0, opacity: 0, pointerEvents: 'none', width: '10px', height: '10px', padding: 0, margin: 0, border: 0 }}
             />
           </div>
         </div>
+
+        {/* Nút xóa bộ lọc — chỉ hiện khi có filter đang bật */}
+        {hasFilters && (
+          <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: '1px' }}>
+            <button
+              onClick={() => setFilters(EMPTY_FILTERS)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '0.4rem',
+                padding: '0.5rem 0.875rem',
+                background: 'rgba(239,68,68,0.1)',
+                border: '1px solid rgba(239,68,68,0.3)',
+                borderRadius: 'var(--radius-md)',
+                color: '#f87171',
+                fontSize: '0.82rem', fontWeight: '600',
+                cursor: 'pointer', whiteSpace: 'nowrap',
+                transition: 'all 0.15s',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.18)'; e.currentTarget.style.borderColor = 'rgba(239,68,68,0.5)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.1)'; e.currentTarget.style.borderColor = 'rgba(239,68,68,0.3)'; }}
+              title="Xóa tất cả bộ lọc"
+            >
+              <X size={14} />
+              Xóa bộ lọc
+              <span style={{
+                background: '#ef4444', color: 'white',
+                borderRadius: '999px', fontSize: '0.68rem',
+                padding: '1px 6px', fontWeight: '700', lineHeight: '1.4',
+              }}>
+                {activeCount}
+              </span>
+            </button>
+          </div>
+        )}
 
       </div>
     </div>
