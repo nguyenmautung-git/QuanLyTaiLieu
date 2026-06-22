@@ -1,5 +1,6 @@
 import React, { useState, useContext, useEffect } from 'react';
 import { DocumentContext } from '../context/DocumentContext';
+import { useToast } from '../context/UIContext';
 import { ChevronDown, ChevronUp, Plus, Trash2, Briefcase, X, Save } from 'lucide-react';
 
 // ─── Utility Functions ───────────────────────────────────────────────────────
@@ -29,6 +30,7 @@ const formatCurrency = (value) => {
 const PackageDatasheet = ({ pkg, project }) => {
   const [expanded, setExpanded] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const toast = useToast();
   
   // Local state cho bảng khối lượng của gói thầu này
   const [rows, setRows] = useState([
@@ -77,7 +79,7 @@ const PackageDatasheet = ({ pkg, project }) => {
     setIsSaving(true);
     setTimeout(() => {
       setIsSaving(false);
-      alert(`Đã lưu dữ liệu khối lượng cho gói: ${pkg.name}`);
+      toast.success(`Đã lưu dữ liệu khối lượng cho gói: ${pkg.name}`);
     }, 600);
   };
 
@@ -208,7 +210,8 @@ const PackageDatasheet = ({ pkg, project }) => {
 
 // ─── Main Page Component ─────────────────────────────────────────────────────
 const KhoiLuong = () => {
-  const { projects, biddingPackages = [], globalLists } = useContext(DocumentContext);
+  const { projects, biddingPackages = [], globalLists, enableLazy } = useContext(DocumentContext);
+  useEffect(() => { enableLazy(); }, [enableLazy]);
   
   const [filters, setFilters] = useState({ keyword: '', project: '', nature: '' });
 

@@ -13,8 +13,10 @@
   },
   "dependencies": {
     "date-fns": "^4.1.0",
+    "file-saver": "^2.0.5",
     "firebase": "^12.13.0",
     "html2pdf.js": "^0.14.0",
+    "jszip": "^3.10.1",
     "lucide-react": "^1.14.0",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",

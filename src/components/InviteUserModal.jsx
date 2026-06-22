@@ -1,6 +1,7 @@
 import React, { useState, useContext } from 'react';
 import { X, Send, Copy, Check, Clock, UserX, RefreshCw, Mail, AlertCircle, Shield, Star, ChevronDown, ChevronUp, Info } from 'lucide-react';
 import { DocumentContext } from '../context/DocumentContext';
+import { useToast } from '../context/UIContext';
 import { EMPLOYEE_LEVELS } from '../data';
 import { STATUS_LABELS, formatTimeRemaining } from '../utils/inviteUtils';
 
@@ -16,6 +17,7 @@ const EMAILJS_GUIDE = `Hướng dẫn cài EmailJS (miễn phí, 200 email/thán
 
 const InviteUserModal = ({ onClose }) => {
   const { invitations, sendInvitation, revokeInvitation, resendInvitation } = useContext(DocumentContext);
+  const toast = useToast();
 
   const [activeTab, setActiveTab] = useState('send');
   const [form, setForm] = useState({ email: '', name: '', role: 'User', level: 1 });
@@ -76,7 +78,7 @@ const InviteUserModal = ({ onClose }) => {
       const link = await resendInvitation(id);
       setResendLinks(p => ({ ...p, [id]: link }));
     } catch (err) {
-      alert(err.message === 'RATE_LIMITED'
+      toast.error(err.message === 'RATE_LIMITED'
         ? 'Quá giới hạn gửi. Vui lòng chờ 60 giây.'
         : err.message);
     }

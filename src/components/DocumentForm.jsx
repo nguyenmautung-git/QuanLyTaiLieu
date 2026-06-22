@@ -1,6 +1,7 @@
 import React, { useState, useContext } from 'react';
 import { X, Upload, Check, Calendar, ChevronDown } from 'lucide-react';
 import { DocumentContext } from '../context/DocumentContext';
+import { useToast } from '../context/UIContext';
 import { ALL_AGENCIES, EMPLOYEE_LEVELS } from '../data';
 import { v4 as uuidv4 } from 'uuid';
 import { format, parseISO, isValid } from 'date-fns';
@@ -14,7 +15,8 @@ const displayDate = (isoDateStr) => {
 };
 
 const DocumentForm = ({ onClose, initialData, previewMode = false }) => {
-  const { addDocument, editDocument, documents, documentTypes, projects, legalSteps = [] } = useContext(DocumentContext);
+  const { addDocument, editDocument, allDocuments: documents, documentTypes, allProjects: projects, legalSteps = [], checkPermission } = useContext(DocumentContext);
+  const toast = useToast();
   
   const uniqueAgencies = Array.from(new Set([
     ...ALL_AGENCIES,
@@ -59,6 +61,14 @@ const DocumentForm = ({ onClose, initialData, previewMode = false }) => {
     attachments: [],
     legalStepId: ''
   });
+  
+  const isEdit = !!(initialData && initialData.id);
+  const permissionKey = isEdit ? 'edit_docs' : 'add_docs';
+  const visibleProjects = projects.filter(p => 
+    previewMode || 
+    checkPermission(p.id, permissionKey) || 
+    formData.relatedProjects.includes(p.name)
+  );
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -106,7 +116,7 @@ const DocumentForm = ({ onClose, initialData, previewMode = false }) => {
     
     const hasOldAttachments = formData.attachments && formData.attachments.length > 0;
     if (selectedFiles.length === 0 && !formData.attachmentLink && !hasOldAttachments) {
-      alert("Vui lòng chọn file đính kèm!");
+      toast.warning('Vui lòng chọn file đính kèm!');
       return;
     }
 
@@ -161,7 +171,7 @@ const DocumentForm = ({ onClose, initialData, previewMode = false }) => {
       }
       onClose();
     } catch (error) {
-      alert(`Đã xảy ra lỗi khi lưu tài liệu:\n${error.message || "Vui lòng thử lại!"}`);
+      toast.error('Lỗi khi lưu tài liệu: ' + (error.message || 'Vui lòng thử lại!'));
       console.error(error);
     } finally {
       setIsSubmitting(false);
@@ -380,7 +390,7 @@ const DocumentForm = ({ onClose, initialData, previewMode = false }) => {
           <div className="form-group">
             <label className="form-label">Dự án liên quan (Có thể chọn nhiều)</label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', padding: '0.5rem', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', backgroundColor: 'var(--color-bg-surface-hover)' }}>
-              {projects.map(p => (
+              {visibleProjects.map(p => (
                 <button
                   disabled={previewMode}
                   key={p.id}

@@ -1,6 +1,8 @@
 import React, { useState, useContext, useRef, useEffect } from 'react';
+import { ROLES } from '../constants';
 import { Plus, Edit, Trash2, MapPin, Building, Activity, FileText, Briefcase, Eye, Download, Users, X, Link, ChevronDown, ChevronUp, Search, Filter, Check } from 'lucide-react';
 import { DocumentContext } from '../context/DocumentContext';
+import { useToast, useConfirm } from '../context/UIContext';
 import html2pdf from 'html2pdf.js';
 import { PROJECT_DETAILS_TEMPLATE, PROJECT_ROLES, getPastelColor } from '../data';
 
@@ -13,11 +15,20 @@ const getProjectStatusColor = (s) => {
   return { bg: 'rgba(148, 163, 184, 0.2)', text: '#cbd5e1' };
 };
 
-const Projects = () => {
-  const { userRole, projects, addProject, editProject, deleteProject, members, documents } = useContext(DocumentContext);
+const Projects = ({ focusProjectId = null, onFocusCleared }) => {
+  const { userRole, projects, addProject, editProject, deleteProject, members, documents, globalLists } = useContext(DocumentContext);
+  const projectRoles = React.useMemo(() => {
+    if (globalLists?.projectRoles && globalLists.projectRoles.length > 0) {
+      return globalLists.projectRoles.map(item => item.name);
+    }
+    return PROJECT_ROLES;
+  }, [globalLists]);
+  const toast = useToast();
+  const confirm = useConfirm();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingProject, setEditingProject] = useState(null);
   const [isPreviewMode, setIsPreviewMode] = useState(false);
+  const handledFocusRef = useRef(null); // theo dõi focusProjectId đã xử lý
   
   const defaultFormData = {
     code: '',
@@ -54,6 +65,7 @@ const Projects = () => {
   useEffect(() => {
     localStorage.setItem('projectStatuses', JSON.stringify(selectedStatuses));
   }, [selectedStatuses]);
+
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -93,6 +105,23 @@ const Projects = () => {
     }
     setIsFormOpen(true);
   };
+
+  // Khi tìm kiếm toàn cục chọn dự án → mở preview
+  useEffect(() => {
+    if (
+      focusProjectId &&
+      focusProjectId !== handledFocusRef.current &&
+      projects?.length > 0
+    ) {
+      const p = projects.find(x => x.id === focusProjectId);
+      if (p) {
+        handledFocusRef.current = focusProjectId;
+        handleOpenForm(p, true);
+        setTimeout(() => onFocusCleared?.(), 0);
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusProjectId, projects]);
 
   const handleCloseForm = () => {
     setIsFormOpen(false);
@@ -165,7 +194,7 @@ const Projects = () => {
     if (formData.code) {
       const isDuplicateCode = projects.some(p => p.code === formData.code && (!editingProject || p.id !== editingProject.id));
       if (isDuplicateCode) {
-        alert("Mã dự án này đã tồn tại! Vui lòng nhập mã khác để tránh trùng lặp.");
+        toast.warning('Mã dự án này đã tồn tại! Vui lòng nhập mã khác để tránh trùng lặp.');
         return;
       }
     }
@@ -179,9 +208,8 @@ const Projects = () => {
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm("Bạn có chắc chắn muốn xoá dự án này?")) {
-      await deleteProject(id);
-    }
+    const ok = await confirm('Bạn có chắc chắn muốn xoá dự án này?');
+    if (ok) await deleteProject(id);
   };
 
   const handleDetailChange = (index, value) => {
@@ -319,7 +347,7 @@ const Projects = () => {
           </div>
         </div>
         
-        {userRole === 'Admin' && (
+        {userRole === ROLES.ADMIN && (
           <button className="btn btn-primary" onClick={() => handleOpenForm()} style={{ whiteSpace: 'nowrap' }}>
             <Plus size={18} /> Thêm dự án mới
           </button>
@@ -358,7 +386,7 @@ const Projects = () => {
                 <h3 style={{ fontSize: '1.25rem', fontWeight: '600', margin: 0 }}>{project.name}</h3>
               </div>
               <div style={{ display: 'flex', gap: '0.25rem' }}>
-                {userRole === 'Admin' && (
+                {userRole === ROLES.ADMIN && (
                   <>
                     <button className="btn-icon" onClick={(e) => { e.stopPropagation(); handleOpenForm(project); }} title="Sửa">
                       <Edit size={16} />
@@ -653,7 +681,7 @@ const Projects = () => {
                                       }}
                                     >
                                       <option value="">-- Chọn vai trò --</option>
-                                      {PROJECT_ROLES.map(role => (
+                                      {projectRoles.map(role => (
                                         <option key={role} value={role}>{role}</option>
                                       ))}
                                     </select>
@@ -817,7 +845,7 @@ const Projects = () => {
                 <div style={{ display: 'flex', gap: '1rem' }}>
                   {isPreviewMode ? (
                     <>
-                      {userRole === 'Admin' && (
+                      {userRole === ROLES.ADMIN && (
                         <button type="button" className="btn btn-outline" onClick={() => setIsPreviewMode(false)} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                           <Edit size={16} /> Sửa dự án
                         </button>

@@ -1,6 +1,8 @@
 import React, { useState, useContext, useRef, useEffect } from 'react';
+import { ROLES } from '../constants';
 import { createPortal } from 'react-dom';
 import { DocumentContext } from '../context/DocumentContext';
+import { useToast, useConfirm } from '../context/UIContext';
 import { getPastelColor } from '../data';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '../firebase';
@@ -180,7 +182,8 @@ const FileUploadCell = ({ value, onChange }) => {
       onChange([...fileList, ...newFiles]);
     } catch (err) {
       console.error('Upload error:', err);
-      alert(`Lỗi tải lên: ${err.message || 'Vui lòng thử lại'}`);
+      const toast = window.__biddingPlanToast;
+      if (toast) toast.error(`Lỗi tải lên: ${err.message || 'Vui lòng thử lại'}`);
     } finally {
       setUploading(false);
     }
@@ -443,7 +446,8 @@ const NewRow = ({ onAdd, isAdmin, visibleCols, colWidths, projectCode, nextIdx }
     if (!row.name.trim()) return; 
     const err = validateDates(row);
     if (err) {
-      window.alert(err);
+      const toast = window.__biddingPlanToast;
+      if (toast) toast.warning(err);
       return;
     }
     onAdd({ ...row }); 
@@ -1050,8 +1054,12 @@ const ProjectDatasheet = ({ project, projects, packages, isAdmin, onAdd, onAddMu
 
 // ─── Main Page ───────────────────────────────────────────────────────────────
 const BiddingPlan = () => {
-  const { projects, userRole, biddingPackages = [], addBiddingPackage, editBiddingPackage, deleteBiddingPackage, reorderBiddingPackages, addListItem, globalLists, partners = [] } = useContext(DocumentContext);
-  const isAdmin = userRole === 'Admin';
+  const { projects, userRole, biddingPackages = [], addBiddingPackage, editBiddingPackage, deleteBiddingPackage, reorderBiddingPackages, addListItem, globalLists, partners = [], enableLazy, checkPermission } = useContext(DocumentContext);
+  useEffect(() => { enableLazy(); }, [enableLazy]);
+  const toast = useToast();
+  const confirm = useConfirm();
+  window.__biddingPlanToast = toast;
+  const isAdmin = userRole === ROLES.ADMIN;
   const didFixCodes = useRef(false);
   const [editingData, setEditingData] = useState(null);
   const [templateModalProjectId, setTemplateModalProjectId] = useState(null);
@@ -1136,7 +1144,8 @@ const BiddingPlan = () => {
   };
 
   const handleDelete = async (project, pkgId) => {
-    if (window.confirm('Xóa gói thầu này?')) {
+    const ok = await confirm('Xóa gói thầu này?');
+    if (ok) {
       await deleteBiddingPackage(project.id, pkgId);
       const remaining = getPackages(project.id).filter(p => p.id !== pkgId);
       if (remaining.length > 0) await reorderBiddingPackages(remaining, project.code);
@@ -1251,7 +1260,7 @@ const BiddingPlan = () => {
                   project={project}
                   projects={projects}
                   packages={filteredPackages}
-                  isAdmin={isAdmin}
+                  isAdmin={checkPermission(project.id, 'edit_bidding')}
                   onAdd={handleAdd}
                   onAddMultiple={handleAddMultiple}
                   onOpenTemplateModal={setTemplateModalProjectId}

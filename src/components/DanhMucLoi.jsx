@@ -1,5 +1,7 @@
 import React, { useState, useContext, useMemo, useEffect } from 'react';
 import { DocumentContext } from '../context/DocumentContext';
+import { useConfirm } from '../context/UIContext';
+import { ROLES } from '../constants';
 import { LayoutGrid, List, Plus, Edit, Trash2, AlertTriangle, Briefcase, Calendar, CheckCircle, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
@@ -66,7 +68,7 @@ const ErrorForm = ({ initialData, generatedCode, onSubmit, onCancel, activeTabId
 };
 
 // ─── Error Card Component ────────────────────────────────────────────────────
-const ErrorCard = ({ error, viewMode, onEdit, onDelete }) => {
+const ErrorCard = ({ error, viewMode, onEdit, onDelete, isAdmin }) => {
   const { id, code, title, description, prevention, severity, author } = error;
   
   const getSeverityColor = (sev) => {
@@ -96,14 +98,16 @@ const ErrorCard = ({ error, viewMode, onEdit, onDelete }) => {
             <strong>Phòng ngừa:</strong> {prevention}
           </p>
         </div>
-        <div style={{ display: 'flex', gap: '0.5rem', flexDirection: 'column' }}>
-          <button onClick={() => onEdit(error)} className="btn-icon" style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)', border: '1px solid var(--color-border)', color: 'var(--color-primary)', width: '32px', height: '32px' }} title="Sửa lỗi">
-            <Edit size={16} />
-          </button>
-          <button onClick={() => onDelete(error.id)} className="btn-icon" style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)', border: '1px solid var(--color-border)', color: 'var(--color-danger)', width: '32px', height: '32px' }} title="Xóa lỗi">
-            <Trash2 size={16} />
-          </button>
-        </div>
+        {isAdmin && (
+          <div style={{ display: 'flex', gap: '0.5rem', flexDirection: 'column' }}>
+            <button onClick={() => onEdit(error)} className="btn-icon" style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)', border: '1px solid var(--color-border)', color: 'var(--color-primary)', width: '32px', height: '32px' }} title="Sửa lỗi">
+              <Edit size={16} />
+            </button>
+            <button onClick={() => onDelete(error.id)} className="btn-icon" style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)', border: '1px solid var(--color-border)', color: 'var(--color-danger)', width: '32px', height: '32px' }} title="Xóa lỗi">
+              <Trash2 size={16} />
+            </button>
+          </div>
+        )}
       </div>
     );
   }
@@ -121,14 +125,16 @@ const ErrorCard = ({ error, viewMode, onEdit, onDelete }) => {
           </div>
           <h3 style={{ fontSize: '1.125rem', fontWeight: '700', marginTop: '0.5rem', marginBottom: '0', color: 'var(--color-text-main)' }}>{title}</h3>
         </div>
-        <div style={{ display: 'flex', gap: '4px', opacity: 0.8 }}>
-          <button onClick={(e) => { e.stopPropagation(); onEdit(error); }} className="btn-icon" style={{ backgroundColor: 'transparent', border: 'none', color: 'var(--color-primary)', width: '28px', height: '28px' }} title="Sửa lỗi">
-            <Edit size={16} />
-          </button>
-          <button onClick={(e) => { e.stopPropagation(); onDelete(error.id); }} className="btn-icon" style={{ backgroundColor: 'transparent', border: 'none', color: 'var(--color-danger)', width: '28px', height: '28px' }} title="Xóa lỗi">
-            <Trash2 size={16} />
-          </button>
-        </div>
+        {isAdmin && (
+          <div style={{ display: 'flex', gap: '4px', opacity: 0.8 }}>
+            <button onClick={(e) => { e.stopPropagation(); onEdit(error); }} className="btn-icon" style={{ backgroundColor: 'transparent', border: 'none', color: 'var(--color-primary)', width: '28px', height: '28px' }} title="Sửa lỗi">
+              <Edit size={16} />
+            </button>
+            <button onClick={(e) => { e.stopPropagation(); onDelete(error.id); }} className="btn-icon" style={{ backgroundColor: 'transparent', border: 'none', color: 'var(--color-danger)', width: '28px', height: '28px' }} title="Xóa lỗi">
+              <Trash2 size={16} />
+            </button>
+          </div>
+        )}
       </div>
 
       <div style={{ color: 'var(--color-text-main)', fontSize: '0.875rem', marginBottom: '0.5rem', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
@@ -143,45 +149,41 @@ const ErrorCard = ({ error, viewMode, onEdit, onDelete }) => {
 
 // ─── Main Page Component ─────────────────────────────────────────────────────
 const DanhMucLoi = () => {
-  const { projects } = useContext(DocumentContext);
+  const {
+    defectTabs: tabs,
+    defectLibrary: errors,
+    addDefectTab,
+    editDefectTab,
+    deleteDefectTab,
+    addDefectError,
+    editDefectError,
+    deleteDefectError,
+    userRole,
+    enableLazy
+  } = useContext(DocumentContext);
+
+  const confirm = useConfirm();
   const [viewMode, setViewMode] = useState('grid');
   
   // Tab Management
-  const [tabs, setTabs] = useState(() => {
-    const saved = localStorage.getItem('danhMucLoi_tabs');
-    if (saved) return JSON.parse(saved);
-    return [
-      { id: 1, name: 'Quy hoạch' },
-      { id: 2, name: 'Concept' },
-      { id: 3, name: 'Thiết kế cơ sở' }
-    ];
-  });
-  const [activeTabId, setActiveTabId] = useState(1);
+  const [activeTabId, setActiveTabId] = useState(null);
 
   // Filters
   const [filters, setFilters] = useState({ keyword: '', severity: '' });
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingError, setEditingError] = useState(null);
 
-  // Mock Data (Thư viện kinh nghiệm chung)
-  const [errors, setErrors] = useState(() => {
-    const saved = localStorage.getItem('danhMucLoi_errors');
-    if (saved) return JSON.parse(saved);
-    return [
-      { id: 1, tabId: 1, code: 'L-QH-01', title: 'Sai lệch mốc tọa độ quy hoạch', description: 'Tọa độ góc ranh giới lô đất trên bản vẽ thực tế không khớp với bản vẽ quy hoạch 1/500 đã duyệt, dẫn đến nguy cơ lấn chiếm lộ giới.', prevention: 'Yêu cầu đơn vị đo đạc độc lập khảo sát lại hiện trạng và đối chiếu với Sở Quy hoạch Kiến trúc trước khi chốt phương án.', severity: 'Nghiêm trọng', author: 'KTS. Nguyễn Văn A' },
-      { id: 2, tabId: 1, code: 'L-QH-02', title: 'Thiếu mảng xanh bắt buộc', description: 'Tỷ lệ cây xanh cảnh quan và phần đất thấm nước chưa đạt tối thiểu 20% theo QCVN 01:2021/BXD.', prevention: 'Tăng diện tích trồng cỏ gạch lỗ tại bãi xe ngoài trời, thiết kế thêm vườn mái (green roof).', severity: 'Trung bình', author: 'KTS. Lê Thị B' },
-      { id: 3, tabId: 2, code: 'L-CC-01', title: 'Bố cục luồng giao thông chồng chéo', description: 'Luồng xe nhập hàng (Logistics) cắt ngang luồng xe khách VIP, gây ách tắc vào giờ cao điểm.', prevention: 'Phân tách 2 cổng ra vào riêng biệt, hoặc bố trí đường hầm nội bộ cho khối vận hành.', severity: 'Cao', author: 'KTS. Trần C' },
-      { id: 4, tabId: 3, code: 'L-TKCS-01', title: 'Tính thiếu tải trọng thiết bị mái', description: 'Bản vẽ kết cấu chưa tính đến tải trọng động của hệ thống Chiller và Tháp giải nhiệt (Cooling Tower) đặt trên mái.', prevention: 'Phối hợp chặt chẽ bản vẽ MEP và Kết cấu, xin thông số thiết bị từ nhà cung cấp trước khi tính toán sàn mái.', severity: 'Nghiêm trọng', author: 'KS. Phạm D' }
-    ];
-  });
+  useEffect(() => {
+    enableLazy();
+  }, [enableLazy]);
 
   useEffect(() => {
-    localStorage.setItem('danhMucLoi_tabs', JSON.stringify(tabs));
-  }, [tabs]);
+    if (tabs.length > 0 && !activeTabId) {
+      setActiveTabId(tabs[0].id);
+    }
+  }, [tabs, activeTabId]);
 
-  useEffect(() => {
-    localStorage.setItem('danhMucLoi_errors', JSON.stringify(errors));
-  }, [errors]);
+  const isAdmin = userRole === ROLES.ADMIN;
 
   const getPrefix = (tabName) => {
     if (!tabName) return 'ERR';
@@ -209,48 +211,53 @@ const DanhMucLoi = () => {
     return `L-${prefix}-${String(maxNum + 1).padStart(2, '0')}`;
   };
 
-  const handleAddTab = () => {
+  const handleAddTab = async () => {
+    if (!isAdmin) return;
     const name = window.prompt("Nhập tên thẻ lỗi mới:");
     if (name && name.trim() !== "") {
-      const newId = tabs.length > 0 ? Math.max(...tabs.map(t => t.id)) + 1 : 1;
-      setTabs([...tabs, { id: newId, name: name.trim() }]);
+      const newId = await addDefectTab(name);
       setActiveTabId(newId);
     }
   };
 
-  const handleEditTab = (id, oldName) => {
+  const handleEditTab = async (id, oldName) => {
+    if (!isAdmin) return;
     const newName = window.prompt("Sửa tên thẻ:", oldName);
     if (newName && newName.trim() !== "") {
-      setTabs(tabs.map(t => t.id === id ? { ...t, name: newName.trim() } : t));
+      await editDefectTab(id, newName);
     }
   };
 
-  const handleDeleteTab = (id) => {
-    if (window.confirm("Bạn có chắc muốn xóa thẻ này? Mọi lỗi trong thẻ sẽ không hiển thị nữa.")) {
-      const newTabs = tabs.filter(t => t.id !== id);
-      setTabs(newTabs);
-      if (activeTabId === id && newTabs.length > 0) {
-        setActiveTabId(newTabs[0].id);
+  const handleDeleteTab = async (id) => {
+    if (!isAdmin) return;
+    const ok = await confirm('Bạn có chắc muốn xóa thẻ này? Mọi lỗi trong thẻ sẽ không hiển thị nữa.');
+    if (ok) {
+      await deleteDefectTab(id);
+      const remainingTabs = tabs.filter(t => t.id !== id);
+      if (remainingTabs.length > 0) {
+        setActiveTabId(remainingTabs[0].id);
+      } else {
+        setActiveTabId(null);
       }
     }
   };
 
-  const handleSaveError = (data) => {
+  const handleSaveError = async (data) => {
+    if (!isAdmin) return;
     if (data.id) {
-      // Edit
-      setErrors(errors.map(err => err.id === data.id ? data : err));
+      await editDefectError(data.id, data);
     } else {
-      // Add
-      const newId = errors.length > 0 ? Math.max(...errors.map(e => e.id)) + 1 : 1;
-      setErrors([...errors, { ...data, id: newId }]);
+      await addDefectError(data);
     }
     setIsFormOpen(false);
     setEditingError(null);
   };
 
-  const handleDeleteError = (id) => {
-    if (window.confirm("Bạn có chắc muốn xóa lỗi này?")) {
-      setErrors(errors.filter(e => e.id !== id));
+  const handleDeleteError = async (id) => {
+    if (!isAdmin) return;
+    const ok = await confirm('Bạn có chắc muốn xóa lỗi này?');
+    if (ok) {
+      await deleteDefectError(id);
     }
   };
 
@@ -288,13 +295,15 @@ const DanhMucLoi = () => {
         </div>
         
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-          <button 
-            onClick={() => { setEditingError(null); setIsFormOpen(true); }}
-            className="btn btn-primary" 
-            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.45rem 1rem' }}
-          >
-            <Plus size={16} /> Thêm lỗi mới
-          </button>
+          {isAdmin && (
+            <button 
+              onClick={() => { setEditingError(null); setIsFormOpen(true); }}
+              className="btn btn-primary" 
+              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.45rem 1rem' }}
+            >
+              <Plus size={16} /> Thêm lỗi mới
+            </button>
+          )}
           
           <div style={{ display: 'flex', gap: '0.25rem', backgroundColor: 'var(--color-bg-surface)', padding: '0.25rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', marginLeft: '0.5rem' }}>
             <button onClick={() => setViewMode('grid')} style={{ padding: '0.375rem', borderRadius: 'var(--radius-sm)', backgroundColor: viewMode === 'grid' ? 'var(--color-bg-surface-hover)' : 'transparent', color: viewMode === 'grid' ? 'var(--color-primary)' : 'var(--color-text-muted)' }}>
@@ -312,7 +321,7 @@ const DanhMucLoi = () => {
         {tabs.map(tab => (
           <div key={tab.id} style={{ display: 'flex', alignItems: 'center', padding: '0.75rem 1.25rem', cursor: 'pointer', borderBottom: activeTabId === tab.id ? '2px solid var(--color-primary)' : '2px solid transparent', color: activeTabId === tab.id ? 'var(--color-primary)' : 'var(--color-text-muted)', fontWeight: activeTabId === tab.id ? '600' : '500', transition: 'all 0.2s', marginBottom: '-2px', backgroundColor: activeTabId === tab.id ? 'rgba(59, 130, 246, 0.05)' : 'transparent', borderTopLeftRadius: '6px', borderTopRightRadius: '6px' }}>
             <span onClick={() => setActiveTabId(tab.id)}>{tab.name}</span>
-            {activeTabId === tab.id && (
+            {isAdmin && activeTabId === tab.id && (
               <div style={{ display: 'flex', alignItems: 'center', marginLeft: '8px', gap: '4px' }}>
                 <button onClick={(e) => { e.stopPropagation(); handleEditTab(tab.id, tab.name); }} style={{ background: 'none', border: 'none', padding: '2px', cursor: 'pointer', color: 'var(--color-primary)', display: 'flex' }} title="Sửa tên thẻ"><Edit size={12} /></button>
                 <button onClick={(e) => { e.stopPropagation(); handleDeleteTab(tab.id); }} style={{ background: 'none', border: 'none', padding: '2px', cursor: 'pointer', color: 'var(--color-danger)', display: 'flex' }} title="Xóa thẻ"><Trash2 size={12} /></button>
@@ -320,9 +329,11 @@ const DanhMucLoi = () => {
             )}
           </div>
         ))}
-        <button onClick={handleAddTab} style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '0.5rem 1rem', background: 'none', border: '1px dashed var(--color-border)', borderRadius: '6px', color: 'var(--color-text-muted)', cursor: 'pointer', marginLeft: '8px', fontSize: '0.85rem' }}>
-          <Plus size={16} /> Thêm thẻ
-        </button>
+        {isAdmin && (
+          <button onClick={handleAddTab} style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '0.5rem 1rem', background: 'none', border: '1px dashed var(--color-border)', borderRadius: '6px', color: 'var(--color-text-muted)', cursor: 'pointer', marginLeft: '8px', fontSize: '0.85rem' }}>
+            <Plus size={16} /> Thêm thẻ
+          </button>
+        )}
       </div>
 
       {/* Filter Panel (Customized for Errors) */}
@@ -364,6 +375,7 @@ const DanhMucLoi = () => {
                 key={err.id} 
                 error={err} 
                 viewMode={viewMode} 
+                isAdmin={isAdmin}
                 onEdit={(e) => { setEditingError(e); setIsFormOpen(true); }}
                 onDelete={handleDeleteError}
               />

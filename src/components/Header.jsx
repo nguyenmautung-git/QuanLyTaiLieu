@@ -1,17 +1,21 @@
-import React, { useContext, useState, useRef, useEffect } from 'react';
-import { Search, Bell, Plus, User, FileText, X, LogOut, Camera } from 'lucide-react';
+import React, { useContext, useState, useRef, useEffect, useMemo } from 'react';
+import { ROLES } from '../constants';
+import { Search, Bell, Plus, User, FileText, X, LogOut, Camera, FolderOpen } from 'lucide-react';
 import { signOut } from 'firebase/auth';
 import { auth } from '../firebase';
 import { DocumentContext } from '../context/DocumentContext';
 import ProfileModal from './ProfileModal';
 
-const Header = ({ currentView, onOpenForm }) => {
-  const { getNewCount, markAsRead, documents, members, userRole, toggleRole } = useContext(DocumentContext);
+const Header = ({ currentView, onOpenForm, onNavigate, onSearchSelect }) => {
+  const { getNewCount, markAsRead, documents, projects, members, userRole, toggleRole, canAddDocument } = useContext(DocumentContext);
   const [showNoti, setShowNoti] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showSearch, setShowSearch] = useState(false);
   const notiRef = useRef(null);
   const userMenuRef = useRef(null);
+  const searchRef = useRef(null);
 
   const newCount = getNewCount();
 
@@ -26,10 +30,41 @@ const Header = ({ currentView, onOpenForm }) => {
     const handleClickOutside = (event) => {
       if (notiRef.current && !notiRef.current.contains(event.target)) setShowNoti(false);
       if (userMenuRef.current && !userMenuRef.current.contains(event.target)) setShowUserMenu(false);
+      if (searchRef.current && !searchRef.current.contains(event.target)) setShowSearch(false);
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // ── Tìm kiếm toàn cục ───────────────────────────────────────────────────
+  const searchResults = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q || q.length < 2) return { docs: [], projects: [] };
+
+    const docs = (documents || []).filter(d =>
+      (d.documentCode || '').toLowerCase().includes(q) ||
+      (d.documentNumber || '').toLowerCase().includes(q) ||
+      (d.summary || '').toLowerCase().includes(q) ||
+      (d.issuingAgency || '').toLowerCase().includes(q)
+    ).slice(0, 5);
+
+    const projs = (projects || []).filter(p =>
+      (p.name || '').toLowerCase().includes(q) ||
+      (p.code || '').toLowerCase().includes(q) ||
+      (p.description || '').toLowerCase().includes(q)
+    ).slice(0, 3);
+
+    return { docs, projects: projs };
+  }, [searchQuery, documents, projects]);
+
+  const hasResults = searchResults.docs.length > 0 || searchResults.projects.length > 0;
+
+  const handleSearchSelect = (type, data, view) => {
+    onSearchSelect?.({ type, data });
+    onNavigate?.(view);
+    setSearchQuery('');
+    setShowSearch(false);
+  };
 
   const handleNotiClick = () => {
     setShowNoti(!showNoti);
@@ -49,20 +84,109 @@ const Header = ({ currentView, onOpenForm }) => {
 
   return (
     <header className="header">
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 1, maxWidth: '500px' }}>
+      {/* ── Ô tìm kiếm toàn cục ── */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 1, maxWidth: '500px' }} ref={searchRef}>
         <div style={{ position: 'relative', width: '100%' }}>
-          <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-light)' }} />
+          <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-light)', pointerEvents: 'none' }} />
           <input
             type="text"
             placeholder="Tìm kiếm tài liệu, dự án..."
             className="input-field"
-            style={{ paddingLeft: '36px', borderRadius: 'var(--radius-full)', backgroundColor: 'var(--color-bg-surface-hover)', border: 'none' }}
+            value={searchQuery}
+            onChange={e => { setSearchQuery(e.target.value); setShowSearch(true); }}
+            onFocus={() => setShowSearch(true)}
+            onKeyDown={e => { if (e.key === 'Escape') { setSearchQuery(''); setShowSearch(false); } }}
+            style={{ paddingLeft: '36px', paddingRight: searchQuery ? '32px' : '12px', borderRadius: 'var(--radius-full)', backgroundColor: 'var(--color-bg-surface-hover)', border: showSearch && hasResults ? '1px solid rgba(59,130,246,0.4)' : 'none', transition: 'border 0.15s' }}
           />
+          {searchQuery && (
+            <button onClick={() => { setSearchQuery(''); setShowSearch(false); }}
+              style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', display: 'flex', padding: '2px' }}>
+              <X size={14} />
+            </button>
+          )}
+
+          {/* Dropdown kết quả */}
+          {showSearch && searchQuery.length >= 2 && (
+            <div style={{
+              position: 'absolute', top: 'calc(100% + 8px)', left: 0, right: 0,
+              background: 'var(--color-bg-surface)',
+              border: '1px solid var(--color-border)',
+              borderRadius: '14px', overflow: 'hidden',
+              boxShadow: '0 16px 48px rgba(0,0,0,0.4)',
+              zIndex: 999, minWidth: '360px',
+            }}>
+              {!hasResults ? (
+                <div style={{ padding: '1.25rem', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>
+                  Không tìm thấy kết quả cho &ldquo;<strong>{searchQuery}</strong>&rdquo;
+                </div>
+              ) : (
+                <>
+                  {/* Documents */}
+                  {searchResults.docs.length > 0 && (
+                    <div>
+                      <div style={{ padding: '0.6rem 1rem 0.3rem', fontSize: '0.7rem', fontWeight: '700', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                        Tài liệu
+                      </div>
+                      {searchResults.docs.map(doc => (
+                        <button key={doc.id}
+                          onClick={() => handleSearchSelect('document', doc, 'dashboard')}
+                          style={{ width: '100%', textAlign: 'left', padding: '0.65rem 1rem', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'flex-start', gap: '0.75rem', transition: 'background 0.1s' }}
+                          onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg-surface-hover)'}
+                          onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                        >
+                          <FileText size={16} style={{ color: 'var(--color-primary)', marginTop: '2px', flexShrink: 0 }} />
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: '0.83rem', fontWeight: '600', color: 'var(--color-text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              Số: {doc.documentNumber}
+                            </div>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: '1px' }}>
+                              {doc.summary}
+                            </div>
+                          </div>
+                          <span style={{ fontSize: '0.68rem', color: 'var(--color-primary)', background: 'rgba(59,130,246,0.1)', borderRadius: '6px', padding: '2px 6px', whiteSpace: 'nowrap', flexShrink: 0 }}>{doc.documentCode}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Projects */}
+                  {searchResults.projects.length > 0 && (
+                    <div style={{ borderTop: searchResults.docs.length > 0 ? '1px solid var(--color-border)' : 'none' }}>
+                      <div style={{ padding: '0.6rem 1rem 0.3rem', fontSize: '0.7rem', fontWeight: '700', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                        Dự án
+                      </div>
+                      {searchResults.projects.map(p => (
+                        <button key={p.id}
+                          onClick={() => handleSearchSelect('project', p, 'projects')}
+                          style={{ width: '100%', textAlign: 'left', padding: '0.65rem 1rem', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.75rem', transition: 'background 0.1s' }}
+                          onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg-surface-hover)'}
+                          onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                        >
+                          <FolderOpen size={16} style={{ color: '#a78bfa', flexShrink: 0 }} />
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: '0.83rem', fontWeight: '600', color: 'var(--color-text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {p.name}
+                            </div>
+                            {p.code && <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>{p.code}</div>}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Footer */}
+                  <div style={{ padding: '0.5rem 1rem', borderTop: '1px solid var(--color-border)', background: 'var(--color-bg-surface-hover)' }}>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>Nhấn <kbd style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid var(--color-border)', borderRadius: '4px', padding: '0 4px', fontSize: '0.68rem' }}>Esc</kbd> để đóng</span>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-        {userRole === 'Admin' && currentView === 'dashboard' && (
+        {(userRole === ROLES.ADMIN || canAddDocument()) && currentView === 'dashboard' && (
           <button className="btn btn-primary" onClick={onOpenForm}>
             <Plus size={18} />
             <span>Tải lên tài liệu</span>
@@ -161,7 +285,7 @@ const Header = ({ currentView, onOpenForm }) => {
               {/* Actions */}
               <div style={{ backgroundColor: 'var(--color-bg-surface-hover)', borderRadius: '24px 24px 0 0', padding: '8px 0 0' }}>
                 {/* Toggle role (debug, admin only) */}
-                {userRole === 'Admin' && (
+                {userRole === ROLES.ADMIN && (
                   <div onClick={() => { toggleRole(); setShowUserMenu(false); }} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 24px', cursor: 'pointer', borderBottom: '1px solid var(--color-border)' }}>
                     <div style={{ width: '36px', height: '36px', borderRadius: '50%', backgroundColor: '#ea4335', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold', fontSize: '1.2rem' }}>U</div>
                     <div style={{ display: 'flex', flexDirection: 'column' }}>

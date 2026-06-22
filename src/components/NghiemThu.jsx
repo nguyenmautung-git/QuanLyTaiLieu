@@ -1,8 +1,12 @@
-import React, { useState, useContext, useRef } from 'react';
+import React, { useState, useContext, useRef, useEffect } from 'react';
 import { DocumentContext } from '../context/DocumentContext';
+import { useToast, useConfirm } from '../context/UIContext';
 import { storage } from '../firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Plus, Edit2, Trash2, X, Check, Clock, Circle, ChevronDown, ChevronUp, AlertCircle, Save, Paperclip, FileText, Download, Loader, ArrowUp, ArrowDown, ChevronRight } from 'lucide-react';
+import { ROLES, STEP_STATUS } from '../constants';
+import StepBadge, { STATUS_CONFIG } from './shared/StepBadge';
+import { withTimeout, getUploadErrorMessage } from '../utils/uploadHelpers';
 
 // Danh sách các bước nghiệm thu mặc định
 const DEFAULT_STEPS = [
@@ -14,25 +18,10 @@ const DEFAULT_STEPS = [
   'Quyết toán hợp đồng',
 ];
 
-const STATUS_CONFIG = {
-  done:       { label: 'Hoàn thành', color: '#34d399', bg: 'rgba(16, 185, 129, 0.15)', icon: Check },
-  inprogress: { label: 'Đang thực hiện', color: '#fbbf24', bg: 'rgba(245, 158, 11, 0.15)', icon: Clock },
-  pending:    { label: 'Chưa thực hiện', color: '#94a3b8', bg: 'rgba(148, 163, 184, 0.15)', icon: Circle },
-};
 
-/* ─── Step Badge ─── */
-const StepBadge = ({ status }) => {
-  const cfg = STATUS_CONFIG[status] || STATUS_CONFIG.pending;
-  const Icon = cfg.icon;
-  return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '2px 8px', borderRadius: '20px', backgroundColor: cfg.bg, color: cfg.color, fontSize: '0.7rem', fontWeight: '600', whiteSpace: 'nowrap' }}>
-      <Icon size={11} /> {cfg.label}
-    </span>
-  );
-};
 
 /* ─── Workflow Step Row ─── */
-const StepRow = ({ step, index, total, onEdit, onDelete, onMoveUp, onMoveDown, isAdmin }) => {
+const StepRow = ({ step, index, total, onEdit, onDelete, onMoveUp, onMoveDown, canEditAcceptance }) => {
   const cfg = STATUS_CONFIG[step.status] || STATUS_CONFIG.pending;
   const Icon = cfg.icon;
   const isFirst = index === 0;
@@ -41,8 +30,8 @@ const StepRow = ({ step, index, total, onEdit, onDelete, onMoveUp, onMoveDown, i
 
   return (
     <div style={{ display: 'flex', gap: '0.5rem', position: 'relative' }}>
-      {/* Up/Down buttons - chỉ Admin mới thấy */}
-      {isAdmin && (
+      {/* Up/Down buttons - chỉ Admin/canEditAcceptance mới thấy */}
+      {canEditAcceptance && (
         <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', gap: '2px', flexShrink: 0, paddingTop: '4px' }}>
           <button
             onClick={onMoveUp}
@@ -90,8 +79,8 @@ const StepRow = ({ step, index, total, onEdit, onDelete, onMoveUp, onMoveDown, i
       {/* Content */}
       <div 
         style={{ flex: 1, paddingBottom: isLast ? 0 : '1rem' }}
-        onDoubleClick={() => { if (isAdmin) onEdit(step); }}
-        title={isAdmin ? "Nhấp đúp để sửa" : ""}
+        onDoubleClick={() => { if (canEditAcceptance) onEdit(step); }}
+        title={canEditAcceptance ? "Nhấp đúp để sửa" : ""}
       >
         {/* Row 1: Tên bước — full width */}
         <div style={{ fontWeight: '600', fontSize: '0.875rem', color: 'var(--color-text-main)', marginBottom: '6px' }}>
@@ -105,7 +94,7 @@ const StepRow = ({ step, index, total, onEdit, onDelete, onMoveUp, onMoveDown, i
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
             <StepBadge status={step.status} />
-            {isAdmin && (
+            {canEditAcceptance && (
               <>
                 <button className="btn-icon" onClick={() => onEdit(step)} style={{ color: 'var(--color-primary)', padding: '3px' }} title="Sửa"><Edit2 size={13} /></button>
                 <button className="btn-icon" onClick={() => onDelete(step.id)} style={{ color: 'var(--color-danger)', padding: '3px' }} title="Xóa"><Trash2 size={13} /></button>
@@ -138,7 +127,7 @@ const StepRow = ({ step, index, total, onEdit, onDelete, onMoveUp, onMoveDown, i
 };
 
 /* ─── Project Acceptance Card ─── */
-const ProjectAcceptanceCard = ({ project, steps, isAdmin, onAddStep, onEditStep, onDeleteStep, onMoveStep }) => {
+const ProjectAcceptanceCard = ({ project, steps, canEditAcceptance, onAddStep, onEditStep, onDeleteStep, onMoveStep }) => {
   const [expanded, setExpanded] = useState(false);
   const done = steps.filter(s => s.status === 'done').length;
   const progress = steps.length > 0 ? Math.round((done / steps.length) * 100) : 0;
@@ -172,7 +161,7 @@ const ProjectAcceptanceCard = ({ project, steps, isAdmin, onAddStep, onEditStep,
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          {isAdmin && (
+          {canEditAcceptance && (
             <button className="btn btn-outline" onClick={() => onAddStep(project)} style={{ fontSize: '0.78rem', padding: '4px 12px', display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--color-primary)', borderColor: 'var(--color-primary)' }}>
               <Plus size={13} /> Thêm bước
             </button>
@@ -185,14 +174,14 @@ const ProjectAcceptanceCard = ({ project, steps, isAdmin, onAddStep, onEditStep,
         {expanded && (
           <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--color-border)' }}>
             {sorted.length === 0
-              ? <div style={{ textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.8rem', padding: '1rem 0' }}>Chưa có bước nghiệm thu nào. {isAdmin && 'Nhấn "+ Thêm bước" để bắt đầu.'}</div>
+              ? <div style={{ textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.8rem', padding: '1rem 0' }}>Chưa có bước nghiệm thu nào. {canEditAcceptance && 'Nhấn "+ Thêm bước" để bắt đầu.'}</div>
               : sorted.map((step, i) => (
                 <StepRow
                   key={step.id}
                   step={step}
                   index={i}
                   total={sorted.length}
-                  isAdmin={isAdmin}
+                  canEditAcceptance={canEditAcceptance}
                   onEdit={onEditStep}
                   onDelete={onDeleteStep}
                   onMoveUp={() => onMoveStep(sorted, i, i - 1)}
@@ -208,7 +197,7 @@ const ProjectAcceptanceCard = ({ project, steps, isAdmin, onAddStep, onEditStep,
 };
 
 /* ─── Step Form Modal ─── */
-const StepFormModal = ({ project, editingStep, onClose, onSave, savedCount }) => {
+const StepFormModal = ({ project, editingStep, onClose, onSave, savedCount, canUpload }) => {
   const fileInputRef = useRef(null);
   const [uploading, setUploading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -301,13 +290,7 @@ const StepFormModal = ({ project, editingStep, onClose, onSave, savedCount }) =>
     setUploading(true);
     setUploadError('');
 
-    const withTimeout = (promise, ms) =>
-      Promise.race([
-        promise,
-        new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('TIMEOUT')), ms)
-        ),
-      ]);
+
 
     try {
       const newAtts = await Promise.all(
@@ -321,11 +304,7 @@ const StepFormModal = ({ project, editingStep, onClose, onSave, savedCount }) =>
       setForm(f => ({ ...f, attachments: [...f.attachments, ...newAtts], status: 'done' }));
     } catch (err) {
       console.error('Upload error:', err);
-      if (err.message === 'TIMEOUT' || err.code === 'storage/unauthorized') {
-        setUploadError('Firebase Storage chưa cho phép upload. Kiểm tra rules.');
-      } else {
-        setUploadError(`Lỗi tải lên: ${err.message || 'Vui lòng thử lại'}`);
-      }
+      setUploadError(getUploadErrorMessage(err));
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -471,8 +450,8 @@ const StepFormModal = ({ project, editingStep, onClose, onSave, savedCount }) =>
             <label className="form-label">Tệp đính kèm (Biên bản nghiệm thu)</label>
             <div style={{ border: '1px dashed var(--color-border)', borderRadius: '8px', padding: '0.75rem', backgroundColor: 'var(--color-bg-surface)' }}>
               <input ref={fileInputRef} type="file" multiple style={{ display: 'none' }} onChange={handleFileUpload} />
-              <button type="button" className="btn btn-outline" onClick={() => fileInputRef.current?.click()} disabled={uploading}
-                style={{ fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px', width: '100%', justifyContent: 'center' }}>
+              <button type="button" className="btn btn-outline" onClick={() => fileInputRef.current?.click()} disabled={uploading || !canUpload}
+                style={{ fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px', width: '100%', justifyContent: 'center', opacity: canUpload ? 1 : 0.6, cursor: canUpload ? 'pointer' : 'not-allowed' }}>
                 {uploading ? <><Loader size={14} style={{ animation: 'spin 1s linear infinite' }} /> Đang tải lên...</> : <><Paperclip size={14} /> Chọn tệp đính kèm</>}
               </button>
               {uploadError && (
@@ -514,8 +493,11 @@ const StepFormModal = ({ project, editingStep, onClose, onSave, savedCount }) =>
 
 /* ─── Main Page ─── */
 const NghiemThu = () => {
-  const { projects, acceptanceSteps, addAcceptanceStep, updateAcceptanceStep, deleteAcceptanceStep, userRole } = useContext(DocumentContext);
-  const isAdmin = userRole === 'Admin';
+  const { projects, acceptanceSteps, addAcceptanceStep, updateAcceptanceStep, deleteAcceptanceStep, userRole, enableLazy, checkPermission } = useContext(DocumentContext);
+  const toast = useToast();
+  const confirm = useConfirm();
+  useEffect(() => { enableLazy(); }, [enableLazy]);
+  const isAdmin = userRole === ROLES.ADMIN;
   const [addingToProject, setAddingToProject] = useState(null);
   const [editingStep, setEditingStep] = useState(null);
   const [editingProject, setEditingProject] = useState(null);
@@ -535,8 +517,8 @@ const NghiemThu = () => {
         setSavedCount(c => c + 1); // reset form, giữ modal mở
       }
     } catch (err) {
-      console.error("Lỗi khi lưu:", err);
-      alert("Đã có lỗi xảy ra khi lưu: " + err.message + "\n(Vui lòng kiểm tra quyền ghi của Firebase Firestore hoặc kết nối mạng)");
+      console.error('Lỗi khi lưu:', err);
+      toast.error('Lỗi khi lưu: ' + err.message);
       throw err;
     }
   };
@@ -547,9 +529,8 @@ const NghiemThu = () => {
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm('Bạn có chắc muốn xóa bước nghiệm thu này?')) {
-      await deleteAcceptanceStep(id);
-    }
+    const ok = await confirm('Bạn có chắc muốn xóa bước nghiệm thu này?');
+    if (ok) await deleteAcceptanceStep(id);
   };
 
   // Di chuyển vị trí và cập nhật lại order cho tất cả các item nếu cần để sửa lỗi trùng order

@@ -1,12 +1,16 @@
 import React, { useState } from 'react';
+import { ROLES } from '../constants';
 import { Gantt, ViewMode } from 'gantt-task-react';
 import "gantt-task-react/dist/index.css";
+import { useToast, useConfirm } from '../context/UIContext';
 import { Plus, Trash2, Edit } from 'lucide-react';
 
 const ProjectGantt = ({ projectId, tasks = [], onTasksChange, isPreviewMode, userRole }) => {
   const [view, setView] = useState(ViewMode.Day);
   const [isTaskFormOpen, setIsTaskFormOpen] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
+  const toast = useToast();
+  const confirm = useConfirm();
 
   // Form state
   const [taskName, setTaskName] = useState('');
@@ -39,27 +43,26 @@ const ProjectGantt = ({ projectId, tasks = [], onTasksChange, isPreviewMode, use
   }
 
   const handleTaskChange = (task) => {
-    if (isPreviewMode || userRole !== 'Admin') return;
+    if (isPreviewMode || userRole !== ROLES.ADMIN) return;
     
     const updatedTasks = tasks.map(t => (t.id === task.id ? { ...t, start: task.start.toISOString(), end: task.end.toISOString(), progress: task.progress } : t));
     onTasksChange(updatedTasks);
   };
 
-  const handleTaskDelete = (task) => {
-    if (isPreviewMode || userRole !== 'Admin') return;
-    if (window.confirm('Bạn có chắc muốn xoá công việc này?')) {
-      onTasksChange(tasks.filter(t => t.id !== task.id));
-    }
+  const handleTaskDelete = async (task) => {
+    if (isPreviewMode || userRole !== ROLES.ADMIN) return;
+    const ok = await confirm('Bạn có chắc muốn xoá công việc này?');
+    if (ok) onTasksChange(tasks.filter(t => t.id !== task.id));
   };
 
   const handleTaskProgressChange = (task) => {
-    if (isPreviewMode || userRole !== 'Admin') return;
+    if (isPreviewMode || userRole !== ROLES.ADMIN) return;
     const updatedTasks = tasks.map(t => (t.id === task.id ? { ...t, progress: task.progress } : t));
     onTasksChange(updatedTasks);
   };
 
   const handleDoubleClick = (task) => {
-    if (isPreviewMode || userRole !== 'Admin' || task.id === 'default_task') return;
+    if (isPreviewMode || userRole !== ROLES.ADMIN || task.id === 'default_task') return;
     setEditingTask(task);
     setTaskName(task.name);
     setTaskStart(task.start.toISOString().split('T')[0]);
@@ -73,7 +76,7 @@ const ProjectGantt = ({ projectId, tasks = [], onTasksChange, isPreviewMode, use
     if (!taskName || !taskStart || !taskEnd) return;
 
     if (new Date(taskStart) > new Date(taskEnd)) {
-      alert("Ngày bắt đầu không thể sau ngày kết thúc.");
+      toast.warning('Ngày bắt đầu không thể sau ngày kết thúc.');
       return;
     }
 
@@ -114,7 +117,7 @@ const ProjectGantt = ({ projectId, tasks = [], onTasksChange, isPreviewMode, use
           <button type="button" className={`btn ${view === ViewMode.Week ? 'btn-primary' : 'btn-outline'}`} onClick={() => setView(ViewMode.Week)} style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem' }}>Tuần</button>
           <button type="button" className={`btn ${view === ViewMode.Month ? 'btn-primary' : 'btn-outline'}`} onClick={() => setView(ViewMode.Month)} style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem' }}>Tháng</button>
         </div>
-        {!isPreviewMode && userRole === 'Admin' && (
+        {!isPreviewMode && userRole === ROLES.ADMIN && (
           <button type="button" className="btn btn-primary" onClick={() => { setEditingTask(null); setIsTaskFormOpen(true); }} style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
             <Plus size={14} /> Thêm công việc
           </button>

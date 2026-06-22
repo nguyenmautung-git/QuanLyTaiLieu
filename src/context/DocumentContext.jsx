@@ -1,21 +1,94 @@
-import React, { createContext, useState, useEffect } from 'react';
-import { collection, onSnapshot, addDoc, doc, updateDoc, writeBatch, deleteDoc, query, where, getDocs } from 'firebase/firestore';
+import React, { createContext, useState, useEffect, useCallback, useMemo } from 'react';
+import { collection, onSnapshot, addDoc, doc, updateDoc, writeBatch, deleteDoc, query, where, getDocs, setDoc } from 'firebase/firestore';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { db, auth } from '../firebase';
 import { mockProjects, mockMembers, mockPartners, LIST_CONFIGS } from '../data';
 import { generateToken, hashToken, getAppUrl } from '../utils/inviteUtils';
+import { COLLECTIONS, ROLES } from '../constants';
+
+const DEFAULT_ROLE_PERMS = {
+  'Giám đốc DA': {
+    view_docs: true,  add_docs: true,  edit_docs: true,
+    view_steps: true, add_steps: true, edit_steps: true, reorder: true, upload_att: true,
+    view_bidding: true, edit_bidding: true, view_contractor: true, edit_contractor: true,
+    view_acceptance: true, edit_acceptance: true, view_payment: true, update_payment: true,
+    view_defects: true, edit_defects: true,
+    manage_members: false, manage_partners: false, system_settings: false,
+  },
+  'Chuyên viên': {
+    view_docs: true,  add_docs: true,  edit_docs: false,
+    view_steps: true, add_steps: true, edit_steps: false, reorder: false, upload_att: true,
+    view_bidding: true, edit_bidding: false, view_contractor: true, edit_contractor: true,
+    view_acceptance: true, edit_acceptance: false, view_payment: true, update_payment: false,
+    view_defects: true, edit_defects: false,
+    manage_members: false, manage_partners: false, system_settings: false,
+  },
+  'Thư ký DA': {
+    view_docs: true,  add_docs: false, edit_docs: false,
+    view_steps: true, add_steps: false, edit_steps: false, reorder: false, upload_att: false,
+    view_bidding: true, edit_bidding: false, view_contractor: true, edit_contractor: false,
+    view_acceptance: true, edit_acceptance: false, view_payment: true, update_payment: false,
+    view_defects: true, edit_defects: false,
+    manage_members: false, manage_partners: false, system_settings: false,
+  },
+};
+
+const getDefaultPermissionsForRole = (roleName) => {
+  const name = (roleName || '').toLowerCase();
+  if (name.includes('giám đốc') || name.includes('gd') || name.includes('pm') || name.includes('chủ trì') || name.includes('admin')) {
+    return DEFAULT_ROLE_PERMS['Giám đốc DA'];
+  }
+  if (name.includes('thư ký') || name.includes('trợ lý')) {
+    return DEFAULT_ROLE_PERMS['Thư ký DA'];
+  }
+  return DEFAULT_ROLE_PERMS['Chuyên viên'];
+};
+
+const DEFAULT_MATRIX = {
+  'Giám đốc dự án': DEFAULT_ROLE_PERMS['Giám đốc DA'],
+  'Điều phối dự án': DEFAULT_ROLE_PERMS['Chuyên viên'],
+  'Thành viên dự án': DEFAULT_ROLE_PERMS['Chuyên viên'],
+  'Thư ký dự án': DEFAULT_ROLE_PERMS['Thư ký DA'],
+  'Giám đốc DA': DEFAULT_ROLE_PERMS['Giám đốc DA'],
+  'Chuyên viên': DEFAULT_ROLE_PERMS['Chuyên viên'],
+  'Thư ký DA': DEFAULT_ROLE_PERMS['Thư ký DA'],
+};
 
 export const DocumentContext = createContext();
 
 export const DocumentProvider = ({ children, currentUser }) => {
   const [documents, setDocuments] = useState([]);
   const [userRole, setUserRole] = useState('User');
+  const [rawRoleMatrix, setRawRoleMatrix] = useState({});
+  const [defectTabs, setDefectTabs] = useState([]);
+  const [defectLibrary, setDefectLibrary] = useState([]);
   const [globalLists, setGlobalLists] = useState(
     LIST_CONFIGS.reduce((acc, config) => {
       acc[config.key] = [];
       return acc;
     }, {})
   );
+
+  const projectRoleMatrix = useMemo(() => {
+    const matrix = {};
+    const activeRoles = globalLists.projectRoles?.map(r => r.name) || [];
+
+    const rolesToUse = new Set([
+      ...activeRoles,
+      ...Object.keys(DEFAULT_MATRIX),
+      ...Object.keys(rawRoleMatrix || {})
+    ]);
+
+    rolesToUse.forEach(role => {
+      const defaultPermsForThisRole = DEFAULT_MATRIX[role] || getDefaultPermissionsForRole(role);
+      matrix[role] = {
+        ...defaultPermsForThisRole,
+        ...(rawRoleMatrix?.[role] || {})
+      };
+    });
+
+    return matrix;
+  }, [rawRoleMatrix, globalLists.projectRoles]);
   const [projects, setProjects] = useState([]);
   const [members, setMembers] = useState([]);
   const [partners, setPartners] = useState([]);
@@ -24,10 +97,17 @@ export const DocumentProvider = ({ children, currentUser }) => {
   const [scheduleSteps, setScheduleSteps] = useState([]);
   const [acceptanceSteps, setAcceptanceSteps] = useState([]);
   const [invitations, setInvitations] = useState([]);
+  // ── Lazy subscription flag ─────────────────────────────────────────────
+  const [lazyEnabled, setLazyEnabled] = useState(false);
+  /**
+   * Gọi từ bất kỳ trang nào cần dữ liệu lazy (Partners, BiddingPlan, PhapLy...).
+   * Một khi bật, giữ nguyên suốt session — không bao giờ unsubscribe giữa chừng.
+   */
+  const enableLazy = useCallback(() => setLazyEnabled(true), []);
 
   useEffect(() => {
     // Theo dõi danh sách tài liệu
-    const unsubscribeDocs = onSnapshot(collection(db, 'documents'), (snapshot) => {
+    const unsubscribeDocs = onSnapshot(collection(db, COLLECTIONS.DOCUMENTS), (snapshot) => {
       const docsData = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
@@ -52,16 +132,16 @@ export const DocumentProvider = ({ children, currentUser }) => {
 
           setGlobalLists(prev => ({ ...prev, [config.key]: uniqueData }));
         } else {
-          // Nạp dữ liệu mẫu lên Firebase
-          config.initialData.forEach(async (item) => {
-            await addDoc(collection(db, config.collectionName), { name: item });
-          });
+          // Nạp dữ liệu mẫu lên Firebase (chạy song song, không block)
+          Promise.all(
+            config.initialData.map((item) => addDoc(collection(db, config.collectionName), { name: item }))
+          ).catch(console.error);
         }
       });
     });
 
     // Theo dõi danh sách dự án
-    const unsubscribeProjects = onSnapshot(collection(db, 'projects'), (snapshot) => {
+    const unsubscribeProjects = onSnapshot(collection(db, COLLECTIONS.PROJECTS), (snapshot) => {
       if (!snapshot.empty) {
         const projectsData = snapshot.docs.map(doc => ({
           id: doc.id,
@@ -69,16 +149,15 @@ export const DocumentProvider = ({ children, currentUser }) => {
         }));
         setProjects(projectsData);
       } else {
-        // Nạp dữ liệu mẫu
-        mockProjects.forEach(async (project) => {
-          const { id, ...data } = project;
-          await addDoc(collection(db, 'projects'), data);
-        });
+        // Nạp dữ liệu mẫu (chạy song song, không block callback)
+        Promise.all(
+          mockProjects.map(({ id, ...data }) => addDoc(collection(db, COLLECTIONS.PROJECTS), data))
+        ).catch(console.error);
       }
     });
 
     // Theo dõi danh sách thành viên
-    const unsubscribeMembers = onSnapshot(collection(db, 'members'), (snapshot) => {
+    const unsubscribeMembers = onSnapshot(collection(db, COLLECTIONS.MEMBERS), (snapshot) => {
       if (!snapshot.empty) {
         const membersData = snapshot.docs.map(doc => ({
           id: doc.id,
@@ -86,57 +165,70 @@ export const DocumentProvider = ({ children, currentUser }) => {
         }));
         setMembers(membersData);
       } else {
-        // Nạp dữ liệu mẫu
-        mockMembers.forEach(async (member) => {
-          const { id, ...data } = member;
-          await addDoc(collection(db, 'members'), data);
-        });
+        // Nạp dữ liệu mẫu (chạy song song, không block callback)
+        Promise.all(
+          mockMembers.map(({ id, ...data }) => addDoc(collection(db, COLLECTIONS.MEMBERS), data))
+        ).catch(console.error);
       }
     });
 
-    // Theo dõi danh sách đối tác
-    const unsubscribePartners = onSnapshot(collection(db, 'partners'), (snapshot) => {
-      if (!snapshot.empty) {
-        const partnersData = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-        setPartners(partnersData);
+    const unsubscribeMatrix = onSnapshot(doc(db, 'system_settings', 'project_role_matrix'), (docSnap) => {
+      if (docSnap.exists()) {
+        setRawRoleMatrix(docSnap.data());
       } else {
-        // Nạp dữ liệu mẫu
-        mockPartners.forEach(async (partner) => {
-          const { id, ...data } = partner;
-          await addDoc(collection(db, 'partners'), data);
-        });
+        setDoc(doc(db, 'system_settings', 'project_role_matrix'), DEFAULT_MATRIX)
+          .catch(err => console.error("Error setting default project matrix:", err));
+      }
+    });
+
+    return () => {
+      unsubscribeDocs();
+      listUnsubscribes.forEach(unsub => unsub());
+      unsubscribeProjects();
+      unsubscribeMembers();
+      unsubscribeMatrix();
+    };
+  }, []);
+
+  // ── LAZY: subscribe khi enableLazy() được gọi lần đầu ───────────────────
+  // Các collections ít dùng chỉ subscribe khi user điều hướng đến trang cần chúng.
+  // Một khi bật, giữ nguyên cho đến khi logout (Provider unmount).
+  useEffect(() => {
+    if (!lazyEnabled) return;
+
+    // Theo dõi đối tác
+    const unsubscribePartners = onSnapshot(collection(db, COLLECTIONS.PARTNERS), (snapshot) => {
+      if (!snapshot.empty) {
+        setPartners(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+      } else {
+        Promise.all(
+          mockPartners.map(({ id, ...data }) => addDoc(collection(db, COLLECTIONS.PARTNERS), data))
+        ).catch(console.error);
       }
     });
 
     // Theo dõi gói thầu
-    const unsubscribeBidding = onSnapshot(collection(db, 'biddingPackages'), (snapshot) => {
-      const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-      setBiddingPackages(data);
+    const unsubscribeBidding = onSnapshot(collection(db, COLLECTIONS.BIDDING_PACKAGES), (snapshot) => {
+      setBiddingPackages(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
     });
 
-    // Theo dõi bước pháp lý theo dự án
-    const unsubscribeLegal = onSnapshot(collection(db, 'legalSteps'), (snapshot) => {
-      const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-      setLegalSteps(data);
+    // Theo dõi bước pháp lý
+    const unsubscribeLegal = onSnapshot(collection(db, COLLECTIONS.LEGAL_STEPS), (snapshot) => {
+      setLegalSteps(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
     });
 
-    // Theo dõi tiến độ theo dự án
-    const unsubscribeSchedule = onSnapshot(collection(db, 'scheduleSteps'), (snapshot) => {
-      const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-      setScheduleSteps(data);
+    // Theo dõi tiến độ
+    const unsubscribeSchedule = onSnapshot(collection(db, COLLECTIONS.SCHEDULE_STEPS), (snapshot) => {
+      setScheduleSteps(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
     });
 
-    // Theo dõi nghiệm thu thanh toán theo dự án
-    const unsubscribeAcceptance = onSnapshot(collection(db, 'acceptanceSteps'), (snapshot) => {
-      const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-      setAcceptanceSteps(data);
+    // Theo dõi nghiệm thu
+    const unsubscribeAcceptance = onSnapshot(collection(db, COLLECTIONS.ACCEPTANCE_STEPS), (snapshot) => {
+      setAcceptanceSteps(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
     });
 
     // Theo dõi lời mời thành viên
-    const unsubscribeInvitations = onSnapshot(collection(db, 'invitations'), (snapshot) => {
+    const unsubscribeInvitations = onSnapshot(collection(db, COLLECTIONS.INVITATIONS), (snapshot) => {
       const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
       data.sort((a, b) => {
         const tA = a.createdAt?.toDate?.() || new Date(a.createdAt || 0);
@@ -146,19 +238,57 @@ export const DocumentProvider = ({ children, currentUser }) => {
       setInvitations(data);
     });
 
+    // Theo dõi thẻ danh mục lỗi
+    const unsubscribeDefectTabs = onSnapshot(collection(db, 'defectTabs'), (snapshot) => {
+      setDefectTabs(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
+
+    // Theo dõi thư viện danh mục lỗi
+    const unsubscribeDefectLibrary = onSnapshot(collection(db, 'defectLibrary'), (snapshot) => {
+      setDefectLibrary(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
+
+    // Tự động nạp dữ liệu mẫu cho danh mục lỗi nếu trống
+    const seedDefects = async () => {
+      try {
+        const tabsSnap = await getDocs(collection(db, 'defectTabs'));
+        if (tabsSnap.empty) {
+          const tabRefs = await Promise.all([
+            addDoc(collection(db, 'defectTabs'), { name: 'Quy hoạch' }),
+            addDoc(collection(db, 'defectTabs'), { name: 'Concept' }),
+            addDoc(collection(db, 'defectTabs'), { name: 'Thiết kế cơ sở' })
+          ]);
+          
+          const tabIds = tabRefs.map(r => r.id);
+          
+          const initialErrors = [
+            { tabId: tabIds[0], code: 'L-QH-01', title: 'Sai lệch mốc tọa độ quy hoạch', description: 'Tọa độ góc ranh giới lô đất trên bản vẽ thực tế không khớp với bản vẽ quy hoạch 1/500 đã duyệt, dẫn đến nguy cơ lấn chiếm lộ giới.', prevention: 'Yêu cầu đơn vị đo đạc độc lập khảo sát lại hiện trạng và đối chiếu với Sở Quy hoạch Kiến trúc trước khi chốt phương án.', severity: 'Nghiêm trọng', author: 'KTS. Nguyễn Văn A' },
+            { tabId: tabIds[0], code: 'L-QH-02', title: 'Thiếu mảng xanh bắt buộc', description: 'Tỷ lệ cây xanh cảnh quan và phần đất thấm nước chưa đạt tối thiểu 20% theo QCVN 01:2021/BXD.', prevention: 'Tăng diện tích trồng cỏ gạch lỗ tại bãi xe ngoài trời, thiết kế thêm vườn mái (green roof).', severity: 'Trung bình', author: 'KTS. Lê Thị B' },
+            { tabId: tabIds[1], code: 'L-CC-01', title: 'Bố cục luồng giao thông chồng chéo', description: 'Luồng xe nhập hàng (Logistics) cắt ngang luồng xe khách VIP, gây ách tắc vào giờ cao điểm.', prevention: 'Phân tách 2 cổng ra vào riêng biệt, hoặc bố trí đường hầm nội bộ cho khối vận hành.', severity: 'Cao', author: 'KTS. Trần C' },
+            { tabId: tabIds[2], code: 'L-TKCS-01', title: 'Tính thiếu tải trọng thiết bị mái', description: 'Bản vẽ kết cấu chưa tính đến tải trọng động của hệ thống Chiller và Tháp giải nhiệt (Cooling Tower) đặt trên mái.', prevention: 'Phối hợp chặt chẽ bản vẽ MEP và Kết cấu, xin thông số thiết bị từ nhà cung cấp trước khi tính toán sàn mái.', severity: 'Nghiêm trọng', author: 'KS. Phạm D' }
+          ];
+
+          await Promise.all(
+            initialErrors.map(err => addDoc(collection(db, 'defectLibrary'), err))
+          );
+        }
+      } catch (err) {
+        console.error("Lỗi khởi tạo danh mục lỗi:", err);
+      }
+    };
+    seedDefects();
+
     return () => {
-      unsubscribeDocs();
-      listUnsubscribes.forEach(unsub => unsub());
-      unsubscribeProjects();
-      unsubscribeMembers();
       unsubscribePartners();
       unsubscribeBidding();
       unsubscribeLegal();
       unsubscribeSchedule();
       unsubscribeAcceptance();
       unsubscribeInvitations();
+      unsubscribeDefectTabs();
+      unsubscribeDefectLibrary();
     };
-  }, []);
+  }, [lazyEnabled]);
 
   // Đồng bộ userRole từ member document của người đang đăng nhập
   useEffect(() => {
@@ -168,10 +298,11 @@ export const DocumentProvider = ({ children, currentUser }) => {
     }
   }, [members, currentUser]);
 
-  // Giữ lại cho Admin để test giao diện User (debug)
-  const toggleRole = () => {
-    setUserRole(prev => prev === 'Admin' ? 'User' : 'Admin');
-  };
+  // toggleRole: CHỈ dùng trong môi trường development để test giao diện
+  // Tự động bị xóa khỏi production build (import.meta.env.DEV = false khi build)
+  const toggleRole = import.meta.env.DEV
+    ? () => setUserRole(prev => prev === 'Admin' ? 'User' : 'Admin')
+    : () => {}; // no-op trong production
 
   const addListItem = async (collectionName, dataOrName) => {
     // Kiểm tra trùng lặp
@@ -217,7 +348,7 @@ export const DocumentProvider = ({ children, currentUser }) => {
     try {
       // Bỏ id giả do Form tạo ra, để Firebase tự tạo ID
       const { id, ...docData } = newDoc;
-      await addDoc(collection(db, 'documents'), docData);
+      await addDoc(collection(db, COLLECTIONS.DOCUMENTS), docData);
 
       if (docData.documentType) {
         addDocumentType(docData.documentType);
@@ -275,7 +406,7 @@ export const DocumentProvider = ({ children, currentUser }) => {
   const addProject = async (newProject) => {
     try {
       const { id, ...data } = newProject;
-      await addDoc(collection(db, 'projects'), data);
+      await addDoc(collection(db, COLLECTIONS.PROJECTS), data);
     } catch (error) {
       console.error("Lỗi khi thêm dự án: ", error);
       throw error;
@@ -304,7 +435,7 @@ export const DocumentProvider = ({ children, currentUser }) => {
   const addMember = async (newMember) => {
     try {
       const { id, ...data } = newMember;
-      await addDoc(collection(db, 'members'), data);
+      await addDoc(collection(db, COLLECTIONS.MEMBERS), data);
     } catch (error) {
       console.error("Lỗi khi thêm thành viên: ", error);
       throw error;
@@ -333,7 +464,7 @@ export const DocumentProvider = ({ children, currentUser }) => {
   const addPartner = async (newPartner) => {
     try {
       const { id, ...data } = newPartner;
-      await addDoc(collection(db, 'partners'), data);
+      await addDoc(collection(db, COLLECTIONS.PARTNERS), data);
     } catch (error) {
       console.error("Lỗi khi thêm đối tác: ", error);
       throw error;
@@ -361,7 +492,7 @@ export const DocumentProvider = ({ children, currentUser }) => {
 
   // ==== Bidding Packages ====
   const addBiddingPackage = async (projectId, pkgData) => {
-    await addDoc(collection(db, 'biddingPackages'), { projectId, ...pkgData, createdAt: new Date().toISOString() });
+    await addDoc(collection(db, COLLECTIONS.BIDDING_PACKAGES), { projectId, ...pkgData, createdAt: new Date().toISOString() });
   };
   const editBiddingPackage = async (projectId, pkgId, pkgData) => {
     const { id, ...data } = pkgData;
@@ -388,7 +519,7 @@ export const DocumentProvider = ({ children, currentUser }) => {
 
   // ==== Legal Steps ====
   const addLegalStep = async (projectId, stepData) => {
-    await addDoc(collection(db, 'legalSteps'), { projectId, ...stepData, createdAt: new Date().toISOString() });
+    await addDoc(collection(db, COLLECTIONS.LEGAL_STEPS), { projectId, ...stepData, createdAt: new Date().toISOString() });
   };
   const updateLegalStep = async (id, stepData) => {
     await updateDoc(doc(db, 'legalSteps', id), { ...stepData, updatedAt: new Date().toISOString() });
@@ -399,7 +530,7 @@ export const DocumentProvider = ({ children, currentUser }) => {
 
   // ==== Schedule Steps ====
   const addScheduleStep = async (projectId, stepData) => {
-    await addDoc(collection(db, 'scheduleSteps'), { projectId, ...stepData, createdAt: new Date().toISOString() });
+    await addDoc(collection(db, COLLECTIONS.SCHEDULE_STEPS), { projectId, ...stepData, createdAt: new Date().toISOString() });
   };
   const updateScheduleStep = async (id, stepData) => {
     await updateDoc(doc(db, 'scheduleSteps', id), { ...stepData, updatedAt: new Date().toISOString() });
@@ -410,7 +541,7 @@ export const DocumentProvider = ({ children, currentUser }) => {
 
   // ==== Acceptance Steps ====
   const addAcceptanceStep = async (projectId, stepData) => {
-    await addDoc(collection(db, 'acceptanceSteps'), { projectId, ...stepData, createdAt: new Date().toISOString() });
+    await addDoc(collection(db, COLLECTIONS.ACCEPTANCE_STEPS), { projectId, ...stepData, createdAt: new Date().toISOString() });
   };
   const updateAcceptanceStep = async (id, stepData) => {
     await updateDoc(doc(db, 'acceptanceSteps', id), { ...stepData, updatedAt: new Date().toISOString() });
@@ -443,7 +574,7 @@ export const DocumentProvider = ({ children, currentUser }) => {
     const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000); // 48 giờ
 
     // Lưu vào Firestore (chỉ lưu hash, KHÔNG lưu plainToken)
-    await addDoc(collection(db, 'invitations'), {
+    await addDoc(collection(db, COLLECTIONS.INVITATIONS), {
       email,
       name,
       role,
@@ -502,7 +633,7 @@ export const DocumentProvider = ({ children, currentUser }) => {
   const verifyInviteToken = async (plainToken) => {
     try {
       const tokenHash = await hashToken(plainToken);
-      const q = query(collection(db, 'invitations'), where('tokenHash', '==', tokenHash));
+      const q = query(collection(db, COLLECTIONS.INVITATIONS), where('tokenHash', '==', tokenHash));
       const snapshot = await getDocs(q);
 
       if (snapshot.empty) return { valid: false, error: 'Link mời không hợp lệ hoặc đã được sử dụng.' };
@@ -540,7 +671,7 @@ export const DocumentProvider = ({ children, currentUser }) => {
     await updateProfile(userCredential.user, { displayName: invitation.name });
 
     // Thêm vào members collection
-    await addDoc(collection(db, 'members'), {
+    await addDoc(collection(db, COLLECTIONS.MEMBERS), {
       name: invitation.name,
       email: invitation.email,
       phone: '',
@@ -561,22 +692,220 @@ export const DocumentProvider = ({ children, currentUser }) => {
     return userCredential.user;
   };
 
+  // Lọc danh sách dự án dựa theo email của currentUser (Admins xem toàn bộ)
+  const filteredProjects = useMemo(() => {
+    if (!currentUser || !members.length) return [];
+    const currentMember = members.find(m => m.email === currentUser.email);
+    const isAdmin = currentMember?.role === ROLES.ADMIN || userRole === ROLES.ADMIN;
+    if (isAdmin) return projects;
+
+    return projects.filter(p => {
+      if (!p.projectMembers) return false;
+      return p.projectMembers.some(pm => pm.memberId?.toString() === currentMember?.id?.toString());
+    });
+  }, [projects, members, currentUser, userRole]);
+
+  // Lọc danh sách tài liệu dựa theo dự án mà user là thành viên (Admins xem toàn bộ)
+  const filteredDocuments = useMemo(() => {
+    if (!currentUser || !members.length) return [];
+    const currentMember = members.find(m => m.email === currentUser.email);
+    const isAdmin = currentMember?.role === ROLES.ADMIN || userRole === ROLES.ADMIN;
+    if (isAdmin) return documents;
+
+    // Lấy danh sách tên dự án mà user là thành viên
+    const myProjectNames = projects
+      .filter(p => p.projectMembers?.some(pm => pm.memberId?.toString() === currentMember?.id?.toString()))
+      .map(p => p.name);
+
+    return documents.filter(doc => {
+      // Nếu tài liệu không liên quan đến dự án nào, bất kỳ ai cũng xem được
+      if (!doc.relatedProjects || doc.relatedProjects.length === 0) return true;
+      return doc.relatedProjects.some(projName => myProjectNames.includes(projName));
+    });
+  }, [documents, projects, members, currentUser, userRole]);
+
+  const saveProjectRoleMatrix = async (matrix) => {
+    try {
+      await setDoc(doc(db, 'system_settings', 'project_role_matrix'), matrix);
+    } catch (error) {
+      console.error("Lỗi khi lưu ma trận vai trò: ", error);
+      throw error;
+    }
+  };
+
+  const addDefectTab = async (name) => {
+    try {
+      const docRef = await addDoc(collection(db, 'defectTabs'), { name: name.trim() });
+      return docRef.id;
+    } catch (error) {
+      console.error("Lỗi thêm thẻ lỗi:", error);
+      throw error;
+    }
+  };
+
+  const editDefectTab = async (id, name) => {
+    try {
+      await updateDoc(doc(db, 'defectTabs', id), { name: name.trim() });
+    } catch (error) {
+      console.error("Lỗi sửa thẻ lỗi:", error);
+      throw error;
+    }
+  };
+
+  const deleteDefectTab = async (id) => {
+    try {
+      await deleteDoc(doc(db, 'defectTabs', id));
+      // Delete all errors in this tab
+      const q = query(collection(db, 'defectLibrary'), where('tabId', '==', id));
+      const snap = await getDocs(q);
+      const batch = writeBatch(db);
+      snap.forEach(d => {
+        batch.delete(doc(db, 'defectLibrary', d.id));
+      });
+      await batch.commit();
+    } catch (error) {
+      console.error("Lỗi xóa thẻ lỗi:", error);
+      throw error;
+    }
+  };
+
+  const addDefectError = async (errData) => {
+    try {
+      const { id, ...data } = errData;
+      const docRef = await addDoc(collection(db, 'defectLibrary'), data);
+      return docRef.id;
+    } catch (error) {
+      console.error("Lỗi thêm lỗi:", error);
+      throw error;
+    }
+  };
+
+  const editDefectError = async (id, errData) => {
+    try {
+      const { id: _, ...data } = errData;
+      await updateDoc(doc(db, 'defectLibrary', id), data);
+    } catch (error) {
+      console.error("Lỗi sửa lỗi:", error);
+      throw error;
+    }
+  };
+
+  const deleteDefectError = async (id) => {
+    try {
+      await deleteDoc(doc(db, 'defectLibrary', id));
+    } catch (error) {
+      console.error("Lỗi xóa lỗi:", error);
+      throw error;
+    }
+  };
+
+  const checkPermission = useCallback((projectId, permissionKey) => {
+    if (!currentUser) return false;
+
+    const currentMember = members.find(m => m.email === currentUser.email);
+    if (!currentMember) return false;
+
+    if (currentMember.role === ROLES.ADMIN || userRole === ROLES.ADMIN) return true;
+
+    const project = projects.find(p => p.id === projectId);
+    if (!project) return false;
+
+    const projectMember = project.projectMembers?.find(
+      pm => pm.memberId?.toString() === currentMember.id?.toString()
+    );
+    const projectRole = projectMember?.role;
+    if (!projectRole) return false;
+
+    const rolePermissions = projectRoleMatrix[projectRole];
+    if (!rolePermissions) return false;
+
+    return !!rolePermissions[permissionKey];
+  }, [projects, members, currentUser, userRole, projectRoleMatrix]);
+
+  const checkDocumentPermission = useCallback((docObj, actionKey) => {
+    if (!currentUser) return false;
+
+    const currentMember = members.find(m => m.email === currentUser.email);
+    if (!currentMember) return false;
+
+    if (currentMember.role === ROLES.ADMIN || userRole === ROLES.ADMIN) return true;
+
+    if (!docObj) return false;
+
+    if (!docObj.relatedProjects || docObj.relatedProjects.length === 0) {
+      return actionKey.startsWith('view_');
+    }
+
+    return docObj.relatedProjects.some(projName => {
+      const proj = projects.find(p => p.name === projName);
+      if (!proj) return false;
+      return checkPermission(proj.id, actionKey);
+    });
+  }, [projects, members, currentUser, userRole, checkPermission]);
+
+  const canAddDocument = useCallback(() => {
+    if (!currentUser) return false;
+
+    const currentMember = members.find(m => m.email === currentUser.email);
+    if (!currentMember) return false;
+
+    if (currentMember.role === ROLES.ADMIN || userRole === ROLES.ADMIN) return true;
+
+    return projects.some(p => checkPermission(p.id, 'add_docs'));
+  }, [projects, members, currentUser, userRole, checkPermission]);
+
+  const canViewDefects = useCallback(() => {
+    if (!currentUser) return false;
+
+    const currentMember = members.find(m => m.email === currentUser.email);
+    if (!currentMember) return false;
+
+    if (currentMember.role === ROLES.ADMIN || userRole === ROLES.ADMIN) return true;
+
+    return projects.some(p => checkPermission(p.id, 'view_defects'));
+  }, [projects, members, currentUser, userRole, checkPermission]);
+
+  const canEditDefects = useCallback(() => {
+    if (!currentUser) return false;
+
+    const currentMember = members.find(m => m.email === currentUser.email);
+    if (!currentMember) return false;
+
+    if (currentMember.role === ROLES.ADMIN || userRole === ROLES.ADMIN) return true;
+
+    return projects.some(p => checkPermission(p.id, 'edit_defects'));
+  }, [projects, members, currentUser, userRole, checkPermission]);
+
   return (
     <DocumentContext.Provider value={{
-      documents, addDocument, editDocument, deleteDocument, markAsRead, getNewCount,
-      userRole, toggleRole,
+      documents: filteredDocuments,
+      allDocuments: documents,
+      addDocument, editDocument, deleteDocument, markAsRead, getNewCount,
+      userRole,
+      // toggleRole chỉ expose trong dev — production build tree-shake nó ra
+      ...(import.meta.env.DEV ? { toggleRole } : {}),
       documentTypes: globalLists.documentTypes, addDocumentType, deleteDocumentType, editDocumentType,
       globalLists, addListItem, editListItem, deleteListItem,
-      projects, addProject, editProject, deleteProject,
+      projects: filteredProjects,
+      allProjects: projects,
+      addProject, editProject, deleteProject,
       members, addMember, editMember, deleteMember,
+      // Lazy collections (rỗng cho đến khi enableLazy() được gọi lần đầu)
       partners, addPartner, editPartner, deletePartner,
       biddingPackages, addBiddingPackage, editBiddingPackage, deleteBiddingPackage, reorderBiddingPackages,
       legalSteps, addLegalStep, updateLegalStep, deleteLegalStep,
       scheduleSteps, addScheduleStep, updateScheduleStep, deleteScheduleStep,
       acceptanceSteps, addAcceptanceStep, updateAcceptanceStep, deleteAcceptanceStep,
       invitations, sendInvitation, revokeInvitation, resendInvitation, verifyInviteToken, activateAccount,
+      enableLazy, // Gọi từ mỗi trang cần lazy data để kích hoạt subscriptions
+      // Matrix & Defect Library
+      projectRoleMatrix, saveProjectRoleMatrix,
+      defectTabs, addDefectTab, editDefectTab, deleteDefectTab,
+      defectLibrary, addDefectError, editDefectError, deleteDefectError,
+      checkPermission, checkDocumentPermission, canAddDocument, canViewDefects, canEditDefects,
     }}>
       {children}
     </DocumentContext.Provider>
   );
 };
+

@@ -1,84 +1,56 @@
-import React, { useState, useContext, useRef } from 'react';
+import React, { useState, useContext, useRef, useEffect } from 'react';
 import { DocumentContext } from '../context/DocumentContext';
+import { useToast, useConfirm } from '../context/UIContext';
 import { storage } from '../firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { Plus, Edit2, Trash2, X, Check, Clock, Circle, ChevronDown, ChevronUp, AlertCircle, Save, Paperclip, FileText, Download, Loader, ArrowUp, ArrowDown } from 'lucide-react';
+import { Plus, Edit2, Trash2, X, Check, Clock, Circle, ChevronDown, ChevronUp, AlertCircle, Save, Paperclip, FileText, Download, Loader, GripVertical } from 'lucide-react';
+import { ROLES, STEP_STATUS, WORKFLOW_DEFAULT_STEPS } from '../constants';
+import StepBadge, { STATUS_CONFIG } from './shared/StepBadge';
+import { withTimeout, getUploadErrorMessage } from '../utils/uploadHelpers';
 
-// Danh sách các bước pháp lý mặc định cho dự án xây dựng VN
-const DEFAULT_STEPS = [
-  'Phê duyệt chủ trương đầu tư',
-  'Phê duyệt dự án đầu tư (Quyết định đầu tư)',
-  'Chấp thuận địa điểm xây dựng',
-  'Phê duyệt quy hoạch chi tiết 1/500',
-  'Cấp phép xây dựng',
-  'Thẩm duyệt thiết kế PCCC',
-  'Phê duyệt thiết kế bản vẽ thi công',
-  'Nghiệm thu hoàn thành công trình',
-  'Bàn giao đưa vào sử dụng',
-];
 
-const STATUS_CONFIG = {
-  done:       { label: 'Hoàn thành', color: '#34d399', bg: 'rgba(16, 185, 129, 0.15)', icon: Check },
-  inprogress: { label: 'Đang thực hiện', color: '#fbbf24', bg: 'rgba(245, 158, 11, 0.15)', icon: Clock },
-  pending:    { label: 'Chưa thực hiện', color: '#94a3b8', bg: 'rgba(148, 163, 184, 0.15)', icon: Circle },
-};
-
-/* ─── Step Badge ─── */
-const StepBadge = ({ status }) => {
-  const cfg = STATUS_CONFIG[status] || STATUS_CONFIG.pending;
-  const Icon = cfg.icon;
-  return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '2px 8px', borderRadius: '20px', backgroundColor: cfg.bg, color: cfg.color, fontSize: '0.7rem', fontWeight: '600', whiteSpace: 'nowrap' }}>
-      <Icon size={11} /> {cfg.label}
-    </span>
-  );
-};
 
 /* ─── Workflow Step Row ─── */
-const StepRow = ({ step, index, total, onEdit, onDelete, onMoveUp, onMoveDown, isAdmin, partners }) => {
+const StepRow = ({
+  step, index, total, onEdit, onDelete, partners,
+  canEditStep, canReorder,
+  isDragging, isDragOver,
+  onDragStart, onDragOver, onDrop, onDragEnd,
+}) => {
   const cfg = STATUS_CONFIG[step.status] || STATUS_CONFIG.pending;
   const Icon = cfg.icon;
-  const isFirst = index === 0;
   const isLast = index === total - 1;
   const attachments = step.attachments || [];
 
   return (
-    <div style={{ display: 'flex', gap: '0.5rem', position: 'relative' }}>
-      {/* Up/Down buttons - chỉ Admin mới thấy */}
-      {isAdmin && (
-        <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', gap: '2px', flexShrink: 0, paddingTop: '4px' }}>
-          <button
-            onClick={onMoveUp}
-            disabled={isFirst}
-            title="Di chuyển lên"
-            style={{
-              width: '20px', height: '20px', borderRadius: '4px', border: 'none', cursor: isFirst ? 'not-allowed' : 'pointer',
-              backgroundColor: isFirst ? 'transparent' : 'var(--color-bg-surface-hover)',
-              color: isFirst ? 'var(--color-border)' : 'var(--color-text-muted)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0,
-              transition: 'all 0.15s'
-            }}
-            onMouseEnter={e => { if (!isFirst) { e.currentTarget.style.backgroundColor = 'var(--color-primary)'; e.currentTarget.style.color = 'white'; }}}
-            onMouseLeave={e => { e.currentTarget.style.backgroundColor = isFirst ? 'transparent' : 'var(--color-bg-surface-hover)'; e.currentTarget.style.color = isFirst ? 'var(--color-border)' : 'var(--color-text-muted)'; }}
-          >
-            <ArrowUp size={11} />
-          </button>
-          <button
-            onClick={onMoveDown}
-            disabled={isLast}
-            title="Di chuyển xuống"
-            style={{
-              width: '20px', height: '20px', borderRadius: '4px', border: 'none', cursor: isLast ? 'not-allowed' : 'pointer',
-              backgroundColor: isLast ? 'transparent' : 'var(--color-bg-surface-hover)',
-              color: isLast ? 'var(--color-border)' : 'var(--color-text-muted)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0,
-              transition: 'all 0.15s'
-            }}
-            onMouseEnter={e => { if (!isLast) { e.currentTarget.style.backgroundColor = 'var(--color-primary)'; e.currentTarget.style.color = 'white'; }}}
-            onMouseLeave={e => { e.currentTarget.style.backgroundColor = isLast ? 'transparent' : 'var(--color-bg-surface-hover)'; e.currentTarget.style.color = isLast ? 'var(--color-border)' : 'var(--color-text-muted)'; }}
-          >
-            <ArrowDown size={11} />
-          </button>
+    <div
+      draggable={canReorder}
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+      onDragEnd={onDragEnd}
+      style={{
+        display: 'flex', gap: '0.5rem', position: 'relative',
+        opacity: isDragging ? 0.4 : 1,
+        borderTop: isDragOver ? '2px solid var(--color-primary)' : '2px solid transparent',
+        borderRadius: isDragOver ? '4px 4px 0 0' : undefined,
+        transition: 'opacity 0.15s, border-color 0.1s',
+        cursor: canReorder ? 'default' : undefined,
+      }}
+    >
+      {/* Drag handle — chỉ Admin/Reorder mới thấy */}
+      {canReorder && (
+        <div
+          style={{
+            display: 'flex', alignItems: 'flex-start', paddingTop: '6px',
+            color: 'var(--color-text-muted)', flexShrink: 0,
+            cursor: 'grab', opacity: 0.5,
+          }}
+          title="Kéo để sắp xếp lại"
+          onMouseEnter={e => e.currentTarget.style.opacity = '1'}
+          onMouseLeave={e => e.currentTarget.style.opacity = '0.5'}
+        >
+          <GripVertical size={15} />
         </div>
       )}
 
@@ -92,12 +64,9 @@ const StepRow = ({ step, index, total, onEdit, onDelete, onMoveUp, onMoveDown, i
 
       {/* Content */}
       <div style={{ flex: 1, paddingBottom: isLast ? 0 : '1rem' }}>
-        {/* Row 1: Tên bước — full width */}
         <div style={{ fontWeight: '600', fontSize: '0.875rem', color: 'var(--color-text-main)', marginBottom: '6px' }}>
           {step.name}
         </div>
-
-        {/* Row 2: Ngày mục tiêu, Ngày hiệu lực | Trạng thái + Sửa/Xóa */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
             {step.targetDate && <div>🎯 Mục tiêu: {step.targetDate}</div>}
@@ -106,7 +75,7 @@ const StepRow = ({ step, index, total, onEdit, onDelete, onMoveUp, onMoveDown, i
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
             <StepBadge status={step.status} />
-            {isAdmin && (
+            {canEditStep && (
               <>
                 <button className="btn-icon" onClick={() => onEdit(step)} style={{ color: 'var(--color-primary)', padding: '3px' }} title="Sửa"><Edit2 size={13} /></button>
                 <button className="btn-icon" onClick={() => onDelete(step.id)} style={{ color: 'var(--color-danger)', padding: '3px' }} title="Xóa"><Trash2 size={13} /></button>
@@ -114,8 +83,6 @@ const StepRow = ({ step, index, total, onEdit, onDelete, onMoveUp, onMoveDown, i
             )}
           </div>
         </div>
-
-        {/* Row 3: Attachments */}
         {attachments.length > 0 && (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '6px' }}>
             {attachments.map((att, i) => (
@@ -132,15 +99,46 @@ const StepRow = ({ step, index, total, onEdit, onDelete, onMoveUp, onMoveDown, i
 };
 
 /* ─── Project Legal Card ─── */
-const ProjectLegalCard = ({ project, steps, isAdmin, onAddStep, onEditStep, onDeleteStep, onMoveStep, partners }) => {
+const ProjectLegalCard = ({
+  project, steps,
+  canAddStep, canEditStep, canReorder,
+  onAddStep, onEditStep, onDeleteStep, onMoveStep, partners
+}) => {
   const [expanded, setExpanded] = useState(false);
-  const done = steps.filter(s => s.status === 'done').length;
+  const [dragIndex, setDragIndex] = useState(null);
+  const [dropIndex, setDropIndex] = useState(null);
+
+  const done = steps.filter(s => s.status === STEP_STATUS.DONE).length;
   const progress = steps.length > 0 ? Math.round((done / steps.length) * 100) : 0;
   const sorted = [...steps].sort((a, b) => (a.order || 0) - (b.order || 0));
 
+  const handleDragStart = (i) => (e) => {
+    setDragIndex(i);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (i) => (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (i !== dropIndex) setDropIndex(i);
+  };
+
+  const handleDrop = (i) => (e) => {
+    e.preventDefault();
+    if (dragIndex !== null && dragIndex !== i) {
+      onMoveStep(sorted, dragIndex, i);
+    }
+    setDragIndex(null);
+    setDropIndex(null);
+  };
+
+  const handleDragEnd = () => {
+    setDragIndex(null);
+    setDropIndex(null);
+  };
+
   return (
     <div className="card" style={{ overflow: 'hidden' }}>
-
       {/* Header image */}
       <div style={{ position: 'relative', height: '140px', overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.05)' }}>
         {project.image
@@ -162,11 +160,11 @@ const ProjectLegalCard = ({ project, steps, isAdmin, onAddStep, onEditStep, onDe
           <div style={{ height: '100%', width: `${progress}%`, borderRadius: '3px', background: progress === 100 ? 'var(--color-success)' : 'linear-gradient(90deg,#6366f1,#8b5cf6)', transition: 'width 0.5s ease' }} />
         </div>
         <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginBottom: '0.75rem' }}>
-          {done}/{steps.length} bước pháp lý • {steps.filter(s => s.status === 'inprogress').length} đang thực hiện
+          {done}/{steps.length} bước pháp lý • {steps.filter(s => s.status === STEP_STATUS.IN_PROGRESS).length} đang thực hiện
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          {isAdmin && (
+          {canAddStep && (
             <button className="btn btn-outline" onClick={() => onAddStep(project)} style={{ fontSize: '0.78rem', padding: '4px 12px', display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--color-primary)', borderColor: 'var(--color-primary)' }}>
               <Plus size={13} /> Thêm bước
             </button>
@@ -178,19 +176,29 @@ const ProjectLegalCard = ({ project, steps, isAdmin, onAddStep, onEditStep, onDe
 
         {expanded && (
           <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--color-border)' }}>
+            {canReorder && sorted.length > 1 && (
+              <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px', opacity: 0.7 }}>
+                <GripVertical size={12} /> Kéo thả để sắp xếp lại thứ tự
+              </div>
+            )}
             {sorted.length === 0
-              ? <div style={{ textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.8rem', padding: '1rem 0' }}>Chưa có bước pháp lý nào. {isAdmin && 'Nhấn "+ Thêm bước" để bắt đầu.'}</div>
+              ? <div style={{ textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.8rem', padding: '1rem 0' }}>Chưa có bước pháp lý nào. {canAddStep && 'Nhấn "+ Thêm bước" để bắt đầu.'}</div>
               : sorted.map((step, i) => (
                 <StepRow
                   key={step.id}
                   step={step}
                   index={i}
                   total={sorted.length}
-                  isAdmin={isAdmin}
+                  canEditStep={canEditStep}
+                  canReorder={canReorder}
                   onEdit={onEditStep}
                   onDelete={onDeleteStep}
-                  onMoveUp={() => onMoveStep(sorted, i, i - 1)}
-                  onMoveDown={() => onMoveStep(sorted, i, i + 1)}
+                  isDragging={dragIndex === i}
+                  isDragOver={dropIndex === i && dragIndex !== i}
+                  onDragStart={handleDragStart(i)}
+                  onDragOver={handleDragOver(i)}
+                  onDrop={handleDrop(i)}
+                  onDragEnd={handleDragEnd}
                   partners={partners}
                 />
               ))
@@ -203,7 +211,7 @@ const ProjectLegalCard = ({ project, steps, isAdmin, onAddStep, onEditStep, onDe
 };
 
 /* ─── Step Form Modal ─── */
-const StepFormModal = ({ project, editingStep, onClose, onSave, savedCount, partners }) => {
+const StepFormModal = ({ project, editingStep, onClose, onSave, savedCount, partners, canUpload }) => {
   const fileInputRef = useRef(null);
   const [uploading, setUploading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -212,7 +220,7 @@ const StepFormModal = ({ project, editingStep, onClose, onSave, savedCount, part
 
   const blankForm = {
     name: '',
-    status: 'pending',
+    status: STEP_STATUS.PENDING,
     effectiveDate: '',
     targetDate: '',
     implementingUnit: '',
@@ -225,7 +233,7 @@ const StepFormModal = ({ project, editingStep, onClose, onSave, savedCount, part
     editingStep
       ? {
           name: editingStep.name || '',
-          status: editingStep.status || 'pending',
+          status: editingStep.status || STEP_STATUS.PENDING,
           effectiveDate: editingStep.effectiveDate || editingStep.completedDate || '',
           targetDate: editingStep.targetDate || '',
           implementingUnit: editingStep.implementingUnit || '',
@@ -251,14 +259,6 @@ const StepFormModal = ({ project, editingStep, onClose, onSave, savedCount, part
     setUploading(true);
     setUploadError('');
 
-    const withTimeout = (promise, ms) =>
-      Promise.race([
-        promise,
-        new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('TIMEOUT')), ms)
-        ),
-      ]);
-
     try {
       const newAtts = await Promise.all(
         files.map(async (file) => {
@@ -268,14 +268,10 @@ const StepFormModal = ({ project, editingStep, onClose, onSave, savedCount, part
           return { name: file.name, url };
         })
       );
-      setForm(f => ({ ...f, attachments: [...f.attachments, ...newAtts], status: 'done' }));
+      setForm(f => ({ ...f, attachments: [...f.attachments, ...newAtts], status: STEP_STATUS.DONE }));
     } catch (err) {
       console.error('Upload error:', err);
-      if (err.message === 'TIMEOUT' || err.code === 'storage/unauthorized') {
-        setUploadError('Firebase Storage chưa cho phép upload. Vào Firebase Console → Storage → Rules → đổi thành: allow read, write: if true;');
-      } else {
-        setUploadError(`Lỗi tải lên: ${err.message || 'Vui lòng thử lại'}`);
-      }
+      setUploadError(getUploadErrorMessage(err));
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -317,7 +313,7 @@ const StepFormModal = ({ project, editingStep, onClose, onSave, savedCount, part
             <label className="form-label">Tên bước pháp lý <span style={{ color: 'var(--color-danger)' }}>*</span></label>
             <input list="step-suggestions" className="input-field" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="VD: Cấp phép xây dựng..." />
             <datalist id="step-suggestions">
-              {DEFAULT_STEPS.map(s => <option key={s} value={s} />)}
+              {WORKFLOW_DEFAULT_STEPS.map(s => <option key={s} value={s} />)}
             </datalist>
           </div>
 
@@ -336,9 +332,9 @@ const StepFormModal = ({ project, editingStep, onClose, onSave, savedCount, part
             <div className="form-group" style={{ marginBottom: 0 }}>
               <label className="form-label">Trạng thái</label>
               <select className="input-field" value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}>
-                <option value="pending">⚪ Chưa thực hiện</option>
-                <option value="inprogress">🟡 Đang thực hiện</option>
-                <option value="done">🟢 Hoàn thành</option>
+                <option value={STEP_STATUS.PENDING}>⚪ Chưa thực hiện</option>
+                <option value={STEP_STATUS.IN_PROGRESS}>🟡 Đang thực hiện</option>
+                <option value={STEP_STATUS.DONE}>🟢 Hoàn thành</option>
               </select>
             </div>
             <div className="form-group" style={{ marginBottom: 0 }}>
@@ -366,8 +362,8 @@ const StepFormModal = ({ project, editingStep, onClose, onSave, savedCount, part
             <label className="form-label">Tệp đính kèm</label>
             <div style={{ border: '1px dashed var(--color-border)', borderRadius: '8px', padding: '0.75rem', backgroundColor: 'var(--color-bg-surface)' }}>
               <input ref={fileInputRef} type="file" multiple style={{ display: 'none' }} onChange={handleFileUpload} />
-              <button type="button" className="btn btn-outline" onClick={() => fileInputRef.current?.click()} disabled={uploading}
-                style={{ fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px', width: '100%', justifyContent: 'center' }}>
+              <button type="button" className="btn btn-outline" onClick={() => fileInputRef.current?.click()} disabled={uploading || !canUpload}
+                style={{ fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px', width: '100%', justifyContent: 'center', opacity: canUpload ? 1 : 0.6, cursor: canUpload ? 'pointer' : 'not-allowed' }}>
                 {uploading ? <><Loader size={14} style={{ animation: 'spin 1s linear infinite' }} /> Đang tải lên...</> : <><Paperclip size={14} /> Chọn tệp đính kèm</>}
               </button>
               {uploadError && (
@@ -409,8 +405,11 @@ const StepFormModal = ({ project, editingStep, onClose, onSave, savedCount, part
 
 /* ─── Main Page ─── */
 const PhapLy = () => {
-  const { projects, legalSteps, addLegalStep, updateLegalStep, deleteLegalStep, userRole, partners } = useContext(DocumentContext);
-  const isAdmin = userRole === 'Admin';
+  const { projects, legalSteps, addLegalStep, updateLegalStep, deleteLegalStep, userRole, partners, enableLazy, checkPermission } = useContext(DocumentContext);
+  const toast = useToast();
+  const confirm = useConfirm();
+  useEffect(() => { enableLazy(); }, [enableLazy]);
+  const isAdmin = userRole === ROLES.ADMIN;
   const [addingToProject, setAddingToProject] = useState(null);
   const [editingStep, setEditingStep] = useState(null);
   const [editingProject, setEditingProject] = useState(null);
@@ -430,8 +429,8 @@ const PhapLy = () => {
         setSavedCount(c => c + 1); // reset form, giữ modal mở
       }
     } catch (err) {
-      console.error("Lỗi khi lưu:", err);
-      alert("Đã có lỗi xảy ra khi lưu: " + err.message + "\n(Vui lòng kiểm tra quyền ghi của Firebase Firestore hoặc kết nối mạng)");
+      console.error('Lỗi khi lưu:', err);
+      toast.error('Lỗi khi lưu: ' + err.message);
       throw err;
     }
   };
@@ -442,9 +441,8 @@ const PhapLy = () => {
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm('Bạn có chắc muốn xóa bước pháp lý này?')) {
-      await deleteLegalStep(id);
-    }
+    const ok = await confirm('Bạn có chắc muốn xóa bước pháp lý này?');
+    if (ok) await deleteLegalStep(id);
   };
 
   // Di chuyển vị trí và cập nhật lại order cho tất cả các item nếu cần để sửa lỗi trùng order
@@ -469,7 +467,7 @@ const PhapLy = () => {
       <div style={{ marginBottom: '2rem' }}>
         <h1 style={{ fontSize: '1.5rem', fontWeight: '700', color: 'var(--color-text-main)', marginBottom: '0.25rem' }}>⚖️ Pháp lý dự án</h1>
         <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
-          Theo dõi tiến trình pháp lý của {projects.length} dự án — {legalSteps.filter(s => s.status === 'done').length} bước đã hoàn thành / {legalSteps.length} tổng số bước
+          Theo dõi tiến trình pháp lý của {projects.length} dự án — {legalSteps.filter(s => s.status === STEP_STATUS.DONE).length} bước đã hoàn thành / {legalSteps.length} tổng số bước
         </p>
       </div>
 
@@ -485,7 +483,9 @@ const PhapLy = () => {
                   key={project.id}
                   project={project}
                   steps={steps}
-                  isAdmin={isAdmin}
+                  canAddStep={checkPermission(project.id, 'add_steps')}
+                  canEditStep={checkPermission(project.id, 'edit_steps')}
+                  canReorder={checkPermission(project.id, 'reorder')}
                   onAddStep={(p) => setAddingToProject(p)}
                   onEditStep={(step) => handleEdit(project, step)}
                   onDeleteStep={handleDelete}
@@ -503,6 +503,7 @@ const PhapLy = () => {
         <StepFormModal
           project={editingProject || addingToProject}
           editingStep={editingStep}
+          canUpload={checkPermission((editingProject || addingToProject).id, 'upload_att')}
           onClose={() => { setAddingToProject(null); setEditingStep(null); setEditingProject(null); setSavedCount(0); }}
           onSave={handleSave}
           savedCount={savedCount}

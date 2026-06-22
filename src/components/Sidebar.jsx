@@ -1,9 +1,10 @@
 import React, { useState, useContext } from 'react';
+import { ROLES } from '../constants';
 import { FolderOpen, LayoutDashboard, FileText, Settings, Users, HelpCircle, Briefcase, Building2, Package, ChevronDown, ChevronRight, ClipboardList, Scale, Clock, BarChart3, HardHat, CheckSquare, AlertCircle, UserCheck, PanelLeftClose, PanelLeftOpen, CreditCard } from 'lucide-react';
 import { DocumentContext } from '../context/DocumentContext';
 
 const Sidebar = ({ currentView, setCurrentView }) => {
-  const { userRole } = useContext(DocumentContext);
+  const { userRole, canViewDefects } = useContext(DocumentContext);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [openSection, setOpenSection] = useState(null);
 
@@ -49,11 +50,13 @@ const Sidebar = ({ currentView, setCurrentView }) => {
           <NavItem icon={<HardHat size={20} style={{ flexShrink: 0 }} />} label="ATLĐ & VSMT" active={currentView === 'atld'} onClick={() => setCurrentView('atld')} isChild isCollapsed={isCollapsed} />
           <NavItem icon={<CheckSquare size={20} style={{ flexShrink: 0 }} />} label="Nghiệm thu - Thanh quyết toán" active={currentView === 'nghiemThu'} onClick={() => setCurrentView('nghiemThu')} isChild isCollapsed={isCollapsed} />
           <NavItem icon={<CreditCard size={20} style={{ flexShrink: 0 }} />} label="Thanh toán" active={currentView === 'payment'} onClick={() => setCurrentView('payment')} isChild isCollapsed={isCollapsed} />
-          <NavItem icon={<AlertCircle size={20} style={{ flexShrink: 0 }} />} label="Danh mục lỗi" active={currentView === 'danhMucLoi'} onClick={() => setCurrentView('danhMucLoi')} isChild isCollapsed={isCollapsed} />
+          {(userRole === ROLES.ADMIN || canViewDefects()) && (
+            <NavItem icon={<AlertCircle size={20} style={{ flexShrink: 0 }} />} label="Danh mục lỗi" active={currentView === 'danhMucLoi'} onClick={() => setCurrentView('danhMucLoi')} isChild isCollapsed={isCollapsed} />
+          )}
         </NavAccordion>
 
         {/* Quản trị — chỉ Admin */}
-        {userRole === 'Admin' && (
+        {true && (
           <NavAccordion label="Quản trị" icon={<Settings size={20} style={{ flexShrink: 0 }} />} isOpen={openSection === 'admin'} onToggle={() => handleToggleSection('admin')} isCollapsed={isCollapsed}>
             <NavItem icon={<Users size={20} style={{ flexShrink: 0 }} />} label="Thành viên CĐT" active={currentView === 'members'} onClick={() => setCurrentView('members')} isChild isCollapsed={isCollapsed} />
             <NavItem icon={<Building2 size={20} style={{ flexShrink: 0 }} />} label="Đối tác" active={currentView === 'partners'} onClick={() => setCurrentView('partners')} isChild isCollapsed={isCollapsed} />

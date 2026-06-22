@@ -1,9 +1,12 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import { Package, Plus, Edit, Trash2, Search, Filter, X } from 'lucide-react';
 import { DocumentContext } from '../context/DocumentContext';
+import { useConfirm } from '../context/UIContext';
 
 const BiddingPackages = () => {
-  const { biddingPackages = [], projects, deleteBiddingPackage } = useContext(DocumentContext);
+  const { biddingPackages = [], projects, deleteBiddingPackage, enableLazy } = useContext(DocumentContext);
+  useEffect(() => { enableLazy(); }, [enableLazy]);
+  const confirm = useConfirm();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterProject, setFilterProject] = useState('All');
   const [filterStatus, setFilterStatus] = useState('All');
@@ -24,12 +27,9 @@ const BiddingPackages = () => {
 
   const orphanedPackages = (biddingPackages || []).filter(pkg => !projects.find(p => p.id.toString() === pkg.projectId?.toString()));
 
-  const handleCleanup = () => {
-    if (window.confirm(`Bạn có chắc chắn muốn xóa vĩnh viễn ${orphanedPackages.length} gói thầu lỗi (N/A) không?`)) {
-      orphanedPackages.forEach(pkg => {
-        deleteBiddingPackage(null, pkg.id);
-      });
-    }
+  const handleCleanup = async () => {
+    const ok = await confirm(`Bạn có chắc chắn muốn xóa vĩnh viễn ${orphanedPackages.length} gói thầu lỗi (N/A) không?`);
+    if (ok) orphanedPackages.forEach(pkg => { deleteBiddingPackage(null, pkg.id); });
   };
 
   const getStatusBadge = (status) => {

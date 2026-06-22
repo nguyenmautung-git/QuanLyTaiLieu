@@ -1,7 +1,9 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
+import { ROLES } from '../constants';
 import Select from 'react-select';
 import { Building2, Mail, Phone, Globe, MapPin, Briefcase, CreditCard, Star, Paperclip, X, Share2, ShieldOff } from 'lucide-react';
 import { DocumentContext } from '../context/DocumentContext';
+import { useToast, useConfirm } from '../context/UIContext';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '../firebase';
 import html2pdf from 'html2pdf.js';
@@ -36,9 +38,12 @@ const RatingStars = ({ rating, setRating, readOnly = false }) => {
 };
 
 const Partners = () => {
-  const { partners, addPartner, editPartner, deletePartner, userRole, globalLists } = useContext(DocumentContext);
+  const { partners, addPartner, editPartner, deletePartner, userRole, globalLists, enableLazy } = useContext(DocumentContext);
+  const toast = useToast();
+  const confirm = useConfirm();
+  useEffect(() => { enableLazy(); }, [enableLazy]);
 
-  if (userRole !== 'Admin') return <AccessDenied />;
+  if (userRole !== ROLES.ADMIN) return <AccessDenied />;
   const [isAdding, setIsAdding] = useState(false);
   const [newPartner, setNewPartner] = useState({ 
     name: '', shortName: '', taxCode: '', type: [], representative: '', 
@@ -110,14 +115,13 @@ const Partners = () => {
         bankAccount: '', bankName: '', rating: 0, attachments: []
       });
     } else {
-      alert("Vui lòng nhập Tên công ty.");
+      toast.warning('Vui lòng nhập Tên công ty.');
     }
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm('Bạn có chắc chắn muốn xóa đối tác này?')) {
-      await deletePartner(id);
-    }
+    const ok = await confirm('Bạn có chắc chắn muốn xóa đối tác này?');
+    if (ok) await deletePartner(id);
   };
 
   const handleToggleLock = async (id) => {
@@ -230,7 +234,7 @@ const Partners = () => {
       }
     } catch (err) {
       console.error('Upload error:', err);
-      alert(`Lỗi tải lên: ${err.message || 'Vui lòng thử lại'}`);
+      toast.error(`Lỗi tải lên: ${err.message || 'Vui lòng thử lại'}`);
     }
   };
 
@@ -281,7 +285,7 @@ const Partners = () => {
     <div className="card" style={{ padding: '1.5rem', minHeight: '80vh' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
         <h2 style={{ fontSize: '1.25rem', fontWeight: '600' }}>Quản lý Đối tác</h2>
-        {userRole === 'Admin' && (
+        {userRole === ROLES.ADMIN && (
           <button className="btn btn-primary" onClick={() => setIsAdding(!isAdding)} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <Building2 size={18} /> {isAdding ? 'Hủy' : 'Thêm đối tác'}
           </button>
@@ -514,7 +518,7 @@ const Partners = () => {
                   )}
                 </div>
 
-                {userRole === 'Admin' && (
+                {userRole === ROLES.ADMIN && (
                   <div style={{ width: '100%', marginTop: 'auto', paddingTop: '1.25rem', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'center', gap: '1rem' }}>
                     <button onClick={() => handleEditClick(partner)} style={{ background: 'none', border: 'none', color: 'var(--color-primary)', cursor: 'pointer', fontWeight: '500', fontSize: '0.875rem' }}>
                       Sửa
@@ -638,7 +642,7 @@ const Partners = () => {
                 <Share2 size={16} /> Chia sẻ (PDF)
               </button>
 
-              {userRole === 'Admin' ? (
+              {userRole === ROLES.ADMIN ? (
                 <div style={{ display: 'flex', gap: '1rem' }}>
                   <button className="btn btn-outline" onClick={() => { setEditingId(viewingPartner.id); setEditFormData(viewingPartner); setViewingPartner(null); }}>
                     Sửa thông tin

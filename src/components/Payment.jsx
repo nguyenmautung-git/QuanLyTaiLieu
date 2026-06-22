@@ -1,4 +1,5 @@
 import React, { useState, useContext } from 'react';
+import { ROLES } from '../constants';
 import { DocumentContext } from '../context/DocumentContext';
 import { CreditCard, CheckCircle2, Circle, Clock, ChevronDown, ChevronUp, DollarSign, FileCheck, CheckSquare, Edit2, AlertCircle } from 'lucide-react';
 
@@ -115,8 +116,8 @@ const PaymentCard = ({ project, mockPayments, onUpdateStatus, isAdmin }) => {
 };
 
 const PaymentWorkflow = () => {
-  const { projects, userRole } = useContext(DocumentContext);
-  const isAdmin = userRole === 'Admin';
+  const { projects, userRole, checkPermission } = useContext(DocumentContext);
+  const isAdmin = userRole === ROLES.ADMIN;
   
   // Local mock state for payment data
   const [paymentsData, setPaymentsData] = useState(() => {
@@ -158,7 +159,7 @@ const PaymentWorkflow = () => {
             project={project} 
             mockPayments={paymentsData[project.id] || []}
             onUpdateStatus={handleUpdateStatus}
-            isAdmin={isAdmin}
+            isAdmin={checkPermission(project.id, 'update_payment')}
           />
         ))}
       </div>

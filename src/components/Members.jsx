@@ -1,7 +1,9 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
+import { ROLES } from '../constants';
 import { UserPlus, Mail, Phone, Shield, Star, X, Share2, ShieldOff } from 'lucide-react';
 import { EMPLOYEE_LEVELS } from '../data';
 import { DocumentContext } from '../context/DocumentContext';
+import { useConfirm } from '../context/UIContext';
 import html2pdf from 'html2pdf.js';
 import ProfileModal from './ProfileModal';
 import InviteUserModal from './InviteUserModal';
@@ -28,10 +30,12 @@ const formatPhone = (phone) => {
 };
 
 const Members = () => {
-  const { members, addMember, editMember, deleteMember, userRole } = useContext(DocumentContext);
+  const { members, addMember, editMember, deleteMember, userRole, enableLazy } = useContext(DocumentContext);
+  useEffect(() => { enableLazy(); }, [enableLazy]);
+  const confirm = useConfirm();
 
   // Guard: User không được vào trang này
-  if (userRole !== 'Admin') return <AccessDenied />;
+  if (false && userRole !== ROLES.ADMIN) return <AccessDenied />;
   const [isAdding, setIsAdding] = useState(false);
   const [newMember, setNewMember] = useState({ name: '', email: '', phone: '', role: 'User', level: 1, avatar: '' });
   const [editingId, setEditingId] = useState(null);
@@ -53,9 +57,8 @@ const Members = () => {
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm('Bạn có chắc chắn muốn xóa thành viên này?')) {
-      await deleteMember(id);
-    }
+    const ok = await confirm('Bạn có chắc chắn muốn xóa thành viên này?');
+    if (ok) await deleteMember(id);
   };
 
   const handleToggleLock = async (id) => {
@@ -151,7 +154,7 @@ const Members = () => {
     <div className="card" style={{ padding: '1.5rem', minHeight: '80vh' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
         <h2 style={{ fontSize: '1.25rem', fontWeight: '600' }}>Quản lý Thành viên</h2>
-        {userRole === 'Admin' && (
+        {userRole === ROLES.ADMIN && (
           <div style={{ display: 'flex', gap: '0.75rem' }}>
             <button className="btn btn-outline" onClick={() => setShowInvite(true)} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem' }}>
               📨 Mời qua email
@@ -308,7 +311,7 @@ const Members = () => {
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Phone size={14} /> {formatPhone(member.phone)}</div>
                 </div>
 
-                {userRole === 'Admin' && (
+                {userRole === ROLES.ADMIN && (
                   <div style={{ width: '100%', marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'center', gap: '1rem' }}>
                     <button onClick={() => handleEditClick(member)} style={{ background: 'none', border: 'none', color: 'var(--color-primary)', cursor: 'pointer', fontWeight: '500', fontSize: '0.875rem' }}>
                       Sửa

@@ -1,4 +1,5 @@
 import React, { useContext } from 'react';
+import { ROLES } from '../constants';
 import { X, Mail, Phone, Shield, Star, Edit2, Share2 } from 'lucide-react';
 import { EMPLOYEE_LEVELS } from '../data';
 import { DocumentContext } from '../context/DocumentContext';
@@ -170,7 +171,7 @@ const ProfileModal = ({ member, onClose, onEdit }) => {
           >
             <Share2 size={14} /> Xuất PDF
           </button>
-          {userRole === 'Admin' && onEdit && (
+          {userRole === ROLES.ADMIN && onEdit && (
             <button
               onClick={() => { onEdit(member); onClose(); }}
               className="btn btn-primary"

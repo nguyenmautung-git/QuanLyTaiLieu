@@ -1,4 +1,5 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
+import { ROLES } from '../constants';
 import { DocumentContext } from '../context/DocumentContext';
 import { getPastelColor } from '../data';
 import { ChevronDown, ChevronUp, Plus, Trash2, ArrowUp, ArrowDown, Briefcase, Star, X } from 'lucide-react';
@@ -242,8 +243,9 @@ const PackageDatasheet = ({ pkg, project, isAdmin, onSave, partners, onEmailPrev
 
 // ─── Main Page ───────────────────────────────────────────────────────────────
 const ContractorSelection = () => {
-  const { projects, userRole, biddingPackages = [], editBiddingPackage, partners = [], globalLists } = useContext(DocumentContext);
-  const isAdmin = userRole === 'Admin';
+  const { projects, userRole, biddingPackages = [], editBiddingPackage, partners = [], globalLists, enableLazy, checkPermission } = useContext(DocumentContext);
+  useEffect(() => { enableLazy(); }, [enableLazy]);
+  const isAdmin = userRole === ROLES.ADMIN;
   
   const statusOptions = globalLists?.bidderStatuses?.map(s => s.name) || STATUS_OPTIONS;
 
@@ -385,7 +387,7 @@ const ContractorSelection = () => {
                       key={pkg.id}
                       pkg={pkg}
                       project={project}
-                      isAdmin={isAdmin}
+                      isAdmin={checkPermission(project.id, 'edit_contractor')}
                       onSave={handleSavePackage}
                       partners={partners}
                       onEmailPreview={setEmailPreview}

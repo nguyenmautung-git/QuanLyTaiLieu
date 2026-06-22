@@ -1,29 +1,34 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from './firebase';
 import { DocumentProvider } from './context/DocumentContext';
+import { UIProvider } from './context/UIContext';
 import LoginPage from './components/LoginPage';
 import InvitePage from './components/InvitePage';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
-import Dashboard from './components/Dashboard';
 import DocumentForm from './components/DocumentForm';
-import Members from './components/Members';
-import Settings from './components/Settings';
-import Projects from './components/Projects';
-import Overview from './components/Overview';
-import Partners from './components/Partners';
-import BiddingPackages from './components/BiddingPackages';
-import BiddingPlan from './components/BiddingPlan';
-import ContractorSelection from './components/ContractorSelection';
 import AIAssistant from './components/AIAssistant';
+
+// ── Core pages (tải ngay vì hiển thị khi login) ──────────────────────────
+import Dashboard from './components/Dashboard';
+import Overview from './components/Overview';
+import Projects from './components/Projects';
 import ComingSoon from './components/ComingSoon';
-import PhapLy from './components/PhapLy';
-import TienDo from './components/TienDo';
-import KhoiLuong from './components/KhoiLuong';
-import NghiemThu from './components/NghiemThu';
-import DanhMucLoi from './components/DanhMucLoi';
-import Payment from './components/Payment';
+
+// ── Lazy pages (chỉ tải khi user điều hướng đến) ─────────────────────────
+const Members            = lazy(() => import('./components/Members'));
+const Settings           = lazy(() => import('./components/Settings'));
+const Partners           = lazy(() => import('./components/Partners'));
+const BiddingPackages    = lazy(() => import('./components/BiddingPackages'));
+const BiddingPlan        = lazy(() => import('./components/BiddingPlan'));
+const ContractorSelection = lazy(() => import('./components/ContractorSelection'));
+const PhapLy             = lazy(() => import('./components/PhapLy'));
+const TienDo             = lazy(() => import('./components/TienDo'));
+const KhoiLuong          = lazy(() => import('./components/KhoiLuong'));
+const NghiemThu          = lazy(() => import('./components/NghiemThu'));
+const DanhMucLoi         = lazy(() => import('./components/DanhMucLoi'));
+const Payment            = lazy(() => import('./components/Payment'));
 
 // ── Màn hình chờ ─────────────────────────────────────────────────────────
 const LoadingScreen = () => (
@@ -54,6 +59,7 @@ function App() {
   const [inviteToken, setInviteToken] = useState(null);
   const [isFormOpen, setIsFormOpen]   = useState(false);
   const [currentView, setCurrentView] = useState('overview');
+  const [searchFocus, setSearchFocus] = useState(null); // { type: 'document'|'project', data: object }
 
   useEffect(() => {
     // Kiểm tra token mời trong URL
@@ -82,7 +88,7 @@ function App() {
     switch (currentView) {
       case 'overview':           return <Overview />;
       case 'dashboard':          return <Dashboard />;
-      case 'projects':           return <Projects />;
+      case 'projects':           return <Projects focusProjectId={searchFocus?.type === 'project' ? searchFocus.data?.id : null} onFocusCleared={() => setSearchFocus(null)} />;
       case 'members':            return <Members />;
       case 'partners':           return <Partners />;
       case 'bidding':            return <BiddingPackages />;
@@ -113,9 +119,11 @@ function App() {
 
   // 2. Có link mời → hiển thị trang kích hoạt (không cần đăng nhập trước)
   if (inviteToken) return (
-    <DocumentProvider>
-      <InvitePage token={inviteToken} onDone={handleInviteDone} />
-    </DocumentProvider>
+    <UIProvider>
+      <DocumentProvider>
+        <InvitePage token={inviteToken} onDone={handleInviteDone} />
+      </DocumentProvider>
+    </UIProvider>
   );
 
   // 3. Chưa đăng nhập → hiển thị trang login
@@ -123,23 +131,33 @@ function App() {
 
   // 4. Đã đăng nhập → vào app chính
   return (
-    <DocumentProvider currentUser={authUser}>
-      <div className="app-container">
-        <Sidebar currentView={currentView} setCurrentView={(view) => {
-          // Guard: User không được vào trang admin
-          // (Sidebar đã ẩn menu, nhưng giữ thêm lớp bảo vệ này)
-          setCurrentView(view);
-        }} />
-        <main className="main-content">
-          <Header currentView={currentView} onOpenForm={() => setIsFormOpen(true)} />
-          <div className="content-area">
-            {renderContent()}
-          </div>
-        </main>
-        {isFormOpen && <DocumentForm onClose={() => setIsFormOpen(false)} />}
-        <AIAssistant />
-      </div>
-    </DocumentProvider>
+    <UIProvider>
+      <DocumentProvider currentUser={authUser}>
+        <div className="app-container">
+          <Sidebar currentView={currentView} setCurrentView={(view) => {
+            setCurrentView(view);
+          }} />
+          <main className="main-content">
+            <Header currentView={currentView} onOpenForm={() => setIsFormOpen(true)} onNavigate={setCurrentView} onSearchSelect={setSearchFocus} />
+            <div className="content-area">
+              <Suspense fallback={<LoadingScreen />}>
+                {renderContent()}
+              </Suspense>
+            </div>
+          </main>
+          {isFormOpen && <DocumentForm onClose={() => setIsFormOpen(false)} />}
+          {/* Modal xem nhanh từ tìm kiếm toàn cục */}
+          {searchFocus?.type === 'document' && (
+            <DocumentForm
+              initialData={searchFocus.data}
+              previewMode={true}
+              onClose={() => setSearchFocus(null)}
+            />
+          )}
+          <AIAssistant />
+        </div>
+      </DocumentProvider>
+    </UIProvider>
   );
 }
 

@@ -1,0 +1,62 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ─── Helpers ─────────────────────────────────────────────────────────────
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    // ─── Documents (Tài liệu) ─────────────────────────────────────────────────
+    match /documents/{docId} {
+      allow read:             if isAuth();
+      allow create, update:   if isAuth();
+      allow delete:           if isAuth();
+    }
+
+    // ─── Projects ─────────────────────────────────────────────────────────────
+    match /projects/{id} {
+      allow read, write: if isAuth();
+    }
+
+    // ─── Members ──────────────────────────────────────────────────────────────
+    match /members/{id} {
+      allow read, write: if isAuth();
+    }
+
+    // ─── Partners ─────────────────────────────────────────────────────────────
+    match /partners/{id} {
+      allow read, write: if isAuth();
+    }
+
+    // ─── Bidding ──────────────────────────────────────────────────────────────
+    match /biddingPackages/{id} {
+      allow read, write: if isAuth();
+    }
+
+    // ─── Workflow Steps ───────────────────────────────────────────────────────
+    match /legalSteps/{id}      { allow read, write: if isAuth(); }
+    match /scheduleSteps/{id}   { allow read, write: if isAuth(); }
+    match /acceptanceSteps/{id} { allow read, write: if isAuth(); }
+
+    // ─── Dynamic Lists ────────────────────────────────────────────────────────
+    match /documentTypes/{id}     { allow read, write: if isAuth(); }
+    match /agencies/{id}          { allow read, write: if isAuth(); }
+    match /contractors/{id}       { allow read, write: if isAuth(); }
+    match /projectCategories/{id} { allow read, write: if isAuth(); }
+    match /workCategories/{id}    { allow read, write: if isAuth(); }
+    match /locations/{id}         { allow read, write: if isAuth(); }
+    match /statuses/{id}          { allow read, write: if isAuth(); }
+
+    // ─── Invitations ──────────────────────────────────────────────────────────
+    // Cho phép đọc để xác minh token mời; ghi chỉ khi đã auth
+    match /invitations/{id} {
+      allow read, write: if isAuth();
+    }
+
+    // ─── Cho phép truy cập cho người dùng đã đăng nhập ────────────────────────
+    match /{document=**} {
+      allow read, write: if isAuth();
+    }
+  }
+}
