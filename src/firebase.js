@@ -3,7 +3,7 @@ import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 import { getAuth } from "firebase/auth";
-import { getAnalytics } from "firebase/analytics";
+import { getAnalytics, isSupported } from "firebase/analytics";
 
 // Firebase config đọc từ biến môi trường (.env) — không hardcode key trong source code
 const firebaseConfig = {
@@ -23,4 +23,17 @@ export const storage = getStorage(app);
 export const auth = getAuth(app);
 
 // Analytics is optional and might not work perfectly in localhost without full setup
-export const analytics = getAnalytics(app);
+let analytics = null;
+isSupported().then((supported) => {
+  if (supported) {
+    try {
+      analytics = getAnalytics(app);
+    } catch (e) {
+      console.warn("Firebase Analytics could not be initialized:", e);
+    }
+  }
+}).catch((err) => {
+  console.warn("Firebase Analytics support check failed:", err);
+});
+
+export { analytics };
