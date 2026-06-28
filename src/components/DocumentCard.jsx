@@ -2,8 +2,9 @@ import React, { useState, useContext, memo } from 'react';
 import { ROLES } from '../constants';
 import { DocumentContext } from '../context/DocumentContext';
 import { useConfirm } from '../context/UIContext';
-import { Calendar, Building, Link as LinkIcon, Download, Lock, Edit, Trash2 } from 'lucide-react';
+import { Calendar, Building, Link as LinkIcon, Download, Lock, Edit, Trash2, Eye } from 'lucide-react';
 import DocumentForm from './DocumentForm';
+import PdfViewerModal from './PdfViewerModal';
 import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
 
@@ -30,8 +31,9 @@ const DocCheckbox = ({ checked, onChange }) => (
 
 // ── Main Card ─────────────────────────────────────────────────────────────
 const DocumentCard = ({ document, viewMode, isSelected, onToggleSelect }) => {
-  const [isEditing, setIsEditing] = useState(false);
-  const [isPreview, setIsPreview] = useState(false);
+  const [isEditing, setIsEditing]   = useState(false);
+  const [isPreview, setIsPreview]   = useState(false);
+  const [pdfFile, setPdfFile]       = useState(null); // { name, url } đang xem inline
   const { userRole, deleteDocument, checkDocumentPermission } = useContext(DocumentContext);
   const confirm = useConfirm();
   const {
@@ -92,14 +94,23 @@ const DocumentCard = ({ document, viewMode, isSelected, onToggleSelect }) => {
             {attachments?.length > 0 ? (
               <div style={{ display: 'flex', gap: '0.25rem', flexDirection: 'column' }}>
                 {attachments.map((file, idx) => (
-                  <a key={idx} href={file.url} target="_blank" rel="noreferrer"
-                    className="badge"
-                    style={{ backgroundColor: 'var(--color-bg-surface)', border: '1px solid var(--color-border)', color: 'var(--color-primary)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px', padding: '0.25rem 0.5rem' }}
-                    title={file.name}
-                  >
-                    <Download size={12} />
-                    <span style={{ maxWidth: '80px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{file.name}</span>
-                  </a>
+                  <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <a href={file.url} target="_blank" rel="noreferrer"
+                      className="badge"
+                      style={{ backgroundColor: 'var(--color-bg-surface)', border: '1px solid var(--color-border)', color: 'var(--color-primary)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px', padding: '0.25rem 0.5rem', flex: 1 }}
+                      title={file.name}
+                    >
+                      <Download size={12} />
+                      <span style={{ maxWidth: '80px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{file.name}</span>
+                    </a>
+                    <button
+                      onClick={e => { e.stopPropagation(); setPdfFile(file); }}
+                      title="Xem tệp inline"
+                      style={{ background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.3)', borderRadius: '4px', color: '#60a5fa', cursor: 'pointer', padding: '2px 5px', display: 'flex', alignItems: 'center', flexShrink: 0 }}
+                    >
+                      <Eye size={12} />
+                    </button>
+                  </div>
                 ))}
               </div>
             ) : attachmentLink && (
@@ -129,6 +140,7 @@ const DocumentCard = ({ document, viewMode, isSelected, onToggleSelect }) => {
           </div>
         </div>
         {isEditing && <DocumentForm initialData={document} onClose={() => setIsEditing(false)} />}
+        {pdfFile && <PdfViewerModal file={pdfFile} onClose={() => setPdfFile(null)} />}
       </>
     );
   }
@@ -208,14 +220,24 @@ const DocumentCard = ({ document, viewMode, isSelected, onToggleSelect }) => {
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.25rem' }}>
               {attachments?.length > 0 ? (
                 attachments.map((file, idx) => (
-                  <a key={idx} href={file.url} target="_blank" rel="noreferrer"
-                    className="badge"
-                    style={{ backgroundColor: 'var(--color-bg-body)', border: '1px solid var(--color-border)', color: 'var(--color-primary)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px', padding: '0.25rem 0.5rem' }}
-                    title={file.name}
-                  >
-                    <LinkIcon size={12} />
-                    <span style={{ maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{file.name}</span>
-                  </a>
+                  <div key={idx} style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                    <a href={file.url} target="_blank" rel="noreferrer"
+                      className="badge"
+                      onClick={e => e.stopPropagation()}
+                      style={{ backgroundColor: 'var(--color-bg-body)', border: '1px solid var(--color-border)', color: 'var(--color-primary)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px', padding: '0.25rem 0.5rem' }}
+                      title={file.name}
+                    >
+                      <LinkIcon size={12} />
+                      <span style={{ maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{file.name}</span>
+                    </a>
+                    <button
+                      onClick={e => { e.stopPropagation(); setPdfFile(file); }}
+                      title="Xem tệp inline"
+                      style={{ background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.3)', borderRadius: '4px', color: '#60a5fa', cursor: 'pointer', padding: '3px 5px', display: 'flex', alignItems: 'center', flexShrink: 0 }}
+                    >
+                      <Eye size={11} />
+                    </button>
+                  </div>
                 ))
               ) : attachmentLink && (
                 <a href={attachmentLink} target="_blank" rel="noreferrer"
@@ -230,6 +252,7 @@ const DocumentCard = ({ document, viewMode, isSelected, onToggleSelect }) => {
       </div>
       {isEditing && <DocumentForm initialData={document} onClose={() => setIsEditing(false)} />}
       {isPreview && <DocumentForm initialData={document} previewMode={true} onClose={() => setIsPreview(false)} />}
+      {pdfFile && <PdfViewerModal file={pdfFile} onClose={() => setPdfFile(null)} />}
     </>
   );
 };

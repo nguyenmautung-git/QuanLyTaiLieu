@@ -1,7 +1,8 @@
 import React, { createContext, useState, useEffect, useCallback, useMemo } from 'react';
-import { collection, onSnapshot, addDoc, doc, updateDoc, writeBatch, deleteDoc, query, where, getDocs, setDoc } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, doc, updateDoc, writeBatch, deleteDoc, query, where, getDocs, setDoc, serverTimestamp } from 'firebase/firestore';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
-import { db, auth } from '../firebase';
+import { db, auth, storage } from '../firebase';
+import { ref as storageRef, deleteObject } from 'firebase/storage';
 import { mockProjects, mockMembers, mockPartners, LIST_CONFIGS } from '../data';
 import { generateToken, hashToken, getAppUrl } from '../utils/inviteUtils';
 import { COLLECTIONS, ROLES } from '../constants';
@@ -57,11 +58,12 @@ const DEFAULT_MATRIX = {
 export const DocumentContext = createContext();
 
 export const DocumentProvider = ({ children, currentUser }) => {
-  const [documents, setDocuments] = useState([]);
-  const [userRole, setUserRole] = useState('User');
+  const [documents, setDocuments]     = useState([]);
+  const [userRole, setUserRole]         = useState('User');
   const [rawRoleMatrix, setRawRoleMatrix] = useState({});
-  const [defectTabs, setDefectTabs] = useState([]);
+  const [defectTabs, setDefectTabs]     = useState([]);
   const [defectLibrary, setDefectLibrary] = useState([]);
+  const [readDocIds, setReadDocIds]     = useState(new Set()); // per-user read tracking
   const [globalLists, setGlobalLists] = useState(
     LIST_CONFIGS.reduce((acc, config) => {
       acc[config.key] = [];
@@ -106,13 +108,9 @@ export const DocumentProvider = ({ children, currentUser }) => {
   const enableLazy = useCallback(() => setLazyEnabled(true), []);
 
   useEffect(() => {
-    // Theo dõi danh sách tài liệu
+    // Theo dõi danh sách tài liệu (lọc bỏ isDeleted ở client)
     const unsubscribeDocs = onSnapshot(collection(db, COLLECTIONS.DOCUMENTS), (snapshot) => {
-      const docsData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      // Sắp xếp theo ngày tạo mới nhất (nếu có)
+      const docsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       docsData.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
       setDocuments(docsData);
     });
@@ -189,6 +187,72 @@ export const DocumentProvider = ({ children, currentUser }) => {
       unsubscribeMatrix();
     };
   }, []);
+
+  // ── Per-user read tracking ──────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!currentUser?.uid) return;
+    // Lấy danh sách tài liệu mà user này đã đọc
+    const q = query(collection(db, 'userReadStatus'), where('userId', '==', currentUser.uid));
+    const unsub = onSnapshot(q, (snap) => {
+      setReadDocIds(new Set(snap.docs.map(d => d.data().documentId)));
+    });
+    return unsub;
+  }, [currentUser?.uid]);
+
+  // ── Nhắc nhở tài liệu sắp hết hiệu lực (30 ngày) ────────────────────────────────
+  useEffect(() => {
+    if (documents.length === 0) return;
+    const now  = new Date();
+    const soon = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+    const expiring = documents.filter(d => {
+      if (d.isDeleted) return false;
+      const exp = d.effectiveDate ? new Date(d.effectiveDate) : null;
+      return exp && exp >= now && exp <= soon;
+    });
+    if (expiring.length > 0) {
+      // Chỉ hiện 1 lần mỗi session
+      const key = `expiry_warned_${new Date().toDateString()}`;
+      if (!sessionStorage.getItem(key)) {
+        sessionStorage.setItem(key, '1');
+        console.warn(`[QLDA] ${expiring.length} tài liệu sắp hết hiệu lực trong 30 ngày tới.`);
+        // Toast sẽ được gọi từ nơi có UIContext (Header.jsx lắng nghe)
+        window.dispatchEvent(new CustomEvent('doc:expiry-warning', { detail: { count: expiring.length, docs: expiring } }));
+      }
+    }
+  // Chỉ chạy 1 lần sau khi documents load xong
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [documents.length > 0 ? 'loaded' : 'empty']);
+
+  // ── Auto-purge: xóa vĩnh viễn các tài liệu đã xóa mềm > 30 ngày ──────────
+  useEffect(() => {
+    if (documents.length === 0) return;
+    // Chỉ chạy 1 lần mỗi ngày/session
+    const purgeKey = `auto_purged_${new Date().toDateString()}`;
+    if (sessionStorage.getItem(purgeKey)) return;
+    sessionStorage.setItem(purgeKey, '1');
+
+    const now  = Date.now();
+    const limit = 30 * 24 * 60 * 60 * 1000; // 30 ngày
+    const expired = documents.filter(d =>
+      d.isDeleted && d.deletedAt && (now - new Date(d.deletedAt).getTime()) > limit
+    );
+    if (expired.length === 0) return;
+
+    console.log(`[QLDA] Auto-purge: xóa vĩnh viễn ${expired.length} tài liệu hết hạn trong thùng rác`);
+    expired.forEach(async (d) => {
+      try {
+        // Xóa Storage files
+        await Promise.all((d.attachments || []).map(att => deleteStorageFile(att.url)));
+        // Xóa Firestore record
+        await deleteDoc(doc(db, 'documents', d.id));
+        // Ghi audit
+        logAudit?.('permanent_delete', { documentId: d.id, documentNumber: d.documentNumber, reason: 'auto_purge_30d' });
+      } catch (e) {
+        console.warn('[AutoPurge] Lỗi khi xóa:', d.id, e.message);
+      }
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [documents.length > 0 ? 'loaded' : 'empty']);
 
   // ── LAZY: subscribe khi enableLazy() được gọi lần đầu ───────────────────
   // Các collections ít dùng chỉ subscribe khi user điều hướng đến trang cần chúng.
@@ -344,18 +408,42 @@ export const DocumentProvider = ({ children, currentUser }) => {
   const deleteDocumentType = (id) => deleteListItem('documentTypes', id);
   const editDocumentType = (id, newName) => editListItem('documentTypes', id, newName);
 
+  // ── Hạm hỗ trợ: lấy storage path từ URL ────────────────────────────────────────────────────────
+  const deleteStorageFile = async (url) => {
+    try {
+      const match = url?.match(/\/o\/(.+?)(\?|$)/);
+      if (!match) return;
+      const path = decodeURIComponent(match[1]);
+      await deleteObject(storageRef(storage, path));
+    } catch (e) {
+      console.warn('[Storage] Không thể xóa file:', e.message);
+    }
+  };
+
+  // ── Audit log ────────────────────────────────────────────────────────────────────────────────
+  const logAudit = async (action, details = {}) => {
+    try {
+      await addDoc(collection(db, 'auditLogs'), {
+        action,           // 'add_document' | 'edit_document' | 'delete_document' | 'restore_document' | 'download_file' | 'mark_read'
+        userId:    currentUser?.uid   || 'unknown',
+        userName:  currentUser?.displayName || currentUser?.email || 'unknown',
+        timestamp: serverTimestamp(),
+        ...details,
+      });
+    } catch (e) {
+      console.warn('[Audit] Không thể ghi log:', e.message);
+    }
+  };
+
   const addDocument = async (newDoc) => {
     try {
-      // Bỏ id giả do Form tạo ra, để Firebase tự tạo ID
       const { id, ...docData } = newDoc;
-      await addDoc(collection(db, COLLECTIONS.DOCUMENTS), docData);
-
-      if (docData.documentType) {
-        addDocumentType(docData.documentType);
-      }
+      const ref = await addDoc(collection(db, COLLECTIONS.DOCUMENTS), docData);
+      if (docData.documentType) addDocumentType(docData.documentType);
+      logAudit('add_document', { documentId: ref.id, documentNumber: docData.documentNumber });
     } catch (error) {
       console.error("Lỗi khi tải lên tài liệu: ", error);
-      throw error; // Để Form có thể bắt lỗi
+      throw error;
     }
   };
 
@@ -364,43 +452,95 @@ export const DocumentProvider = ({ children, currentUser }) => {
       const docRef = doc(db, 'documents', id);
       const { id: docId, ...docData } = updatedDoc;
       await updateDoc(docRef, docData);
-
-      if (docData.documentType) {
-        addDocumentType(docData.documentType);
-      }
+      if (docData.documentType) addDocumentType(docData.documentType);
+      logAudit('edit_document', { documentId: id, documentNumber: docData.documentNumber });
     } catch (error) {
       console.error("Lỗi khi cập nhật tài liệu: ", error);
       throw error;
     }
   };
 
+  // Xóa mềm: đánh dấu isDeleted = true, lưu ngày xóa, không xóa file Storage
   const deleteDocument = async (id) => {
     try {
-      await deleteDoc(doc(db, 'documents', id));
+      const target = documents.find(d => d.id === id);
+      await updateDoc(doc(db, 'documents', id), {
+        isDeleted:   true,
+        deletedAt:   new Date().toISOString(),
+        deletedBy:   currentUser?.email || 'unknown',
+      });
+      logAudit('delete_document', { documentId: id, documentNumber: target?.documentNumber });
     } catch (error) {
       console.error("Lỗi khi xóa tài liệu: ", error);
       throw error;
     }
   };
 
-  const markAsRead = async () => {
+  // Xóa vĩnh viễn (chỉ Admin, sau 30 ngày): xóa Firestore + Storage files
+  const permanentDeleteDocument = async (id) => {
     try {
-      const batch = writeBatch(db);
-      const unreadDocs = documents.filter(doc => doc.isNew);
+      const target = documents.find(d => d.id === id);
+      // Xóa từng file đính kèm trên Storage
+      await Promise.all((target?.attachments || []).map(att => deleteStorageFile(att.url)));
+      await deleteDoc(doc(db, 'documents', id));
+      logAudit('permanent_delete', { documentId: id, documentNumber: target?.documentNumber });
+    } catch (error) {
+      console.error("Lỗi khi xóa vĩnh viễn: ", error);
+      throw error;
+    }
+  };
 
-      unreadDocs.forEach((document) => {
-        const docRef = doc(db, 'documents', document.id);
-        batch.update(docRef, { isNew: false });
-      });
+  // Khôi phục tài liệu từ thùng rác
+  const restoreDocument = async (id) => {
+    try {
+      const target = documents.find(d => d.id === id);
+      await updateDoc(doc(db, 'documents', id), { isDeleted: false, deletedAt: null, deletedBy: null });
+      logAudit('restore_document', { documentId: id, documentNumber: target?.documentNumber });
+    } catch (error) {
+      console.error("Lỗi khi khôi phục tài liệu: ", error);
+      throw error;
+    }
+  };
 
-      await batch.commit();
+  // ── Per-user read tracking (thay thế isNew toàn cục) ────────────────────────────────
+  const markAsRead = async (docId) => {
+    if (!currentUser?.uid) return;
+    try {
+      if (docId) {
+        // Đánh dấu 1 tài liệu cụ thể
+        const key = `${currentUser.uid}_${docId}`;
+        await setDoc(doc(db, 'userReadStatus', key), {
+          userId: currentUser.uid, documentId: docId, readAt: serverTimestamp()
+        });
+      } else {
+        // Đánh dấu tất cả — batch write cho từng tài liệu chưa đọc
+        const unread = documents.filter(d => !d.isDeleted && !readDocIds.has(d.id));
+        if (unread.length === 0) return;
+        const batch = writeBatch(db);
+        unread.forEach(d => {
+          const key = `${currentUser.uid}_${d.id}`;
+          batch.set(doc(db, 'userReadStatus', key), {
+            userId: currentUser.uid, documentId: d.id, readAt: serverTimestamp()
+          });
+        });
+        await batch.commit();
+        logAudit('mark_read_all', { count: unread.length });
+      }
     } catch (error) {
       console.error("Lỗi khi đánh dấu đã đọc: ", error);
     }
   };
 
   const getNewCount = () => {
-    return documents.filter(doc => doc.isNew).length;
+    return documents.filter(d => !d.isDeleted && !readDocIds.has(d.id)).length;
+  };
+
+  // isDocNew: kiểm tra 1 tài liệu có mới không với user hiện tại
+  const isDocNew = (docId) => !readDocIds.has(docId);
+
+  // logDownload: dùng khi user tải file
+  const logDownload = (documentId, documentNumber, fileName) => {
+    logAudit('download_file', { documentId, documentNumber, fileName });
   };
 
   const addProject = async (newProject) => {
@@ -880,7 +1020,8 @@ export const DocumentProvider = ({ children, currentUser }) => {
     <DocumentContext.Provider value={{
       documents: filteredDocuments,
       allDocuments: documents,
-      addDocument, editDocument, deleteDocument, markAsRead, getNewCount,
+      addDocument, editDocument, deleteDocument, permanentDeleteDocument, restoreDocument,
+      markAsRead, getNewCount, isDocNew, logDownload,
       userRole,
       // toggleRole chỉ expose trong dev — production build tree-shake nó ra
       ...(import.meta.env.DEV ? { toggleRole } : {}),

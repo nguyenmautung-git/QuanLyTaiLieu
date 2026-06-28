@@ -130,20 +130,22 @@ export const EMPLOYEE_LEVELS = [
 ];
 
 export const PROJECT_DETAILS_TEMPLATE = [
-  { id: '1', key: 'tong_dien_tich', name: 'Tổng diện tích ô đất dự án (m2)', value: '' },
-  { id: '2', key: 'mat_do_xay_dung', name: 'Mật độ xây dựng (m2)', value: '' },
-  { id: '3', key: 'he_so_su_dung_dat', name: 'Hệ số sử dụng đất (lần)', value: '' },
-  { id: '4', key: 'so_tang_cao', name: 'Số tầng cao (tầng)', value: '' },
-  { id: '5', key: 'so_tang_ham', name: 'Số tầng hầm (tầng)', value: '' },
-  { id: '6', key: 'dien_tich_xay_dung', name: 'Diện tích xây dựng (m2)', value: '' },
-  { id: '7', key: 'tong_dien_tich_san', name: 'Tổng diện tích sàn xây dựng (m2)', value: '' },
-  { id: '8', key: 'cong_suat_phuc_vu', name: 'Công suất phục vụ (người)', value: '' },
-  { id: '9', key: 'chieu_cao_pccc', name: 'Chiều cao PCCC (m)', value: '' },
-  { id: '10', key: 'chieu_cao_tinh_khong', name: 'Chiều cao tĩnh không', value: '' },
-  { id: '11', key: 'chieu_sau_tang_ham', name: 'Chiều sâu tầng hầm', value: '' },
-  { id: '12', key: 'phan_cap_du_an', name: 'Phân cấp dự án', value: '' },
-  { id: '13', key: 'phan_loai_du_an', name: 'Phân loại dự án', value: '' }
+  { id: '1',  key: 'tong_dien_tich',       name: 'T\u1ed5ng di\u1ec7n t\u00edch \u00f4 \u0111\u1ea5t d\u1ef1 \u00e1n',    value: '' },
+  { id: '2',  key: 'mat_do_xay_dung',      name: 'M\u1eadt \u0111\u1ed9 x\u00e2y d\u1ef1ng',                value: '' },
+  { id: '3',  key: 'he_so_su_dung_dat',    name: 'H\u1ec7 s\u1ed1 s\u1eed d\u1ee5ng \u0111\u1ea5t',           value: '' },
+  { id: '4',  key: 'so_tang_cao',          name: 'S\u1ed1 t\u1ea7ng cao',                   value: '' },
+  { id: '5',  key: 'so_tang_ham',          name: 'S\u1ed1 t\u1ea7ng h\u1ea7m',                   value: '' },
+  { id: '6',  key: 'dien_tich_xay_dung',   name: 'Di\u1ec7n t\u00edch x\u00e2y d\u1ef1ng',             value: '' },
+  { id: '7',  key: 'tong_dien_tich_san',   name: 'T\u1ed5ng di\u1ec7n t\u00edch s\u00e0n x\u00e2y d\u1ef1ng', value: '' },
+  { id: '8',  key: 'cong_suat_phuc_vu',    name: 'C\u00f4ng su\u1ea5t ph\u1ee5c v\u1ee5',             value: '' },
+  { id: '9',  key: 'chieu_cao_pccc',       name: 'Chi\u1ec1u cao PCCC',                 value: '' },
+  { id: '10', key: 'chieu_cao_tinh_khong', name: 'Chi\u1ec1u cao t\u0129nh kh\u00f4ng',          value: '' },
+  { id: '11', key: 'chieu_sau_tang_ham',   name: 'Chi\u1ec1u s\u00e2u t\u1ea7ng h\u1ea7m',           value: '' },
+  { id: '12', key: 'phan_cap_du_an',       name: 'Ph\u00e2n c\u1ea5p d\u1ef1 \u00e1n',              value: '' },
+  { id: '13', key: 'phan_loai_du_an',      name: 'Ph\u00e2n lo\u1ea1i d\u1ef1 \u00e1n',             value: '' },
+  { id: '14', key: 'phan_nhom_du_an',      name: 'Ph\u00e2n nh\u00f3m d\u1ef1 \u00e1n',             value: '' }
 ];
+
 
 export const mockProjects = [
   {

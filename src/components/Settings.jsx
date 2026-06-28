@@ -1,6 +1,9 @@
 import React, { useContext, useState, useEffect, useMemo } from 'react';
 import { DocumentContext } from '../context/DocumentContext';
-import { Plus, Trash2, Save, Edit2, X, Check, ChevronDown, ChevronUp, ShieldOff, ShieldCheck, Eye, Pencil, Trash, Lock, Users2, Info } from 'lucide-react';
+import { Plus, Trash2, Save, Edit2, X, Check, ChevronDown, ChevronUp, ShieldOff, ShieldCheck, Eye, Pencil, Trash, Lock, Users2, Info, RotateCcw, AlertTriangle, ClipboardList, FileX } from 'lucide-react';
+import { db } from '../firebase';
+import { collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
+import { format } from 'date-fns';
 import { LIST_CONFIGS } from '../data';
 import { ROLES } from '../constants';
 
@@ -444,9 +447,20 @@ const ProjectRoleMatrix = () => {
 };
 
 const Settings = () => {
-  const { globalLists, addListItem, editListItem, deleteListItem, userRole } = useContext(DocumentContext);
-  const [activeTab, setActiveTab] = useState('projectRoles'); // Default active tab is the ProjectRole Matrix tab
+  const { globalLists, addListItem, editListItem, deleteListItem, userRole, allDocuments, restoreDocument, permanentDeleteDocument } = useContext(DocumentContext);
+  const [activeTab, setActiveTab] = useState('projectRoles');
   const [displayExpanded, setDisplayExpanded] = useState(true);
+  const [auditLogs, setAuditLogs] = useState([]);
+
+  // Load audit logs khi chuyển sang tab Nhật ký
+  useEffect(() => {
+    if (activeTab !== 'auditLog') return;
+    const q = query(collection(db, 'auditLogs'), orderBy('timestamp', 'desc'), limit(100));
+    const unsub = onSnapshot(q, (snap) => {
+      setAuditLogs(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
+    return unsub;
+  }, [activeTab]);
 
   // Guard: User không được vào trang này
   if (false && userRole !== ROLES.ADMIN) return <AccessDenied />;
@@ -527,9 +541,45 @@ const Settings = () => {
           }}
         >
           <Eye size={18} />
-          Giao diện & Hiển thị
+          Giao diện &amp; Hiển thị
         </button>
-      </div>
+
+        <button
+          onClick={() => setActiveTab('trash')}
+          style={{
+            display: 'flex', alignItems: 'center', gap: '0.5rem',
+            background: 'none', border: 'none',
+            borderBottom: activeTab === 'trash' ? '2px solid #f87171' : '2px solid transparent',
+            color: activeTab === 'trash' ? '#f87171' : 'var(--color-text-muted)',
+            padding: '0.75rem 0.5rem', fontSize: '0.92rem', fontWeight: '600',
+            cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap'
+          }}
+        >
+          <Trash2 size={18} />
+          Thùng rác
+          {(allDocuments || []).filter(d => d.isDeleted).length > 0 && (
+            <span style={{ background: '#ef4444', color: 'white', borderRadius: '999px', padding: '1px 7px', fontSize: '0.72rem', fontWeight: '700' }}>
+              {(allDocuments || []).filter(d => d.isDeleted).length}
+            </span>
+          )}
+        </button>
+
+        <button
+          onClick={() => setActiveTab('auditLog')}
+          style={{
+            display: 'flex', alignItems: 'center', gap: '0.5rem',
+            background: 'none', border: 'none',
+            borderBottom: activeTab === 'auditLog' ? '2px solid #818cf8' : '2px solid transparent',
+            color: activeTab === 'auditLog' ? '#818cf8' : 'var(--color-text-muted)',
+            padding: '0.75rem 0.5rem', fontSize: '0.92rem', fontWeight: '600',
+            cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap'
+          }}
+        >
+          <ClipboardList size={18} />
+          Nhật ký hoạt động
+        </button>
+
+      </div>{/* /tabs nav */}
 
       {/* Tab contents */}
       <div style={{ flex: 1, overflowY: 'auto' }}>
@@ -580,6 +630,141 @@ const Settings = () => {
                 <button className="btn btn-primary" style={{ alignSelf: 'flex-start', marginTop: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <Save size={18} /> Lưu Cài đặt
                 </button>
+              </div>
+            )}
+          </section>
+        )}
+
+        {activeTab === 'trash' && (
+          <section>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
+              <AlertTriangle size={20} style={{ color: '#f87171' }} />
+              <h3 style={{ fontSize: '1.05rem', fontWeight: '600', margin: 0 }}>Thùng rác tài liệu</h3>
+              <span style={{ color: 'var(--color-text-muted)', fontSize: '0.82rem' }}>— Tài liệu sẽ bị xóa vĩnh viễn sau 30 ngày</span>
+            </div>
+            {(allDocuments || []).filter(d => d.isDeleted).length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-muted)' }}>
+                <FileX size={48} style={{ opacity: 0.3, marginBottom: '1rem' }} />
+                <p>Thùng rác trống</p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                {(allDocuments || []).filter(d => d.isDeleted).map(d => {
+                  const deletedDaysAgo = d.deletedAt
+                    ? Math.floor((Date.now() - new Date(d.deletedAt)) / (1000 * 60 * 60 * 24))
+                    : 0;
+                  const daysLeft = 30 - deletedDaysAgo;
+                  return (
+                    <div key={d.id} style={{
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                      padding: '0.875rem 1.25rem',
+                      background: 'rgba(239,68,68,0.05)', border: '1px solid rgba(239,68,68,0.2)',
+                      borderRadius: 'var(--radius-md)',
+                    }}>
+                      <div>
+                        <div style={{ fontWeight: '600', color: 'var(--color-text-main)', fontSize: '0.9rem' }}>
+                          {d.documentNumber || d.documentCode || d.id}
+                        </div>
+                        <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginTop: '0.2rem' }}>
+                          Xóa bởi {d.deletedBy || 'unknown'} &nbsp;·&nbsp;
+                          {d.deletedAt ? format(new Date(d.deletedAt), 'dd/MM/yyyy') : ''} &nbsp;·&nbsp;
+                          <span style={{ color: daysLeft <= 7 ? '#f87171' : 'inherit' }}>
+                            Còn {daysLeft} ngày trước khi xóa vĩnh viễn
+                          </span>
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button
+                          onClick={() => restoreDocument(d.id)}
+                          title="Khôi phục tài liệu"
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: '0.4rem',
+                            padding: '0.4rem 0.85rem', borderRadius: '8px',
+                            background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.3)',
+                            color: '#60a5fa', fontSize: '0.8rem', fontWeight: '600', cursor: 'pointer',
+                          }}
+                        >
+                          <RotateCcw size={14} /> Khôi phục
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (window.confirm(`Xóa vĩnh viễn "${d.documentNumber || d.id}"? Hành động này không thể hoàn tác.`)) {
+                              permanentDeleteDocument(d.id);
+                            }
+                          }}
+                          title="Xóa vĩnh viễn"
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: '0.4rem',
+                            padding: '0.4rem 0.85rem', borderRadius: '8px',
+                            background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)',
+                            color: '#f87171', fontSize: '0.8rem', fontWeight: '600', cursor: 'pointer',
+                          }}
+                        >
+                          <Trash2 size={14} /> Xóa hẳn
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        )}
+
+        {activeTab === 'auditLog' && (
+          <section>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
+              <ClipboardList size={20} style={{ color: '#818cf8' }} />
+              <h3 style={{ fontSize: '1.05rem', fontWeight: '600', margin: 0 }}>Nhật ký hoạt động</h3>
+              <span style={{ color: 'var(--color-text-muted)', fontSize: '0.82rem' }}>— 100 thao tác gần nhất</span>
+            </div>
+            {auditLogs.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-muted)' }}>
+                <ClipboardList size={48} style={{ opacity: 0.3, marginBottom: '1rem' }} />
+                <p>Chưa có nhật ký nào</p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                {auditLogs.map(log => {
+                  const ACTION_LABELS = {
+                    add_document:     { label: 'Thêm tài liệu',      color: '#34d399' },
+                    edit_document:    { label: 'Sửa tài liệu',       color: '#60a5fa' },
+                    delete_document:  { label: 'Xóa (mềm)',          color: '#f87171' },
+                    restore_document: { label: 'Khôi phục',          color: '#818cf8' },
+                    permanent_delete: { label: 'Xóa vĩnh viễn',      color: '#ef4444' },
+                    download_file:    { label: 'Tải file',           color: '#fbbf24' },
+                    mark_read_all:    { label: 'Đánh dấu đã đọc tất cả', color: '#94a3b8' },
+                  };
+                  const info = ACTION_LABELS[log.action] || { label: log.action, color: '#94a3b8' };
+                  const ts = log.timestamp?.toDate?.() || (log.timestamp ? new Date(log.timestamp) : null);
+                  return (
+                    <div key={log.id} style={{
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                      padding: '0.65rem 1rem',
+                      background: 'var(--color-bg-surface)', border: '1px solid var(--color-border)',
+                      borderRadius: '8px', fontSize: '0.82rem',
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <span style={{
+                          background: `${info.color}22`, color: info.color,
+                          borderRadius: '6px', padding: '2px 8px', fontSize: '0.75rem', fontWeight: '700',
+                          whiteSpace: 'nowrap',
+                        }}>
+                          {info.label}
+                        </span>
+                        <span style={{ color: 'var(--color-text-main)', fontWeight: '500' }}>
+                          {log.documentNumber || log.documentId || ''}
+                          {log.fileName ? ` / ${log.fileName}` : ''}
+                        </span>
+                      </div>
+                      <div style={{ color: 'var(--color-text-muted)', whiteSpace: 'nowrap', marginLeft: '1rem' }}>
+                        <span style={{ color: 'var(--color-text-main)' }}>{log.userName || log.userId}</span>
+                        &nbsp;·&nbsp;
+                        {ts ? format(ts, 'dd/MM/yyyy HH:mm') : ''}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </section>

@@ -6,7 +6,7 @@ import { DocumentContext } from '../context/DocumentContext';
 import { useToast, useConfirm } from '../context/UIContext';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '../firebase';
-import html2pdf from 'html2pdf.js';
+
 
 const AccessDenied = () => (
   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', textAlign: 'center', padding: '2rem' }}>
@@ -266,7 +266,7 @@ const Partners = () => {
     setEditingId(null);
   };
 
-  const handleExportPDF = (partner) => {
+  const handleExportPDF = async (partner) => {
     const element = document.getElementById('partner-printable-area');
     if (!element) return;
 
@@ -278,6 +278,7 @@ const Partners = () => {
       jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
 
+    const html2pdf = (await import('html2pdf.js')).default;
     html2pdf().set(opt).from(element).save();
   };
 

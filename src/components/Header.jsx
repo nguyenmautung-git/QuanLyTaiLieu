@@ -5,9 +5,10 @@ import { signOut } from 'firebase/auth';
 import { auth } from '../firebase';
 import { DocumentContext } from '../context/DocumentContext';
 import ProfileModal from './ProfileModal';
+import { useToast } from '../context/UIContext';
 
 const Header = ({ currentView, onOpenForm, onNavigate, onSearchSelect }) => {
-  const { getNewCount, markAsRead, documents, projects, members, userRole, toggleRole, canAddDocument } = useContext(DocumentContext);
+  const { getNewCount, markAsRead, isDocNew, documents, projects, members, userRole, toggleRole, canAddDocument } = useContext(DocumentContext);
   const [showNoti, setShowNoti] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
@@ -17,6 +18,7 @@ const Header = ({ currentView, onOpenForm, onNavigate, onSearchSelect }) => {
   const userMenuRef = useRef(null);
   const searchRef = useRef(null);
 
+  const toast = useToast();
   const newCount = getNewCount();
 
   // Lấy thông tin người dùng đang đăng nhập
@@ -34,6 +36,18 @@ const Header = ({ currentView, onOpenForm, onNavigate, onSearchSelect }) => {
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // ── Lắng nghe cảnh báo tài liệu sắp hết hiệu lực (dispatch từ DocumentContext)
+  useEffect(() => {
+    const handler = (e) => {
+      const { count } = e.detail || {};
+      if (count > 0) {
+        toast.warning(`⚠️ ${count} tài liệu sắp hết hiệu lực trong 30 ngày tới!`);
+      }
+    };
+    window.addEventListener('doc:expiry-warning', handler);
+    return () => window.removeEventListener('doc:expiry-warning', handler);
   }, []);
 
   // ── Tìm kiếm toàn cục ───────────────────────────────────────────────────
@@ -205,20 +219,31 @@ const Header = ({ currentView, onOpenForm, onNavigate, onSearchSelect }) => {
             <div style={{ position: 'absolute', top: '100%', right: '0', marginTop: '10px', width: '320px', backgroundColor: 'var(--color-bg-surface)', backdropFilter: 'blur(16px)', borderRadius: 'var(--radius-md)', boxShadow: 'var(--shadow-lg)', border: '1px solid var(--color-border)', zIndex: 100, padding: '1rem' }}>
               <h4 style={{ marginBottom: '1rem', fontSize: '1rem', fontWeight: '600' }}>Thông báo</h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '300px', overflowY: 'auto' }}>
-                {documents.slice(0, 5).map(doc => (
+              {(() => {
+                const unreadDocs = (documents || [])
+                  .filter(d => !d.isDeleted && (isDocNew ? isDocNew(d.id) : d.isNew))
+                  .slice(0, 6);
+                if (unreadDocs.length === 0) {
+                  return (
+                    <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', textAlign: 'center', padding: '1rem 0' }}>
+                      Tất cả đã đọc ✓
+                    </p>
+                  );
+                }
+                return unreadDocs.map(doc => (
                   <div key={doc.id} style={{ display: 'flex', gap: '10px', paddingBottom: '10px', borderBottom: '1px solid var(--color-bg-surface-hover)' }}>
                     <div style={{ width: '36px', height: '36px', borderRadius: '50%', backgroundColor: 'var(--color-primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', flexShrink: 0 }}>
                       <FileText size={16} />
                     </div>
                     <div>
                       <p style={{ fontSize: '0.875rem', margin: '0', color: 'var(--color-text-main)' }}>
-                        <span style={{ fontWeight: '600' }}>{doc.uploader}</span> vừa tải lên tài liệu: <strong>{doc.documentNumber}</strong>
+                        <span style={{ fontWeight: '600' }}>{doc.uploader}</span> vừa tải lên: <strong>{doc.documentNumber}</strong>
                       </p>
                       <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Mã: {doc.documentCode}</span>
                     </div>
                   </div>
-                ))}
-                {documents.length === 0 && <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>Chưa có thông báo nào.</p>}
+                ));
+              })()}
               </div>
             </div>
           )}

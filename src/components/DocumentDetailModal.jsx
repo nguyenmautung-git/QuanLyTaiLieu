@@ -1,4 +1,4 @@
-import React, { useRef, useState, useContext } from 'react';
+import React, { useRef, useState, useContext, useEffect } from 'react';
 import { X, Calendar, Building, Download, Lock, Check, Upload, Loader, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
@@ -9,13 +9,22 @@ import { DocumentContext } from '../context/DocumentContext';
 const DocumentDetailModal = ({ document, onClose }) => {
   if (!document) return null;
 
-  const { editDocument } = useContext(DocumentContext);
+  const { editDocument, markAsRead } = useContext(DocumentContext);
   const fileInputRef = useRef(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
   const [currentAttachments, setCurrentAttachments] = useState(
     document.attachments || (document.attachmentLink ? [{ name: 'Tệp đính kèm gốc', url: document.attachmentLink }] : [])
   );
+
+  // Đánh dấu đã đọc khi mở modal
+  useEffect(() => {
+    if (document?.id && markAsRead) {
+      markAsRead(document.id);
+    }
+  // chỉ chạy 1 lần khi mount
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const {
     documentCode, documentNumber, documentType, issuingAgency, effectiveDate,

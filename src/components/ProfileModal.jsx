@@ -3,7 +3,7 @@ import { ROLES } from '../constants';
 import { X, Mail, Phone, Shield, Star, Edit2, Share2 } from 'lucide-react';
 import { EMPLOYEE_LEVELS } from '../data';
 import { DocumentContext } from '../context/DocumentContext';
-import html2pdf from 'html2pdf.js';
+
 
 const ROLE_COLORS = {
   Admin: { bg: 'rgba(16, 185, 129, 0.15)', color: '#10b981', border: 'rgba(16, 185, 129, 0.3)' },
@@ -28,9 +28,10 @@ const ProfileModal = ({ member, onClose, onEdit }) => {
   const roleStyle = ROLE_COLORS[member.role] || ROLE_COLORS.User;
   const gradient = LEVEL_GRADIENT[(member.level - 1) % LEVEL_GRADIENT.length];
 
-  const handleExportPDF = () => {
+  const handleExportPDF = async () => {
     const el = document.getElementById('profile-printable');
     if (!el) return;
+    const html2pdf = (await import('html2pdf.js')).default;
     html2pdf().set({
       margin: 10,
       filename: `profile_${member.name}.pdf`,

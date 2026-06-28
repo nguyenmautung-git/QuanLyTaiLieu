@@ -49,3 +49,45 @@ export const WORKFLOW_DEFAULT_STEPS = [
   'Nghiệm thu hoàn thành công trình',
   'Bàn giao đưa vào sử dụng',
 ];
+
+// ── Phân nhóm Giai đoạn Pháp lý ──────────────────────────────────────────
+export const LEGAL_PHASES = {
+  PHASE_1: 'Giai đoạn 1: Chuẩn bị đầu tư',
+  PHASE_2: 'Giai đoạn 2: Chuẩn bị xây dựng',
+  PHASE_3: 'Giai đoạn 3: Thực hiện xây dựng',
+  PHASE_4: 'Giai đoạn 4: Hoàn công & Bàn giao',
+};
+
+// ── Mẫu quy trình pháp lý dự án có sẵn ────────────────────────────────────
+export const LEGAL_TEMPLATES = {
+  civil: {
+    name: 'Quy trình chuẩn Xây dựng dân dụng',
+    steps: [
+      { name: 'Phê duyệt chủ trương đầu tư', phase: 'PHASE_1', order: 0 },
+      { name: 'Chấp thuận địa điểm xây dựng', phase: 'PHASE_1', order: 1 },
+      { name: 'Phê duyệt quy hoạch chi tiết 1/500', phase: 'PHASE_1', order: 2 },
+      { name: 'Phê duyệt dự án đầu tư (Quyết định đầu tư)', phase: 'PHASE_1', order: 3 },
+      { name: 'Thẩm duyệt thiết kế PCCC', phase: 'PHASE_2', order: 4 },
+      { name: 'Phê duyệt thiết kế bản vẽ thi công', phase: 'PHASE_2', order: 5 },
+      { name: 'Cấp phép xây dựng', phase: 'PHASE_2', order: 6 },
+      { name: 'Báo cáo đánh giá tác động môi trường (ĐTM)', phase: 'PHASE_2', order: 7 },
+      { name: 'Nghiệm thu hoàn thành công trình', phase: 'PHASE_4', order: 8 },
+      { name: 'Bàn giao đưa vào sử dụng', phase: 'PHASE_4', order: 9 },
+    ]
+  },
+  infrastructure: {
+    name: 'Quy trình chuẩn Công trình Hạ tầng kỹ thuật',
+    steps: [
+      { name: 'Báo cáo nghiên cứu khả thi', phase: 'PHASE_1', order: 0 },
+      { name: 'Báo cáo đánh giá tác động môi trường', phase: 'PHASE_1', order: 1 },
+      { name: 'Cấp phép quy hoạch', phase: 'PHASE_1', order: 2 },
+      { name: 'Thu hồi đất & Giải phóng mặt bằng', phase: 'PHASE_2', order: 3 },
+      { name: 'Giao đất & Cấp sổ đỏ dự án', phase: 'PHASE_2', order: 4 },
+      { name: 'Thẩm định thiết kế kỹ thuật', phase: 'PHASE_2', order: 5 },
+      { name: 'Cấp phép xây dựng hạ tầng', phase: 'PHASE_2', order: 6 },
+      { name: 'Nghiệm thu kỹ thuật công trình', phase: 'PHASE_3', order: 7 },
+      { name: 'Bàn giao đưa vào sử dụng', phase: 'PHASE_4', order: 8 },
+    ]
+  }
+};
+

@@ -1,9 +1,12 @@
-import React, { useState, useContext, useRef, useEffect } from 'react';
+import React, { useState, useContext, useRef, useEffect, useDeferredValue } from 'react';
+import ReactDOM from 'react-dom';
 import { ROLES } from '../constants';
-import { Plus, Edit, Trash2, MapPin, Building, Activity, FileText, Briefcase, Eye, Download, Users, X, Link, ChevronDown, ChevronUp, Search, Filter, Check } from 'lucide-react';
+import { Plus, Edit, Trash2, MapPin, Building, Activity, FileText, Briefcase, Eye, Download, Users, X, Link, ChevronDown, ChevronUp, Search, Filter, Check, GripVertical } from 'lucide-react';
 import { DocumentContext } from '../context/DocumentContext';
 import { useToast, useConfirm } from '../context/UIContext';
-import html2pdf from 'html2pdf.js';
+import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { storage } from '../firebase';
+import PdfViewerModal from './PdfViewerModal';
 import { PROJECT_DETAILS_TEMPLATE, PROJECT_ROLES, getPastelColor } from '../data';
 
 
@@ -32,6 +35,7 @@ const Projects = ({ focusProjectId = null, onFocusCleared }) => {
   
   const defaultFormData = {
     code: '',
+    codeNN: '',
     name: '',
     location: '',
     investor: 'Công ty TNHH Hạ tầng công nghệ số FPT',
@@ -48,6 +52,11 @@ const Projects = ({ focusProjectId = null, onFocusCleared }) => {
   const [showDocsSection, setShowDocsSection] = useState(false);
   const [isPlanningSectionCollapsed, setIsPlanningSectionCollapsed] = useState(true);
   const [showStatusDropdown, setShowStatusDropdown] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);        // loading state cho PDF export
+  const [pdfViewerFile, setPdfViewerFile] = useState(null);     // file đang xem trong PdfViewerModal
+  const [isUploadingImage, setIsUploadingImage] = useState(false); // loading khi upload ảnh
+  const [isDraggingImage, setIsDraggingImage]   = useState(false);  // drag-over ảnh
+  const [imageInfo, setImageInfo]               = useState(null);    // { original, compressed } KB
   const statusMenuRef = useRef(null);
 
   const [searchTerm, setSearchTerm] = useState(() => localStorage.getItem('projectSearchTerm') || '');
@@ -57,6 +66,8 @@ const Projects = ({ focusProjectId = null, onFocusCleared }) => {
   });
   const [showFilterMenu, setShowFilterMenu] = useState(false);
   const filterMenuRef = useRef(null);
+  const dragRowRef    = useRef(null);     // index đang kéo
+  const [dragOverIndex, setDragOverIndex] = useState(null); // index đang hover
 
   useEffect(() => {
     localStorage.setItem('projectSearchTerm', searchTerm);
@@ -86,22 +97,22 @@ const Projects = ({ focusProjectId = null, onFocusCleared }) => {
       setIsPreviewMode(preview);
       setFormData({
         ...project,
-        details: project.details && project.details.length > 0 
-          ? project.details 
+        details: project.details && project.details.length > 0
+          ? project.details
           : [...PROJECT_DETAILS_TEMPLATE],
         projectMembers: project.projectMembers || [],
         tasks: project.tasks || []
       });
       setShowMembersSection(false);
       setShowDocsSection(false);
-      setIsPlanningSectionCollapsed(true);
+      setIsPlanningSectionCollapsed(false); // Tự động mở rộng khi xem dự án
     } else {
       setEditingProject(null);
       setIsPreviewMode(false);
       setFormData(defaultFormData);
       setShowMembersSection(false);
       setShowDocsSection(false);
-      setIsPlanningSectionCollapsed(true);
+      setIsPlanningSectionCollapsed(false); // Tự động mở rộng khi tạo mới
     }
     setIsFormOpen(true);
   };
@@ -133,68 +144,65 @@ const Projects = ({ focusProjectId = null, onFocusCleared }) => {
     setIsPlanningSectionCollapsed(true);
   };
 
-  const handleExportPDF = () => {
+  const handleExportPDF = async () => {
     const element = document.getElementById('project-printable-area');
-    if (!element) return;
-
-    const opt = {
-      margin:       [5, 5, 5, 5],
-      filename:     `ThongTinDuAn_${formData.code || 'KhongCoMa'}.pdf`,
-      image:        { type: 'jpeg', quality: 0.98 },
-      html2canvas:  { 
-        scale: 2, 
-        useCORS: true, 
-        logging: false,
-        onclone: (doc) => {
-          const el = doc.getElementById('project-printable-area');
-          if (el) {
-            el.style.fontSize = '12px';
-            const formGroups = el.querySelectorAll('.form-group');
-            formGroups.forEach(fg => {
-              fg.style.marginBottom = '0';
-            });
-            const grids = el.querySelectorAll('div[style*="grid"]');
-            grids.forEach(g => {
-              g.style.gap = '0.5rem';
-            });
-            const flexs = el.querySelectorAll('div[style*="flex"]');
-            flexs.forEach(f => {
-              if (f.style.gap === '1.5rem') f.style.gap = '0.75rem';
-            });
-            const inputs = el.querySelectorAll('.input-field');
-            inputs.forEach(input => {
-              input.style.padding = '0.25rem 0.5rem';
-              input.style.minHeight = '1.5rem';
-              input.style.fontSize = '11px';
-            });
-            const tds = el.querySelectorAll('td, th');
-            tds.forEach(td => {
-              td.style.padding = '0.25rem 0.5rem';
-              td.style.fontSize = '11px';
-            });
-            const header = el.querySelector('#modal-header-banner');
-            if (header) {
-              header.style.padding = formData.image ? '4rem 1.5rem 1rem' : '1rem 1.5rem';
-              const title = header.querySelector('h2');
-              if (title) title.style.fontSize = '1.25rem';
+    if (!element || isExporting) return;
+    setIsExporting(true);
+    try {
+      const opt = {
+        margin:       [5, 5, 5, 5],
+        filename:     `ThongTinDuAn_${formData.code || 'KhongCoMa'}.pdf`,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  {
+          scale: 2,
+          useCORS: true,
+          logging: false,
+          onclone: (doc) => {
+            const el = doc.getElementById('project-printable-area');
+            if (el) {
+              el.style.fontSize = '12px';
+              el.querySelectorAll('.form-group').forEach(fg => { fg.style.marginBottom = '0'; });
+              el.querySelectorAll('div[style*="grid"]').forEach(g => { g.style.gap = '0.5rem'; });
+              el.querySelectorAll('div[style*="flex"]').forEach(f => { if (f.style.gap === '1.5rem') f.style.gap = '0.75rem'; });
+              el.querySelectorAll('.input-field').forEach(input => { input.style.padding = '0.25rem 0.5rem'; input.style.minHeight = '1.5rem'; input.style.fontSize = '11px'; });
+              el.querySelectorAll('td, th').forEach(td => { td.style.padding = '0.25rem 0.5rem'; td.style.fontSize = '11px'; });
+              const header = el.querySelector('#modal-header-banner');
+              if (header) {
+                header.style.padding = formData.image ? '4rem 1.5rem 1rem' : '1rem 1.5rem';
+                const title = header.querySelector('h2');
+                if (title) title.style.fontSize = '1.25rem';
+              }
             }
           }
-        }
-      },
-      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
-    };
-
-    html2pdf().set(opt).from(element).save();
+        },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      };
+      const html2pdf = (await import('html2pdf.js')).default;
+      await html2pdf().set(opt).from(element).save();
+    } catch (err) {
+      toast.error('Lỗi khi xuất PDF: ' + (err.message || 'Vui lòng thử lại'));
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const handleSave = async (e) => {
     e.preventDefault();
     
-    // Validate duplicate project code
+    // Validate trùng Mã dự án nội bộ
     if (formData.code) {
       const isDuplicateCode = projects.some(p => p.code === formData.code && (!editingProject || p.id !== editingProject.id));
       if (isDuplicateCode) {
-        toast.warning('Mã dự án này đã tồn tại! Vui lòng nhập mã khác để tránh trùng lặp.');
+        toast.warning('Mã dự án nội bộ đã tồn tại! Vui lòng nhập mã khác.');
+        return;
+      }
+    }
+
+    // Validate trùng Mã dự án NN
+    if (formData.codeNN) {
+      const isDuplicateCodeNN = projects.some(p => p.codeNN && p.codeNN === formData.codeNN && (!editingProject || p.id !== editingProject.id));
+      if (isDuplicateCodeNN) {
+        toast.warning('Mã dự án NN đã tồn tại! Vui lòng nhập mã khác.');
         return;
       }
     }
@@ -208,55 +216,122 @@ const Projects = ({ focusProjectId = null, onFocusCleared }) => {
   };
 
   const handleDelete = async (id) => {
-    const ok = await confirm('Bạn có chắc chắn muốn xoá dự án này?');
+    const proj = projects.find(p => p.id === id);
+    const linkedDocs = (documents || []).filter(d =>
+      !d.isDeleted && Array.isArray(d.relatedProjects) && d.relatedProjects.includes(proj?.name)
+    );
+    const warningText = linkedDocs.length > 0
+      ? `Dự án này đang liên kết với ${linkedDocs.length} tài liệu. Xoá dự án không xóa tài liệu nhưng sẽ gạch tên dự án khỏi danh sách. Bạn có muốn tiếp tục?`
+      : 'Bạn có chắc chắn muốn xoá dự án này?';
+    const ok = await confirm(warningText);
     if (ok) await deleteProject(id);
   };
 
-  const handleDetailChange = (index, value) => {
+  const handleDetailChange = (index, field, val) => {
     const newDetails = [...formData.details];
-    newDetails[index].value = value;
+    newDetails[index] = { ...newDetails[index], [field]: val };
     setFormData({ ...formData, details: newDetails });
   };
 
-  const handleImageUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const img = new Image();
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          let width = img.width;
-          let height = img.height;
-          const MAX_DIMENSION = 800; // Giới hạn kích thước tối đa
-          
-          if (width > height && width > MAX_DIMENSION) {
-            height *= MAX_DIMENSION / width;
-            width = MAX_DIMENSION;
-          } else if (height > MAX_DIMENSION) {
-            width *= MAX_DIMENSION / height;
-            height = MAX_DIMENSION;
-          }
-          
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0, width, height);
-          
-          // Nén thành JPEG chất lượng 70% để tiết kiệm dung lượng
-          const dataUrl = canvas.toDataURL('image/jpeg', 0.7); 
-          
-          setFormData(prev => ({ ...prev, image: dataUrl }));
-        };
-        img.src = reader.result;
-      };
-      reader.readAsDataURL(file);
-    }
+  const handleAddDetailRow = () => {
+    const newRow = {
+      id: `detail_${Date.now()}`,
+      name: '',
+      value: ''
+    };
+    setFormData(prev => ({ ...prev, details: [...prev.details, newRow] }));
   };
 
+  const handleDeleteDetailRow = (index) => {
+    const newDetails = formData.details.filter((_, i) => i !== index);
+    setFormData({ ...formData, details: newDetails });
+  };
+
+  // Drag & Drop để sắp xếp lại hàng datasheet
+  const handleRowDragStart = (index) => {
+    dragRowRef.current = index;
+  };
+  const handleRowDragOver = (e, index) => {
+    e.preventDefault();
+    if (dragRowRef.current !== index) setDragOverIndex(index);
+  };
+  const handleRowDrop = (index) => {
+    const from = dragRowRef.current;
+    if (from === null || from === undefined || from === index) {
+      setDragOverIndex(null);
+      return;
+    }
+    const newDetails = [...formData.details];
+    const [moved] = newDetails.splice(from, 1);
+    newDetails.splice(index, 0, moved);
+    setFormData(prev => ({ ...prev, details: newDetails }));
+    dragRowRef.current = null;
+    setDragOverIndex(null);
+  };
+  const handleRowDragEnd = () => {
+    dragRowRef.current = null;
+    setDragOverIndex(null);
+  };
+
+  // Hàm nhận File (dùng chung cho drag-drop và input change)
+  const handleFileSelected = (file) => {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error('Vui lòng chọn file ảnh (jpg, png, webp...)');
+      return;
+    }
+    const originalKB = Math.round(file.size / 1024);
+    setIsUploadingImage(true);
+    setImageInfo(null);
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let { width, height } = img;
+        const MAX = 1200; // tối đa 1200px để giữ nét cho banner
+        if (width > height && width > MAX) { height = Math.round(height * MAX / width); width = MAX; }
+        else if (height > MAX) { width = Math.round(width * MAX / height); height = MAX; }
+        canvas.width = width;
+        canvas.height = height;
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+
+        // Chất lượng 0.82 — cân bằng giữa nét và dung lượng
+        canvas.toBlob(async (blob) => {
+          const compressedKB = Math.round(blob.size / 1024);
+          try {
+            const safeName = file.name.replace(/[^a-zA-Z0-9.]/g, '_');
+            const path = `projects/images/${Date.now()}_${safeName}`;
+            const imgRef = storageRef(storage, path);
+            await uploadBytes(imgRef, blob, { contentType: 'image/jpeg' });
+            const url = await getDownloadURL(imgRef);
+            setFormData(prev => ({ ...prev, image: url }));
+            setImageInfo({ original: originalKB, compressed: compressedKB });
+            toast.success(`Ảnh đã được tải lên! (${originalKB} KB → ${compressedKB} KB)`);
+          } catch (err) {
+            toast.error('Lỗi khi tải ảnh: ' + err.message);
+          } finally {
+            setIsUploadingImage(false);
+          }
+        }, 'image/jpeg', 0.82);
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleImageUpload = (e) => handleFileSelected(e.target.files[0]);
+
+  const deferredSearch = useDeferredValue(searchTerm);
+
   const filteredProjects = projects.filter(p => {
-    const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          (p.code && p.code.toLowerCase().includes(searchTerm.toLowerCase()));
+    const q = deferredSearch.toLowerCase();
+    const matchesSearch = !q ||
+      p.name.toLowerCase().includes(q) ||
+      (p.code && p.code.toLowerCase().includes(q)) ||
+      (p.location && p.location.toLowerCase().includes(q)) ||
+      (p.investor && p.investor.toLowerCase().includes(q));
     const pStatus = p.status || 'Chưa bắt đầu';
     const matchesStatus = selectedStatuses.length === 0 || selectedStatuses.includes(pStatus);
     return matchesSearch && matchesStatus;
@@ -378,7 +453,19 @@ const Projects = ({ focusProjectId = null, onFocusCleared }) => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div>
                 <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
-                  <span className="badge badge-blue">{project.code || 'Chưa có mã'}</span>
+                  {project.code && (
+                    <span className="badge badge-blue" title="Mã nội bộ">
+                      NB: {project.code}
+                    </span>
+                  )}
+                  {project.codeNN && (
+                    <span className="badge" style={{ backgroundColor: 'rgba(168,85,247,0.2)', color: '#c084fc', border: '1px solid rgba(168,85,247,0.4)' }} title="Mã NN">
+                      NN: {project.codeNN}
+                    </span>
+                  )}
+                  {!project.code && !project.codeNN && (
+                    <span className="badge badge-blue">Chưa có mã</span>
+                  )}
                   <span className="badge" style={{ backgroundColor: getProjectStatusColor(project.status).bg, color: getProjectStatusColor(project.status).text, border: `1px solid ${getProjectStatusColor(project.status).text}` }}>
                     {project.status || 'Chưa bắt đầu'}
                   </span>
@@ -416,24 +503,13 @@ const Projects = ({ focusProjectId = null, onFocusCleared }) => {
               )}
             </div>
 
-            {project.location && (
-              <div style={{ width: '100%', height: '150px', borderRadius: 'var(--radius-md)', overflow: 'hidden', border: '1px solid var(--color-border)', marginTop: '0.5rem' }}>
-                <iframe
-                  width="100%"
-                  height="100%"
-                  style={{ border: 0 }}
-                  loading="lazy"
-                  allowFullScreen
-                  src={`https://www.google.com/maps?q=${encodeURIComponent(project.location)}&output=embed`}
-                ></iframe>
-              </div>
-            )}
             </div>
           </div>
         ))}
       </div>
 
-      {isFormOpen && (
+      {/* Modal dự án — render qua portal để hiện trên cùng app */}
+      {isFormOpen && ReactDOM.createPortal(
         <div className="modal-overlay" onClick={handleCloseForm}>
           <div className="modal-content" onClick={e => e.stopPropagation()} style={{ display: 'flex', flexDirection: 'column', maxWidth: '800px', height: '90vh', overflow: 'hidden' }}>
             <form onSubmit={handleSave} style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
@@ -523,33 +599,169 @@ const Projects = ({ focusProjectId = null, onFocusCleared }) => {
                 <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                   {!isPreviewMode && (
                     <div className="form-group" style={{ marginBottom: 0 }}>
-                      <label className="form-label">Ảnh đại diện dự án (Hiển thị ở Header)</label>
-                      <input type="file" accept="image/*" className="input-field" onChange={handleImageUpload} style={{ padding: '0.5rem' }} />
+                      <label className="form-label">
+                        Ảnh đại diện dự án
+                        <span style={{ color: 'var(--color-text-muted)', fontWeight: '400', fontSize: '0.78rem', marginLeft: '0.5rem' }}>
+                          (Tự động nén • Hiển thị ở Header)
+                        </span>
+                      </label>
+
+                      {/* ── Drag & Drop Zone ── */}
+                      <div
+                        onDragOver={(e) => { e.preventDefault(); setIsDraggingImage(true); }}
+                        onDragLeave={() => setIsDraggingImage(false)}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          setIsDraggingImage(false);
+                          handleFileSelected(e.dataTransfer.files[0]);
+                        }}
+                        onClick={() => !isUploadingImage && document.getElementById('project-img-input').click()}
+                        style={{
+                          border: `2px dashed ${isDraggingImage ? '#818cf8' : 'var(--color-border)'}`,
+                          borderRadius: 'var(--radius-md)',
+                          background: isDraggingImage ? 'rgba(129,140,248,0.08)' : 'var(--color-bg-surface-hover)',
+                          cursor: isUploadingImage ? 'wait' : 'pointer',
+                          transition: 'all 0.2s',
+                          overflow: 'hidden',
+                          position: 'relative',
+                          minHeight: formData.image ? 'auto' : '110px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                      >
+                        {formData.image ? (
+                          <>
+                            <img
+                              src={formData.image}
+                              alt="preview"
+                              style={{ width: '100%', height: '160px', objectFit: 'cover', display: 'block' }}
+                            />
+                            {/* Badge nén + nút xóa */}
+                            <div style={{ position: 'absolute', top: '0.5rem', right: '0.5rem', display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                              {imageInfo && (
+                                <span style={{
+                                  background: 'rgba(0,0,0,0.65)', color: '#6ee7b7',
+                                  fontSize: '0.68rem', fontWeight: '700',
+                                  padding: '3px 8px', borderRadius: '20px',
+                                  backdropFilter: 'blur(4px)', letterSpacing: '0.02em'
+                                }}>
+                                  ↓ {imageInfo.original} KB → {imageInfo.compressed} KB
+                                </span>
+                              )}
+                              <button
+                                type="button"
+                                title="Xóa ảnh"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setFormData(prev => ({ ...prev, image: '' }));
+                                  setImageInfo(null);
+                                }}
+                                style={{
+                                  background: 'rgba(239,68,68,0.85)', border: 'none',
+                                  borderRadius: '50%', width: '26px', height: '26px',
+                                  cursor: 'pointer', color: 'white',
+                                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                  boxShadow: '0 2px 6px rgba(0,0,0,0.4)'
+                                }}
+                              >
+                                <X size={14} />
+                              </button>
+                            </div>
+                            {/* Overlay khi đang upload */}
+                            {isUploadingImage && (
+                              <div style={{
+                                position: 'absolute', inset: 0,
+                                background: 'rgba(0,0,0,0.55)',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                flexDirection: 'column', gap: '0.5rem'
+                              }}>
+                                <div style={{ width: '30px', height: '30px', border: '3px solid rgba(255,255,255,0.2)', borderTop: '3px solid white', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+                                <span style={{ color: 'white', fontSize: '0.8rem', fontWeight: '600' }}>Nén & tải lên...</span>
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', padding: '1.25rem', textAlign: 'center' }}>
+                            {isUploadingImage ? (
+                              <>
+                                <div style={{ width: '30px', height: '30px', border: '3px solid rgba(255,255,255,0.1)', borderTop: '3px solid var(--color-primary)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+                                <span style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>Nén & tải lên...</span>
+                              </>
+                            ) : (
+                              <>
+                                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: isDraggingImage ? '#818cf8' : 'var(--color-text-muted)' }}>
+                                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                                  <circle cx="12" cy="13" r="4"/>
+                                </svg>
+                                <p style={{ fontWeight: '600', color: 'var(--color-text-main)', margin: 0, fontSize: '0.9rem' }}>Kéo &amp; thả ảnh vào đây</p>
+                                <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: 0 }}>
+                                  hoặc nhấn để chọn • JPG, PNG, WEBP • Tự động nén
+                                </p>
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Input file ẩn */}
+                      <input
+                        id="project-img-input"
+                        type="file"
+                        accept="image/*"
+                        style={{ display: 'none' }}
+                        onChange={handleImageUpload}
+                      />
                     </div>
                   )}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '1rem' }}>
+                  {/* Lưới 3 cột: Mã NB | Mã NN | Tên dự án */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 2fr', gap: '1rem' }}>
+
+                  {/* Mã dự án nội bộ */}
                   <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Mã dự án</label>
-                  <input 
-                    type="text" 
-                    className="input-field" 
-                    disabled={isPreviewMode} 
-                    value={formData.code} 
-                    onChange={e => setFormData({...formData, code: e.target.value})} 
-                    placeholder="Nhập mã dự án..." 
-                    style={{ borderColor: formData.code && projects.some(p => p.code === formData.code && (!editingProject || p.id !== editingProject.id)) ? 'var(--color-danger)' : undefined }}
-                  />
-                  {formData.code && projects.some(p => p.code === formData.code && (!editingProject || p.id !== editingProject.id)) && (
-                    <span style={{ color: 'var(--color-danger)', fontSize: '0.75rem', marginTop: '0.25rem', display: 'block' }}>
-                      Mã dự án này đã tồn tại trong hệ thống.
-                    </span>
-                  )}
-                </div>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Tên dự án <span style={{ color: 'var(--color-danger)' }}>*</span></label>
-                  <input required type="text" className="input-field" disabled={isPreviewMode} value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} placeholder="Nhập tên dự án..." />
-                </div>
-              </div>
+                    <label className="form-label">Mã dự án nội bộ</label>
+                    <input
+                      type="text"
+                      className="input-field"
+                      disabled={isPreviewMode}
+                      value={formData.code}
+                      onChange={e => setFormData({...formData, code: e.target.value})}
+                      placeholder="VD: CNS-1..."
+                      style={{ borderColor: formData.code && projects.some(p => p.code === formData.code && (!editingProject || p.id !== editingProject.id)) ? 'var(--color-danger)' : undefined }}
+                    />
+                    {formData.code && projects.some(p => p.code === formData.code && (!editingProject || p.id !== editingProject.id)) && (
+                      <span style={{ color: 'var(--color-danger)', fontSize: '0.73rem', marginTop: '0.25rem', display: 'block' }}>
+                        ⚠️ Mã nội bộ đã tồn tại.
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Mã dự án NN */}
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label">Mã dự án NN</label>
+                    <input
+                      type="text"
+                      className="input-field"
+                      disabled={isPreviewMode}
+                      value={formData.codeNN || ''}
+                      onChange={e => setFormData({...formData, codeNN: e.target.value})}
+                      placeholder="Nhập thủ công..."
+                      style={{ borderColor: formData.codeNN && projects.some(p => p.codeNN && p.codeNN === formData.codeNN && (!editingProject || p.id !== editingProject.id)) ? 'var(--color-danger)' : undefined }}
+                    />
+                    {formData.codeNN && projects.some(p => p.codeNN && p.codeNN === formData.codeNN && (!editingProject || p.id !== editingProject.id)) && (
+                      <span style={{ color: 'var(--color-danger)', fontSize: '0.73rem', marginTop: '0.25rem', display: 'block' }}>
+                        ⚠️ Mã NN đã tồn tại.
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Tên dự án */}
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label">Tên dự án <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+                    <input required type="text" className="input-field" disabled={isPreviewMode} value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} placeholder="Nhập tên dự án..." />
+                  </div>
+
+                  </div>
 
               <div className="form-group" style={{ marginBottom: 0 }}>
                 <label className="form-label">Địa điểm dự án</label>
@@ -654,9 +866,13 @@ const Projects = ({ focusProjectId = null, onFocusCleared }) => {
                                         }}
                                       >
                                         <option value="">-- Chọn thành viên --</option>
-                                        {members.map(m => (
-                                          <option key={m.id} value={m.id}>{m.name}</option>
-                                        ))}
+                                        {members
+                                          .filter(m => !formData.projectMembers.some((pm, pmIdx) =>
+                                            pmIdx !== index && String(pm.memberId) === String(m.id)
+                                          ))
+                                          .map(m => (
+                                            <option key={m.id} value={m.id}>{m.name}</option>
+                                          ))}
                                       </select>
                                     </div>
                                   )}
@@ -741,39 +957,51 @@ const Projects = ({ focusProjectId = null, onFocusCleared }) => {
                         </tr>
                       </thead>
                       <tbody>
-                        {documents.filter(doc => doc.relatedProjects && doc.relatedProjects.includes(formData.name)).length === 0 ? (
-                          <tr>
-                            <td colSpan={3} style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
-                              Chưa có tài liệu nào đính kèm cho dự án này.
-                            </td>
-                          </tr>
+                {(() => {
+                  const projectDocs = documents.filter(d =>
+                    !d.isDeleted &&
+                    Array.isArray(d.relatedProjects) &&
+                    d.relatedProjects.includes(formData.name)
+                  ).sort((a, b) => {
+                    const dA = a.effectiveDate ? new Date(a.effectiveDate) : new Date(0);
+                    const dB = b.effectiveDate ? new Date(b.effectiveDate) : new Date(0);
+                    return dB - dA;
+                  });
+
+                  if (projectDocs.length === 0) return (
+                    <tr>
+                      <td colSpan={3} style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+                        Chưa có tài liệu nào đính kèm cho dự án này.
+                      </td>
+                    </tr>
+                  );
+
+                  return projectDocs.map((doc) => (
+                    <tr key={doc.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
+                      <td style={{ padding: '0.75rem', fontWeight: '500' }}>{doc.documentNumber}</td>
+                      <td style={{ padding: '0.75rem' }}>{doc.summary}</td>
+                      <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                        {doc.attachments && doc.attachments.length > 0 ? (
+                          <div style={{ display: 'flex', gap: '0.35rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+                            {doc.attachments.map((att, i) => (
+                              <button
+                                key={i}
+                                type="button"
+                                title={att.name || 'Xem tệp'}
+                                onClick={() => setPdfViewerFile(att)}
+                                style={{ background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.3)', borderRadius: '6px', color: '#60a5fa', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '28px', height: '28px' }}
+                              >
+                                <Eye size={14} />
+                              </button>
+                            ))}
+                          </div>
                         ) : (
-                          documents.filter(doc => doc.relatedProjects && doc.relatedProjects.includes(formData.name))
-                          .sort((a, b) => {
-                            const dateA = a.effectiveDate ? new Date(a.effectiveDate) : new Date(0);
-                            const dateB = b.effectiveDate ? new Date(b.effectiveDate) : new Date(0);
-                            return dateB - dateA;
-                          })
-                          .map((doc, index) => (
-                            <tr key={doc.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
-                              <td style={{ padding: '0.75rem', fontWeight: '500' }}>{doc.documentNumber}</td>
-                              <td style={{ padding: '0.75rem' }}>{doc.summary}</td>
-                              <td style={{ padding: '0.75rem', textAlign: 'center' }}>
-                                {doc.attachments && doc.attachments.length > 0 ? (
-                                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
-                                    {doc.attachments.map((att, i) => (
-                                      <a key={i} href={att.url} target="_blank" rel="noreferrer" style={{ color: 'var(--color-primary)', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title={att.name || 'Tài liệu'}>
-                                        <Link size={18} />
-                                      </a>
-                                    ))}
-                                  </div>
-                                ) : (
-                                  <span style={{ color: 'var(--color-text-muted)' }}>-</span>
-                                )}
-                              </td>
-                            </tr>
-                          ))
+                          <span style={{ color: 'var(--color-text-muted)' }}>-</span>
                         )}
+                      </td>
+                    </tr>
+                  ));
+                })()}
                       </tbody>
                     </table>
                   </div>
@@ -799,48 +1027,146 @@ const Projects = ({ focusProjectId = null, onFocusCleared }) => {
                   </h3>
                 </div>
                 
-                {!isPlanningSectionCollapsed && (
-                  <div style={{ border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', overflow: 'hidden' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                      <thead style={{ backgroundColor: 'var(--color-bg-surface-hover)' }}>
-                        <tr>
-                          <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid var(--color-border)', width: '60px' }}>STT</th>
-                          <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--color-border)' }}>Nội dung</th>
-                          <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--color-border)', width: '40%' }}>Ghi chú / Giá trị</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {formData.details.map((detail, index) => (
-                          <tr key={detail.id} style={{ borderBottom: index < formData.details.length - 1 ? '1px solid var(--color-border)' : 'none' }}>
-                            <td style={{ padding: '0.75rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>{index + 1}</td>
-                            <td style={{ padding: '0.75rem', fontWeight: '500' }}>{detail.name}</td>
-                            <td style={{ padding: '0.5rem' }}>
-                              {isPreviewMode ? (
-                                <div style={{ padding: '0.4rem 0.75rem', margin: 0, minHeight: '2rem' }}>{detail.value}</div>
-                              ) : (
-                                <input 
-                                  type="text" 
-                                  className="input-field" 
-                                  style={{ padding: '0.4rem 0.75rem', margin: 0 }}
-                                  value={detail.value}
-                                  onChange={(e) => handleDetailChange(index, e.target.value)}
-                                  placeholder="Nhập..."
-                                />
-                              )}
+              {!isPlanningSectionCollapsed && (
+                <div style={{ border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', overflow: 'hidden' }}>
+                  <table className="datasheet-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                    <thead style={{ backgroundColor: 'var(--color-bg-surface-hover)' }}>
+                      <tr>
+                        {!isPreviewMode && (
+                          <th style={{ padding: '0.6rem 0.4rem', borderBottom: '1px solid var(--color-border)', width: '28px' }}></th>
+                        )}
+                        <th style={{ padding: '0.6rem 0.75rem', textAlign: 'center', borderBottom: '1px solid var(--color-border)', width: '48px', color: 'var(--color-text-muted)', fontWeight: '600' }}>STT</th>
+                        <th style={{ padding: '0.6rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--color-border)', fontWeight: '600' }}>Nội dung</th>
+                        <th style={{ padding: '0.6rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--color-border)', width: '38%', fontWeight: '600' }}>Giá trị</th>
+                        {!isPreviewMode && (
+                          <th style={{ padding: '0.6rem 0.5rem', borderBottom: '1px solid var(--color-border)', width: '36px' }}></th>
+                        )}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {formData.details.map((detail, index) => (
+                        <tr
+                          key={detail.id}
+                          draggable={!isPreviewMode}
+                          onDragStart={() => handleRowDragStart(index)}
+                          onDragOver={e => handleRowDragOver(e, index)}
+                          onDrop={() => handleRowDrop(index)}
+                          onDragEnd={handleRowDragEnd}
+                          style={{
+                            borderBottom: index < formData.details.length - 1 ? '1px solid var(--color-border)' : 'none',
+                            opacity: dragRowRef.current === index ? 0.4 : 1,
+                            backgroundColor: dragOverIndex === index ? 'rgba(99,102,241,0.08)' : 'transparent',
+                            transition: 'background 0.15s',
+                            outline: dragOverIndex === index ? '2px solid rgba(99,102,241,0.4)' : 'none',
+                          }}
+                        >
+                          {/* Tay nắm kéo */}
+                          {!isPreviewMode && (
+                            <td style={{ padding: '0.25rem 0.4rem', textAlign: 'center', cursor: 'grab', color: 'var(--color-text-muted)' }}>
+                              <GripVertical size={14} />
                             </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
+                          )}
+                          {/* STT */}
+                          <td style={{ padding: '0.5rem', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.8rem', userSelect: 'none' }}>
+                            {index + 1}
+                          </td>
+
+                          {/* Đơn vị */}
+                          <td style={{ padding: isPreviewMode ? '0.5rem 0.75rem' : '0.25rem 0.35rem' }}>
+                            {isPreviewMode ? (
+                              <span style={{ fontWeight: '500' }}>{detail.name}</span>
+                            ) : (
+                              <input
+                                type="text"
+                                className="datasheet-input"
+                                value={detail.name}
+                                onChange={e => handleDetailChange(index, 'name', e.target.value)}
+                                placeholder="Nhập nội dung..."
+                                style={{ width: '100%', fontWeight: '500' }}
+                              />
+                            )}
+                          </td>
+
+                          {/* Giá trị */}
+                          <td style={{ padding: isPreviewMode ? '0.5rem 0.75rem' : '0.25rem 0.35rem' }}>
+                            {isPreviewMode ? (
+                              <span>{detail.value || <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>Chưa cập nhật</span>}</span>
+                            ) : (
+                              <input
+                                type="text"
+                                className="datasheet-input"
+                                value={detail.value}
+                                onChange={e => handleDetailChange(index, 'value', e.target.value)}
+                                placeholder="Nhập giá trị..."
+                                style={{ width: '100%' }}
+                              />
+                            )}
+                          </td>
+
+                          {/* Nút xóa hàng */}
+                          {!isPreviewMode && (
+                            <td style={{ padding: '0.25rem', textAlign: 'center' }}>
+                              <button
+                                type="button"
+                                title="Xóa hàng"
+                                onClick={() => handleDeleteDetailRow(index)}
+                                style={{
+                                  background: 'none', border: 'none',
+                                  color: 'var(--color-text-muted)', cursor: 'pointer',
+                                  width: '26px', height: '26px', borderRadius: '4px',
+                                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                  transition: 'color 0.15s, background 0.15s'
+                                }}
+                                onMouseEnter={e => { e.currentTarget.style.color = 'var(--color-danger)'; e.currentTarget.style.background = 'rgba(239,68,68,0.1)'; }}
+                                onMouseLeave={e => { e.currentTarget.style.color = 'var(--color-text-muted)'; e.currentTarget.style.background = 'none'; }}
+                              >
+                                <X size={14} />
+                              </button>
+                            </td>
+                          )}
+                        </tr>
+                      ))}
+
+                      {/* Hàng thêm mới */}
+                      {!isPreviewMode && (
+                        <tr>
+                          <td colSpan={4} style={{ padding: '0.4rem 0.5rem' }}>
+                            <button
+                              type="button"
+                              onClick={handleAddDetailRow}
+                              style={{
+                                display: 'flex', alignItems: 'center', gap: '0.4rem',
+                                background: 'none', border: '1px dashed var(--color-border)',
+                                borderRadius: '6px', color: 'var(--color-text-muted)',
+                                cursor: 'pointer', fontSize: '0.8rem', padding: '0.35rem 0.75rem',
+                                width: '100%', justifyContent: 'center',
+                                transition: 'color 0.15s, border-color 0.15s'
+                              }}
+                              onMouseEnter={e => { e.currentTarget.style.color = 'var(--color-primary)'; e.currentTarget.style.borderColor = 'var(--color-primary)'; }}
+                              onMouseLeave={e => { e.currentTarget.style.color = 'var(--color-text-muted)'; e.currentTarget.style.borderColor = 'var(--color-border)'; }}
+                            >
+                              <Plus size={14} /> Thêm hàng
+                            </button>
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
               </div>
               </div>
 
               <div data-html2canvas-ignore="true" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto', padding: '1rem 1.5rem', borderTop: '1px solid var(--color-border)', position: 'sticky', bottom: 0, backgroundColor: 'var(--color-bg-surface)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', zIndex: 10 }}>
-                <button type="button" className="btn btn-outline" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--color-success)', borderColor: 'var(--color-success)' }} onClick={handleExportPDF}>
-                  <Download size={18} /> Xuất dữ liệu PDF
+                <button
+                  type="button"
+                  className="btn btn-outline"
+                  disabled={isExporting}
+                  style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--color-success)', borderColor: 'var(--color-success)', opacity: isExporting ? 0.6 : 1 }}
+                  onClick={handleExportPDF}
+                >
+                  <Download size={18} /> {isExporting ? 'Đang xuất PDF...' : 'Xuất dữ liệu PDF'}
                 </button>
                 <div style={{ display: 'flex', gap: '1rem' }}>
                   {isPreviewMode ? (
@@ -863,18 +1189,15 @@ const Projects = ({ focusProjectId = null, onFocusCleared }) => {
             </form>
           </div>
         </div>
-      )}
+      , document.body)}
 
+      {/* PDF Viewer Modal cho tài liệu trong dự án — cũng qua portal */}
+      {pdfViewerFile && ReactDOM.createPortal(
+        <PdfViewerModal file={pdfViewerFile} onClose={() => setPdfViewerFile(null)} />,
+        document.body
+      )}
     </div>
   );
 };
-
-// SVG icon inline for X since we used it in the header
-const XIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <line x1="18" y1="6" x2="6" y2="18"></line>
-    <line x1="6" y1="6" x2="18" y2="18"></line>
-  </svg>
-);
 
 export default Projects;

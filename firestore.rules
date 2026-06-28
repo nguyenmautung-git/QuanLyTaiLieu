@@ -7,11 +7,53 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function isAdmin() {
+      return isAuth() &&
+        exists(/databases/$(database)/documents/members/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/members/$(request.auth.uid)).data.role == 'Admin';
+    }
+
+    // Lấy cấp độ nhân viên của user hiện tại
+    function userLevel() {
+      return isAuth() &&
+        exists(/databases/$(database)/documents/members/$(request.auth.uid))
+        ? get(/databases/$(database)/documents/members/$(request.auth.uid)).data.level
+        : null;
+    }
+
+    // Kiểm tra accessLevels: trống = ai cũng xem được; có giá trị = phải đúng cấp
+    function canReadDoc(docData) {
+      return !docData.keys().hasAny(['accessLevels']) ||
+             docData.accessLevels == null ||
+             docData.accessLevels.size() == 0 ||
+             (userLevel() != null && docData.accessLevels.hasAny([userLevel()]));
+    }
+
     // ─── Documents (Tài liệu) ─────────────────────────────────────────────────
     match /documents/{docId} {
-      allow read:             if isAuth();
-      allow create, update:   if isAuth();
-      allow delete:           if isAuth();
+      // Đọc: phải auth + đúng cấp độ truy cập
+      allow read:   if isAuth() && canReadDoc(resource.data);
+      // Tạo mới: phải auth
+      allow create: if isAuth();
+      // Sửa: phải auth (soft delete cũng là update)
+      allow update: if isAuth();
+      // Xóa vĩnh viễn: chỉ Admin
+      allow delete: if isAdmin();
+    }
+
+    // ─── Per-user Read Tracking ───────────────────────────────────────────────
+    match /userReadStatus/{statusId} {
+      // Chỉ đọc/ghi record của chính mình
+      allow read:  if isAuth() && resource.data.userId == request.auth.uid;
+      allow write: if isAuth() && request.resource.data.userId == request.auth.uid;
+    }
+
+    // ─── Audit Logs ───────────────────────────────────────────────────────────
+    match /auditLogs/{logId} {
+      // Chỉ Admin đọc được; mọi user auth có thể ghi (từ client)
+      allow read:   if isAdmin();
+      allow create: if isAuth();
+      allow update, delete: if false; // Audit logs không được sửa/xóa
     }
 
     // ─── Projects ─────────────────────────────────────────────────────────────
@@ -47,14 +89,24 @@ service cloud.firestore {
     match /workCategories/{id}    { allow read, write: if isAuth(); }
     match /locations/{id}         { allow read, write: if isAuth(); }
     match /statuses/{id}          { allow read, write: if isAuth(); }
+    match /projectRoles/{id}      { allow read, write: if isAuth(); }
+
+    // ─── System Settings ──────────────────────────────────────────────────────
+    match /system_settings/{id} {
+      allow read: if isAuth();
+      allow write: if isAdmin();
+    }
 
     // ─── Invitations ──────────────────────────────────────────────────────────
-    // Cho phép đọc để xác minh token mời; ghi chỉ khi đã auth
     match /invitations/{id} {
       allow read, write: if isAuth();
     }
 
-    // ─── Cho phép truy cập cho người dùng đã đăng nhập ────────────────────────
+    // ─── Defects ──────────────────────────────────────────────────────────────
+    match /defectTabs/{id}    { allow read, write: if isAuth(); }
+    match /defectLibrary/{id} { allow read, write: if isAuth(); }
+
+    // ─── Fallback: mọi collection khác cần auth ───────────────────────────────
     match /{document=**} {
       allow read, write: if isAuth();
     }

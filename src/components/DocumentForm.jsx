@@ -44,6 +44,7 @@ const DocumentForm = ({ onClose, initialData, previewMode = false }) => {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState([]);
+  const [isDragging, setIsDragging]     = useState(false);
   const [dateInputText, setDateInputText] = useState(displayDate(initialData ? initialData.effectiveDate : ''));
   const [showAgencyDropdown, setShowAgencyDropdown] = useState(false);
   
@@ -54,6 +55,7 @@ const DocumentForm = ({ onClose, initialData, previewMode = false }) => {
     issuingAgency: '',
     effectiveDate: '',
     summary: '',
+    keywords: '',
     relatedProjects: [],
     accessLevels: [],
     attachmentLink: '',
@@ -387,6 +389,25 @@ const DocumentForm = ({ onClose, initialData, previewMode = false }) => {
             )}
           </div>
 
+          {/* Keywords — dùng để tìm kiếm toàn văn */}
+          <div className="form-group">
+            <label className="form-label">Từ khóa tìm kiếm <span style={{ color: 'var(--color-text-muted)', fontWeight: '400', fontSize: '0.8rem' }}>(phân cách bởi dấu phẩy)</span></label>
+            {previewMode ? (
+              <div style={{ padding: '0.75rem', backgroundColor: 'var(--color-bg-surface-hover)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>
+                {formData.keywords || <em>Không có từ khóa</em>}
+              </div>
+            ) : (
+              <input
+                type="text"
+                name="keywords"
+                value={formData.keywords || ''}
+                onChange={handleChange}
+                className="input-field"
+                placeholder="VD: quyết định, phê duyệt, kế hoạch, 2024..."
+              />
+            )}
+          </div>
+
           <div className="form-group">
             <label className="form-label">Dự án liên quan (Có thể chọn nhiều)</label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', padding: '0.5rem', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', backgroundColor: 'var(--color-bg-surface-hover)' }}>
@@ -440,14 +461,73 @@ const DocumentForm = ({ onClose, initialData, previewMode = false }) => {
           {!previewMode && (
             <div className="form-group">
               <label className="form-label">Tài liệu đính kèm mới (Tuỳ chọn nếu đã có) <span style={{ color: 'var(--color-danger)' }}>*</span></label>
-              <input 
-                required={(!formData.attachments || formData.attachments.length === 0) && selectedFiles.length === 0} 
-                type="file" 
+
+              {/* ── Drag & Drop Zone ── */}
+              <div
+                onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                onDragLeave={() => setIsDragging(false)}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setIsDragging(false);
+                  const MAX = 20 * 1024 * 1024;
+                  const all = Array.from(e.dataTransfer.files);
+                  const oversized = all.filter(f => f.size > MAX);
+                  if (oversized.length > 0) {
+                    toast.warning(`${oversized.length} tệp vượt giới hạn 20MB: ${oversized.map(f => f.name).join(', ')}`);
+                  }
+                  setSelectedFiles(all.filter(f => f.size <= MAX));
+                }}
+                onClick={() => document.getElementById('doc-file-input').click()}
+                style={{
+                  border: `2px dashed ${isDragging ? '#818cf8' : 'var(--color-border)'}`,
+                  borderRadius: 'var(--radius-md)',
+                  padding: '1.5rem',
+                  textAlign: 'center',
+                  cursor: 'pointer',
+                  background: isDragging ? 'rgba(129,140,248,0.08)' : 'var(--color-bg-surface-hover)',
+                  transition: 'all 0.2s',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem',
+                }}
+              >
+                <Upload size={28} style={{ color: isDragging ? '#818cf8' : 'var(--color-text-muted)', transition: 'color 0.2s' }} />
+                {selectedFiles.length > 0 ? (
+                  <div>
+                    <p style={{ fontWeight: '600', color: 'var(--color-text-main)', margin: 0 }}>
+                      Đã chọn {selectedFiles.length} tệp
+                    </p>
+                    <p style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', margin: '0.2rem 0 0' }}>
+                      {selectedFiles.map(f => f.name).join(', ')}
+                    </p>
+                  </div>
+                ) : (
+                  <div>
+                    <p style={{ fontWeight: '600', color: 'var(--color-text-main)', margin: 0 }}>
+                      Kéo & thả tệp vào đây
+                    </p>
+                    <p style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', margin: '0.2rem 0 0' }}>
+                      hoặc nhấn để chọn · PDF, Word, Excel, Ảnh · Tối đa 20MB/tệp
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Input ẩn */}
+              <input
+                id="doc-file-input"
+                required={(!formData.attachments || formData.attachments.length === 0) && selectedFiles.length === 0}
+                type="file"
                 multiple
-                onChange={(e) => setSelectedFiles(Array.from(e.target.files))} 
-                className="input-field" 
-                style={{ padding: '0.5rem', backgroundColor: 'var(--color-bg-surface-hover)' }}
+                style={{ display: 'none' }}
                 accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg"
+                onChange={(e) => {
+                  const MAX = 20 * 1024 * 1024;
+                  const all = Array.from(e.target.files);
+                  const oversized = all.filter(f => f.size > MAX);
+                  if (oversized.length > 0) {
+                    toast.warning(`${oversized.length} tệp vượt giới hạn 20MB: ${oversized.map(f => f.name).join(', ')}`);
+                  }
+                  setSelectedFiles(all.filter(f => f.size <= MAX));
+                }}
               />
               {formData.attachments && formData.attachments.length > 0 && (
                 <div style={{ marginTop: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>

@@ -4,7 +4,7 @@ import { UserPlus, Mail, Phone, Shield, Star, X, Share2, ShieldOff } from 'lucid
 import { EMPLOYEE_LEVELS } from '../data';
 import { DocumentContext } from '../context/DocumentContext';
 import { useConfirm } from '../context/UIContext';
-import html2pdf from 'html2pdf.js';
+
 import ProfileModal from './ProfileModal';
 import InviteUserModal from './InviteUserModal';
 
@@ -125,7 +125,7 @@ const Members = () => {
     setEditingId(null);
   };
 
-  const handleExportPDF = (member) => {
+  const handleExportPDF = async (member) => {
     const element = document.getElementById('member-printable-area');
     if (!element) return;
 
@@ -137,6 +137,7 @@ const Members = () => {
       jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
 
+    const html2pdf = (await import('html2pdf.js')).default;
     html2pdf().set(opt).from(element).save();
   };
 
