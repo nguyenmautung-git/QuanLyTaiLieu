@@ -1,7 +1,7 @@
 import React, { useState, useContext, useRef, useEffect, useDeferredValue } from 'react';
 import ReactDOM from 'react-dom';
 import { ROLES } from '../constants';
-import { Plus, Edit, Trash2, MapPin, Building, Activity, FileText, Briefcase, Eye, Download, Users, X, Link, ChevronDown, ChevronUp, Search, Filter, Check, GripVertical } from 'lucide-react';
+import { Plus, Edit, Trash2, MapPin, Building, Activity, FileText, Briefcase, Eye, Download, Users, X, Link, ChevronDown, ChevronUp, Search, Filter, Check, GripVertical, ChevronLeft, ChevronRight } from 'lucide-react';
 import { DocumentContext } from '../context/DocumentContext';
 import { useToast, useConfirm } from '../context/UIContext';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -68,6 +68,8 @@ const Projects = ({ focusProjectId = null, onFocusCleared }) => {
   const filterMenuRef = useRef(null);
   const dragRowRef    = useRef(null);     // index đang kéo
   const [dragOverIndex, setDragOverIndex] = useState(null); // index đang hover
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 6;
 
   useEffect(() => {
     localStorage.setItem('projectSearchTerm', searchTerm);
@@ -337,12 +339,17 @@ const Projects = ({ focusProjectId = null, onFocusCleared }) => {
     return matchesSearch && matchesStatus;
   });
 
+  const totalPages = Math.max(1, Math.ceil(filteredProjects.length / PAGE_SIZE));
+  const safePage = Math.min(currentPage, totalPages);
+  const pagedProjects = filteredProjects.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
   const toggleStatusFilter = (status) => {
     if (selectedStatuses.includes(status)) {
       setSelectedStatuses(selectedStatuses.filter(s => s !== status));
     } else {
       setSelectedStatuses([...selectedStatuses, status]);
     }
+    setCurrentPage(1);
   };
 
   return (
@@ -364,7 +371,10 @@ const Projects = ({ focusProjectId = null, onFocusCleared }) => {
               type="text" 
               placeholder="Tìm kiếm dự án..." 
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setCurrentPage(1);
+              }}
               style={{ flex: 1, background: 'none', border: 'none', color: 'var(--color-text-main)', outline: 'none', fontSize: '0.875rem', padding: '0.5rem 0' }}
             />
           </div>
@@ -429,84 +439,195 @@ const Projects = ({ focusProjectId = null, onFocusCleared }) => {
         )}
       </div>
 
-      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '1.5rem', alignItems: 'start', paddingBottom: '2rem' }}>
-        {filteredProjects.map(project => (
-          <div 
-            key={project.id} 
-            className="card" 
-            style={{ 
-              padding: '0', 
-              display: 'flex', 
-              flexDirection: 'column', 
-              overflow: 'hidden', 
-              cursor: 'pointer', 
-              transition: 'transform 0.2s ease, box-shadow 0.2s ease'
-            }}
-            onClick={() => handleOpenForm(project, true)}
-            onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 12px 24px rgba(0,0,0,0.1)'; }}
-            onMouseOut={(e) => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06)'; }}
-          >
-            {project.image && (
-              <div style={{ height: '120px', width: '100%', backgroundImage: `url(${project.image})`, backgroundSize: 'cover', backgroundPosition: 'center' }} />
-            )}
-            <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <div>
-                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
-                  {project.code && (
-                    <span className="badge badge-blue" title="Mã nội bộ">
-                      NB: {project.code}
+      {/* ── Khu cards — chỉ phần này cuộn ── */}
+      <div style={{ flex: 1, overflowY: 'auto', minHeight: 0, paddingRight: '4px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '1.5rem', alignItems: 'start', paddingBottom: '2rem' }}>
+          {pagedProjects.map(project => (
+            <div 
+              key={project.id} 
+              className="card" 
+              style={{ 
+                padding: '0', 
+                display: 'flex', 
+                flexDirection: 'column', 
+                overflow: 'hidden', 
+                cursor: 'pointer', 
+                transition: 'transform 0.2s ease, box-shadow 0.2s ease'
+              }}
+              onClick={() => handleOpenForm(project, true)}
+              onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 12px 24px rgba(0,0,0,0.1)'; }}
+              onMouseOut={(e) => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06)'; }}
+            >
+              {project.image && (
+                <div style={{ height: '120px', width: '100%', backgroundImage: `url(${project.image})`, backgroundSize: 'cover', backgroundPosition: 'center' }} />
+              )}
+              <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div>
+                  <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
+                    {project.code && (
+                      <span className="badge badge-blue" title="Mã nội bộ">
+                        NB: {project.code}
+                      </span>
+                    )}
+                    {project.codeNN && (
+                      <span className="badge" style={{ backgroundColor: 'rgba(168,85,247,0.2)', color: '#c084fc', border: '1px solid rgba(168,85,247,0.4)' }} title="Mã NN">
+                        NN: {project.codeNN}
+                      </span>
+                    )}
+                    {!project.code && !project.codeNN && (
+                      <span className="badge badge-blue">Chưa có mã</span>
+                    )}
+                    <span className="badge" style={{ backgroundColor: getProjectStatusColor(project.status).bg, color: getProjectStatusColor(project.status).text, border: `1px solid ${getProjectStatusColor(project.status).text}` }}>
+                      {project.status || 'Chưa bắt đầu'}
                     </span>
-                  )}
-                  {project.codeNN && (
-                    <span className="badge" style={{ backgroundColor: 'rgba(168,85,247,0.2)', color: '#c084fc', border: '1px solid rgba(168,85,247,0.4)' }} title="Mã NN">
-                      NN: {project.codeNN}
-                    </span>
-                  )}
-                  {!project.code && !project.codeNN && (
-                    <span className="badge badge-blue">Chưa có mã</span>
-                  )}
-                  <span className="badge" style={{ backgroundColor: getProjectStatusColor(project.status).bg, color: getProjectStatusColor(project.status).text, border: `1px solid ${getProjectStatusColor(project.status).text}` }}>
-                    {project.status || 'Chưa bắt đầu'}
-                  </span>
+                  </div>
+                  <h3 style={{ fontSize: '1.25rem', fontWeight: '600', margin: 0 }}>{project.name}</h3>
                 </div>
-                <h3 style={{ fontSize: '1.25rem', fontWeight: '600', margin: 0 }}>{project.name}</h3>
+                <div style={{ display: 'flex', gap: '0.25rem' }}>
+                  {userRole === ROLES.ADMIN && (
+                    <>
+                      <button className="btn-icon" onClick={(e) => { e.stopPropagation(); handleOpenForm(project); }} title="Sửa">
+                        <Edit size={16} />
+                      </button>
+                      <button className="btn-icon" style={{ color: 'var(--color-danger)' }} onClick={(e) => { e.stopPropagation(); handleDelete(project.id); }} title="Xoá">
+                        <Trash2 size={16} />
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
-              <div style={{ display: 'flex', gap: '0.25rem' }}>
-                {userRole === ROLES.ADMIN && (
-                  <>
-                    <button className="btn-icon" onClick={(e) => { e.stopPropagation(); handleOpenForm(project); }} title="Sửa">
-                      <Edit size={16} />
-                    </button>
-                    <button className="btn-icon" style={{ color: 'var(--color-danger)' }} onClick={(e) => { e.stopPropagation(); handleDelete(project.id); }} title="Xoá">
-                      <Trash2 size={16} />
-                    </button>
-                  </>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem' }}>
+                  <MapPin size={16} style={{ marginTop: '2px', flexShrink: 0 }} />
+                  <span>{project.location || 'Chưa cập nhật địa điểm'}</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <Building size={16} style={{ flexShrink: 0 }} />
+                  <span>CĐT: {project.investor}</span>
+                </div>
+                {project.parentId && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <Briefcase size={16} style={{ flexShrink: 0 }} />
+                    <span>Dự án cha: {projects.find(p => p.id.toString() === project.parentId)?.name || 'Không xác định'}</span>
+                  </div>
                 )}
               </div>
-            </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem' }}>
-                <MapPin size={16} style={{ marginTop: '2px', flexShrink: 0 }} />
-                <span>{project.location || 'Chưa cập nhật địa điểm'}</span>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <Building size={16} style={{ flexShrink: 0 }} />
-                <span>CĐT: {project.investor}</span>
-              </div>
-              {project.parentId && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <Briefcase size={16} style={{ flexShrink: 0 }} />
-                  <span>Dự án cha: {projects.find(p => p.id.toString() === project.parentId)?.name || 'Không xác định'}</span>
-                </div>
-              )}
             </div>
-
-            </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
+
+      {/* Phân trang */}
+      {totalPages > 1 && (
+        <div style={{
+          flexShrink: 0,
+          display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem',
+          padding: '0.75rem 1rem',
+          borderTop: '1px solid var(--color-border)',
+          background: 'rgba(15, 23, 42, 0.97)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+          boxShadow: '0 -4px 20px rgba(0,0,0,0.35)',
+          borderRadius: 'var(--radius-md)',
+          flexWrap: 'wrap', rowGap: '0.4rem',
+          marginTop: 'auto',
+        }}>
+          <button
+            onClick={() => setCurrentPage(1)}
+            disabled={safePage === 1}
+            style={{
+              padding: '0.35rem 0.65rem', borderRadius: '8px',
+              background: 'none', border: '1px solid var(--color-border)',
+              color: safePage === 1 ? 'var(--color-text-muted)' : 'var(--color-text-main)',
+              cursor: safePage === 1 ? 'not-allowed' : 'pointer', fontSize: '0.78rem',
+              opacity: safePage === 1 ? 0.4 : 1,
+            }}
+            title="Trang đầu"
+          >«</button>
+
+          <button
+            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+            disabled={safePage === 1}
+            style={{
+              display: 'flex', alignItems: 'center', padding: '0.35rem 0.65rem',
+              borderRadius: '8px', background: 'none', border: '1px solid var(--color-border)',
+              color: safePage === 1 ? 'var(--color-text-muted)' : 'var(--color-text-main)',
+              cursor: safePage === 1 ? 'not-allowed' : 'pointer',
+              opacity: safePage === 1 ? 0.4 : 1,
+            }}
+          >
+            <ChevronLeft size={16} />
+          </button>
+
+          {Array.from({ length: totalPages }, (_, i) => i + 1)
+            .filter(p => p === 1 || p === totalPages || Math.abs(p - safePage) <= 2)
+            .reduce((acc, p, idx, arr) => {
+              if (idx > 0 && p - arr[idx - 1] > 1) acc.push('...');
+              acc.push(p);
+              return acc;
+            }, [])
+            .map((item, idx) =>
+              item === '...' ? (
+                <span key={`ellipsis-${idx}`} style={{ color: 'var(--color-text-muted)', padding: '0 0.25rem', fontSize: '0.85rem' }}>…</span>
+              ) : (
+                <button
+                  key={item}
+                  onClick={() => setCurrentPage(item)}
+                  style={{
+                    padding: '0.35rem 0.7rem', borderRadius: '8px',
+                    background: safePage === item ? 'var(--color-primary)' : 'none',
+                    border: safePage === item ? 'none' : '1px solid var(--color-border)',
+                    color: safePage === item ? 'white' : 'var(--color-text-main)',
+                    fontWeight: safePage === item ? '700' : '400',
+                    cursor: 'pointer', fontSize: '0.85rem',
+                    boxShadow: safePage === item ? '0 2px 8px rgba(59,130,246,0.4)' : 'none',
+                    minWidth: '34px',
+                  }}
+                >
+                  {item}
+                </button>
+              )
+            )
+          }
+
+          <button
+            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+            disabled={safePage === totalPages}
+            style={{
+              display: 'flex', alignItems: 'center', padding: '0.35rem 0.65rem',
+              borderRadius: '8px', background: 'none', border: '1px solid var(--color-border)',
+              color: safePage === totalPages ? 'var(--color-text-muted)' : 'var(--color-text-main)',
+              cursor: safePage === totalPages ? 'not-allowed' : 'pointer',
+              opacity: safePage === totalPages ? 0.4 : 1,
+            }}
+          >
+            <ChevronRight size={16} />
+          </button>
+
+          <button
+            onClick={() => setCurrentPage(totalPages)}
+            disabled={safePage === totalPages}
+            style={{
+              padding: '0.35rem 0.65rem', borderRadius: '8px',
+              background: 'none', border: '1px solid var(--color-border)',
+              color: safePage === totalPages ? 'var(--color-text-muted)' : 'var(--color-text-main)',
+              cursor: safePage === totalPages ? 'not-allowed' : 'pointer', fontSize: '0.78rem',
+              opacity: safePage === totalPages ? 0.4 : 1,
+            }}
+            title="Trang cuối"
+          >»</button>
+
+          <span style={{ marginLeft: '0.5rem', color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>
+            Trang <strong style={{ color: 'var(--color-text-main)' }}>{safePage}</strong> / {totalPages}
+            &nbsp;·&nbsp;
+            {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, filteredProjects.length)} / {filteredProjects.length} dự án
+          </span>
+        </div>
+      )}
 
       {/* Modal dự án — render qua portal để hiện trên cùng app */}
       {isFormOpen && ReactDOM.createPortal(
