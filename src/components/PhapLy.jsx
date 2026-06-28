@@ -151,6 +151,14 @@ const ProjectWorkflowDetail = ({
   const [dragIndex, setDragIndex] = useState(null);
   const [dropIndex, setDropIndex] = useState(null);
   const [applyingTemplate, setApplyingTemplate] = useState(false);
+  const [collapsedPhases, setCollapsedPhases] = useState({});
+
+  const togglePhase = (phaseKey) => {
+    setCollapsedPhases(prev => ({
+      ...prev,
+      [phaseKey]: !prev[phaseKey]
+    }));
+  };
 
   const sorted = [...steps].sort((a, b) => (a.order || 0) - (b.order || 0));
 
@@ -317,39 +325,69 @@ const ProjectWorkflowDetail = ({
             return (
               <div key={phaseKey} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                 {/* Tiêu đề Phase */}
-                <div style={{
-                  fontSize: '0.78rem', fontWeight: '700', color: 'var(--color-primary)',
-                  padding: '4px 8px', backgroundColor: 'rgba(99,102,241,0.08)',
-                  borderRadius: '4px', textTransform: 'uppercase', letterSpacing: '0.02em'
-                }}>
-                  {phaseName}
+                <div 
+                  onClick={() => togglePhase(phaseKey)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    fontSize: '0.78rem', fontWeight: '700', color: 'var(--color-primary)',
+                    padding: '6px 10px', backgroundColor: 'rgba(99,102,241,0.08)',
+                    borderRadius: '6px', textTransform: 'uppercase', letterSpacing: '0.02em',
+                    cursor: 'pointer',
+                    userSelect: 'none',
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(99,102,241,0.15)' }}
+                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'rgba(99,102,241,0.08)' }}
+                >
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    {phaseName}
+                    <span style={{ 
+                      fontSize: '0.7rem', 
+                      backgroundColor: 'rgba(99, 102, 241, 0.2)', 
+                      color: 'var(--color-primary)', 
+                      padding: '1px 6px', 
+                      borderRadius: '10px',
+                      textTransform: 'none'
+                    }}>
+                      {phaseSteps.length} bước
+                    </span>
+                  </span>
+                  {collapsedPhases[phaseKey] ? (
+                    <ChevronDown size={14} style={{ color: 'var(--color-primary)' }} />
+                  ) : (
+                    <ChevronUp size={14} style={{ color: 'var(--color-primary)' }} />
+                  )}
                 </div>
 
                 {/* Các bước trong phase */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', paddingLeft: '4px' }}>
-                  {phaseSteps.map((step, idx) => {
-                    const globalIdx = sorted.findIndex(s => s.id === step.id);
-                    return (
-                      <StepRow
-                        key={step.id}
-                        step={step}
-                        index={idx}
-                        total={phaseSteps.length}
-                        canEditStep={canEditStep}
-                        canReorder={canReorder}
-                        onEdit={onEditStep}
-                        onDelete={onDeleteStep}
-                        isDragging={dragIndex === globalIdx}
-                        isDragOver={dropIndex === globalIdx && dragIndex !== globalIdx}
-                        onDragStart={handleDragStart(globalIdx)}
-                        onDragOver={handleDragOver(globalIdx)}
-                        onDrop={handleDrop(globalIdx)}
-                        onDragEnd={handleDragEnd}
-                        partners={partners}
-                      />
-                    );
-                  })}
-                </div>
+                {!collapsedPhases[phaseKey] && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', paddingLeft: '4px' }}>
+                    {phaseSteps.map((step, idx) => {
+                      const globalIdx = sorted.findIndex(s => s.id === step.id);
+                      return (
+                        <StepRow
+                          key={step.id}
+                          step={step}
+                          index={idx}
+                          total={phaseSteps.length}
+                          canEditStep={canEditStep}
+                          canReorder={canReorder}
+                          onEdit={onEditStep}
+                          onDelete={onDeleteStep}
+                          isDragging={dragIndex === globalIdx}
+                          isDragOver={dropIndex === globalIdx && dragIndex !== globalIdx}
+                          onDragStart={handleDragStart(globalIdx)}
+                          onDragOver={handleDragOver(globalIdx)}
+                          onDrop={handleDrop(globalIdx)}
+                          onDragEnd={handleDragEnd}
+                          partners={partners}
+                        />
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             );
           })}
