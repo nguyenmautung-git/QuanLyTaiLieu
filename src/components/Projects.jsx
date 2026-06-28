@@ -69,7 +69,7 @@ const Projects = ({ focusProjectId = null, onFocusCleared }) => {
   const dragRowRef    = useRef(null);     // index đang kéo
   const [dragOverIndex, setDragOverIndex] = useState(null); // index đang hover
   const [currentPage, setCurrentPage] = useState(1);
-  const PAGE_SIZE = 6;
+  const PAGE_SIZE = 3;
 
   useEffect(() => {
     localStorage.setItem('projectSearchTerm', searchTerm);
@@ -522,7 +522,7 @@ const Projects = ({ focusProjectId = null, onFocusCleared }) => {
       </div>
 
       {/* Phân trang */}
-      {totalPages > 1 && (
+      {filteredProjects.length > 0 && (
         <div style={{
           flexShrink: 0,
           display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem',
