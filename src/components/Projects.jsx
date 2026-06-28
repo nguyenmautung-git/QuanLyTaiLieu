@@ -62,7 +62,7 @@ const Projects = ({ focusProjectId = null, onFocusCleared }) => {
   const [searchTerm, setSearchTerm] = useState(() => localStorage.getItem('projectSearchTerm') || '');
   const [selectedStatuses, setSelectedStatuses] = useState(() => {
     const saved = localStorage.getItem('projectStatuses');
-    return saved ? JSON.parse(saved) : PROJECT_STATUSES;
+    return saved ? JSON.parse(saved) : ['Đang thực hiện'];
   });
   const [showFilterMenu, setShowFilterMenu] = useState(false);
   const filterMenuRef = useRef(null);
