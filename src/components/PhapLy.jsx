@@ -143,7 +143,8 @@ const ProjectWorkflowDetail = ({
   canAddStep, canEditStep, canReorder,
   onAddStep, onEditStep, onDeleteStep, onMoveStep,
   customTemplates = [], onDeleteTemplate,
-  isFullscreen = false
+  isFullscreen = false,
+  onSaveTemplate
 }) => {
   const { updateLegalStep, addLegalStep } = useContext(DocumentContext);
   const toast = useToast();
@@ -152,6 +153,8 @@ const ProjectWorkflowDetail = ({
   const [dropIndex, setDropIndex] = useState(null);
   const [applyingTemplate, setApplyingTemplate] = useState(false);
   const [collapsedPhases, setCollapsedPhases] = useState({});
+
+  const currentViewMode = isFullscreen ? viewMode : 'timeline';
 
   const togglePhase = (phaseKey) => {
     setCollapsedPhases(prev => ({
@@ -243,34 +246,66 @@ const ProjectWorkflowDetail = ({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: isFullscreen ? '100%' : 'auto' }}>
-      {/* Tab switcher */}
-      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem' }}>
-        <button
-          type="button"
-          onClick={() => setViewMode('timeline')}
-          style={{
-            background: 'none', border: 'none',
-            borderBottom: viewMode === 'timeline' ? '2px solid var(--color-primary)' : '2px solid transparent',
-            color: viewMode === 'timeline' ? 'var(--color-primary)' : 'var(--color-text-muted)',
-            cursor: 'pointer', fontSize: '0.78rem', fontWeight: '600', padding: '4px 12px',
-            transition: 'all 0.15s'
-          }}
-        >
-          Timeline dọc
-        </button>
-        <button
-          type="button"
-          onClick={() => setViewMode('kanban')}
-          style={{
-            background: 'none', border: 'none',
-            borderBottom: viewMode === 'kanban' ? '2px solid var(--color-primary)' : '2px solid transparent',
-            color: viewMode === 'kanban' ? 'var(--color-primary)' : 'var(--color-text-muted)',
-            cursor: 'pointer', fontSize: '0.78rem', fontWeight: '600', padding: '4px 12px',
-            transition: 'all 0.15s'
-          }}
-        >
-          📋 Kanban Board
-        </button>
+      {/* Tab switcher & Action Buttons row */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem', flexWrap: 'wrap', gap: '10px' }}>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <button
+            type="button"
+            onClick={() => setViewMode('timeline')}
+            style={{
+              background: 'none', border: 'none',
+              borderBottom: currentViewMode === 'timeline' ? '2px solid var(--color-primary)' : '2px solid transparent',
+              color: currentViewMode === 'timeline' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+              cursor: 'pointer', fontSize: '0.78rem', fontWeight: '600', padding: '4px 12px',
+              transition: 'all 0.15s'
+            }}
+          >
+            Timeline dọc
+          </button>
+          
+          {isFullscreen && (
+            <button
+              type="button"
+              onClick={() => setViewMode('kanban')}
+              style={{
+                background: 'none', border: 'none',
+                borderBottom: currentViewMode === 'kanban' ? '2px solid var(--color-primary)' : '2px solid transparent',
+                color: currentViewMode === 'kanban' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                cursor: 'pointer', fontSize: '0.78rem', fontWeight: '600', padding: '4px 12px',
+                transition: 'all 0.15s'
+              }}
+            >
+              📋 Kanban Board
+            </button>
+          )}
+        </div>
+
+        {/* Buttons [+ Thêm bước] và [Lưu mẫu] in Fullscreen Mode */}
+        {isFullscreen && (
+          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+            {canAddStep && (
+              <button 
+                type="button"
+                className="btn btn-outline" 
+                onClick={() => onAddStep(project)} 
+                style={{ fontSize: '0.78rem', padding: '4px 12px', display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--color-primary)', borderColor: 'var(--color-primary)' }}
+              >
+                <Plus size={13} style={{ marginRight: '2px' }} /> Thêm bước
+              </button>
+            )}
+            {canAddStep && sorted.length > 0 && onSaveTemplate && (
+              <button 
+                type="button"
+                className="btn btn-outline" 
+                onClick={(e) => { e.stopPropagation(); onSaveTemplate(project, sorted); }} 
+                style={{ fontSize: '0.78rem', padding: '4px 10px', display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--color-primary)', borderColor: 'rgba(99, 102, 241, 0.4)', backgroundColor: 'rgba(99, 102, 241, 0.1)' }}
+                title="Lưu danh sách bước hiện tại thành quy trình mẫu"
+              >
+                💾 Lưu mẫu
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* A. Quy trình mẫu nếu dự án chưa có bước nào */}
@@ -316,7 +351,7 @@ const ProjectWorkflowDetail = ({
       )}
 
       {/* B. View Mode 1: Timeline Dọc (Phân theo Giai đoạn) */}
-      {viewMode === 'timeline' && sorted.length > 0 && (
+      {currentViewMode === 'timeline' && sorted.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', overflowY: isFullscreen ? 'auto' : 'visible', flex: isFullscreen ? 1 : 'none', paddingRight: isFullscreen ? '0.5rem' : 0 }}>
           {Object.entries(LEGAL_PHASES).map(([phaseKey, phaseName]) => {
             const phaseSteps = sorted.filter(s => (s.phase || 'PHASE_1') === phaseKey);
@@ -395,7 +430,7 @@ const ProjectWorkflowDetail = ({
       )}
 
       {/* C. View Mode 2: Kanban Board */}
-      {viewMode === 'kanban' && sorted.length > 0 && (
+      {currentViewMode === 'kanban' && sorted.length > 0 && (
         <div style={{
           display: 'grid',
           gridTemplateColumns: '1fr 1fr 1fr',
@@ -640,6 +675,7 @@ const ProjectLegalCard = ({
               customTemplates={customTemplates}
               onDeleteTemplate={onDeleteTemplate}
               isFullscreen={false}
+              onSaveTemplate={onSaveTemplate}
             />
           </div>
         )}
@@ -1416,6 +1452,7 @@ const PhapLy = () => {
                 customTemplates={customTemplates}
                 onDeleteTemplate={handleDeleteTemplate}
                 isFullscreen={true}
+                onSaveTemplate={(proj) => setSavingTemplateProject(proj)}
               />
             </div>
             
