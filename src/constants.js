@@ -52,10 +52,9 @@ export const WORKFLOW_DEFAULT_STEPS = [
 
 // ── Phân nhóm Giai đoạn Pháp lý ──────────────────────────────────────────
 export const LEGAL_PHASES = {
-  PHASE_1: 'Giai đoạn 1: Chuẩn bị đầu tư',
-  PHASE_2: 'Giai đoạn 2: Chuẩn bị xây dựng',
-  PHASE_3: 'Giai đoạn 3: Thực hiện xây dựng',
-  PHASE_4: 'Giai đoạn 4: Hoàn công & Bàn giao',
+  PHASE_1: 'Giai đoạn 1: Chuẩn bị đầu tư xây dựng',
+  PHASE_2: 'Giai đoạn 2: Thực hiện đầu tư xây dựng',
+  PHASE_3: 'Giai đoạn 3: Kết thúc đầu tư xây dựng',
 };
 
 // ── Mẫu quy trình pháp lý dự án có sẵn ────────────────────────────────────
@@ -71,8 +70,8 @@ export const LEGAL_TEMPLATES = {
       { name: 'Phê duyệt thiết kế bản vẽ thi công', phase: 'PHASE_2', order: 5 },
       { name: 'Cấp phép xây dựng', phase: 'PHASE_2', order: 6 },
       { name: 'Báo cáo đánh giá tác động môi trường (ĐTM)', phase: 'PHASE_2', order: 7 },
-      { name: 'Nghiệm thu hoàn thành công trình', phase: 'PHASE_4', order: 8 },
-      { name: 'Bàn giao đưa vào sử dụng', phase: 'PHASE_4', order: 9 },
+      { name: 'Nghiệm thu hoàn thành công trình', phase: 'PHASE_3', order: 8 },
+      { name: 'Bàn giao đưa vào sử dụng', phase: 'PHASE_3', order: 9 },
     ]
   },
   infrastructure: {
@@ -86,7 +85,7 @@ export const LEGAL_TEMPLATES = {
       { name: 'Thẩm định thiết kế kỹ thuật', phase: 'PHASE_2', order: 5 },
       { name: 'Cấp phép xây dựng hạ tầng', phase: 'PHASE_2', order: 6 },
       { name: 'Nghiệm thu kỹ thuật công trình', phase: 'PHASE_3', order: 7 },
-      { name: 'Bàn giao đưa vào sử dụng', phase: 'PHASE_4', order: 8 },
+      { name: 'Bàn giao đưa vào sử dụng', phase: 'PHASE_3', order: 8 },
     ]
   }
 };
