@@ -1,22 +1,65 @@
 <!doctype html>
-<html lang="en">
+<html lang="vi">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="https://upload.wikimedia.org/wikipedia/commons/1/11/FPT_logo_2010.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Quản Lý Dự Án FDI</title>
-    <script type="module" crossorigin src="/QuanLyTaiLieu/assets/index-zAQDa_c5.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+
+    <!-- ── Favicon ─────────────────────────────────────────────────────── -->
+    <link rel="icon" type="image/png" sizes="64x64" href="/QuanLyTaiLieu/favicon.png" />
+    <link rel="icon" type="image/svg+xml" href="/QuanLyTaiLieu/fdi-logo.svg" />
+
+    <!-- ── PWA Manifest ─────────────────────────────────────────────────── -->
+    <link rel="manifest" href="/QuanLyTaiLieu/manifest.json" />
+
+    <!-- ── PWA: iOS Safari (Apple) ──────────────────────────────────────── -->
+    <!-- Kích hoạt chế độ standalone (fullscreen như app native) -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <!-- Tên app hiển thị dưới icon trên Home Screen -->
+    <meta name="apple-mobile-web-app-title" content="FDI PM" />
+    <!-- Màu thanh status bar: black-translucent = trong suốt, nội dung extend lên dưới notch -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+    <!-- Icon cho iOS Home Screen (Apple không đọc manifest icon) -->
+    <link rel="apple-touch-icon" sizes="180x180" href="/QuanLyTaiLieu/icons/icon-192.png" />
+
+    <!-- ── PWA: Android / Windows ───────────────────────────────────────── -->
+    <meta name="theme-color" content="#1e293b" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="application-name" content="FDI PM" />
+
+    <!-- ── SEO & Social ─────────────────────────────────────────────────── -->
+    <meta name="description" content="FDI PM - Hệ thống quản lý dự án đầu tư xây dựng FDI" />
+    <meta name="keywords" content="FDI PM, quan ly du an, xay dung, phap ly, tien do" />
+
+    <title>FDI PM</title>
+
+    <!-- ── Đăng ký Service Worker ───────────────────────────────────────── -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function() {
+          navigator.serviceWorker.register('/QuanLyTaiLieu/sw.js', { scope: '/QuanLyTaiLieu/' })
+            .then(function(reg) {
+              console.log('[PWA] Service Worker registered, scope:', reg.scope);
+            })
+            .catch(function(err) {
+              console.warn('[PWA] Service Worker registration failed:', err);
+            });
+        });
+      }
+    </script>
+    <script type="module" crossorigin src="/QuanLyTaiLieu/assets/index-BKwmAKSe.js"></script>
     <link rel="modulepreload" crossorigin href="/QuanLyTaiLieu/assets/rolldown-runtime-DWdDZTNf.js">
     <link rel="modulepreload" crossorigin href="/QuanLyTaiLieu/assets/vendor-react-select-D3ccvh8o.js">
     <link rel="modulepreload" crossorigin href="/QuanLyTaiLieu/assets/vendor-firebase-Bi8K_X3j.js">
-    <link rel="modulepreload" crossorigin href="/QuanLyTaiLieu/assets/createLucideIcon-DjzDwSjd.js">
-    <link rel="modulepreload" crossorigin href="/QuanLyTaiLieu/assets/preload-helper-rm_gqscy.js">
-    <link rel="modulepreload" crossorigin href="/QuanLyTaiLieu/assets/vendor-recharts-RhtoFPjD.js">
-    <link rel="modulepreload" crossorigin href="/QuanLyTaiLieu/assets/vendor-zip-e5NPlC04.js">
-    <link rel="modulepreload" crossorigin href="/QuanLyTaiLieu/assets/pen-Bj4644iL.js">
-    <link rel="stylesheet" crossorigin href="/QuanLyTaiLieu/assets/index-CyNJg81_.css">
+    <link rel="modulepreload" crossorigin href="/QuanLyTaiLieu/assets/createLucideIcon-DlffHoKp.js">
+    <link rel="modulepreload" crossorigin href="/QuanLyTaiLieu/assets/preload-helper-ZpxsvrHF.js">
+    <link rel="modulepreload" crossorigin href="/QuanLyTaiLieu/assets/vendor-recharts-BVQ87SYr.js">
+    <link rel="modulepreload" crossorigin href="/QuanLyTaiLieu/assets/vendor-zip-CZ327o61.js">
+    <link rel="modulepreload" crossorigin href="/QuanLyTaiLieu/assets/pen-B0W6pReN.js">
+    <link rel="stylesheet" crossorigin href="/QuanLyTaiLieu/assets/index-BN1NivoJ.css">
   </head>
   <body>
     <div id="root"></div>
   </body>
 </html>
+
