@@ -200,13 +200,6 @@ const Header = ({ currentView, onOpenForm, onNavigate, onSearchSelect }) => {
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-        {(userRole === ROLES.ADMIN || canAddDocument()) && currentView === 'dashboard' && (
-          <button className="btn btn-primary" onClick={onOpenForm}>
-            <Plus size={18} />
-            <span>Tải lên tài liệu</span>
-          </button>
-        )}
-
         <button 
           className="btn btn-outline" 
           onClick={() => onNavigate && onNavigate('mobileDocs')}

@@ -5,15 +5,15 @@ import { getStorage } from "firebase/storage";
 import { getAuth } from "firebase/auth";
 import { getAnalytics, isSupported } from "firebase/analytics";
 
-// Firebase config đọc từ biến môi trường (.env) — không hardcode key trong source code
+// Firebase config đọc từ .env hoặc fallback mặc định của quanlytailieu-demo
 const firebaseConfig = {
-  apiKey:            import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain:        import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId:         import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket:     import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId:             import.meta.env.VITE_FIREBASE_APP_ID,
-  measurementId:     import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
+  apiKey:            import.meta.env.VITE_FIREBASE_API_KEY            || "AIzaSyAEJOzWMbRt8eHofI88MqyTr1dWWPdGIAU",
+  authDomain:        import.meta.env.VITE_FIREBASE_AUTH_DOMAIN        || "quanlytailieu-demo.firebaseapp.com",
+  projectId:         import.meta.env.VITE_FIREBASE_PROJECT_ID         || "quanlytailieu-demo",
+  storageBucket:     import.meta.env.VITE_FIREBASE_STORAGE_BUCKET     || "quanlytailieu-demo.firebasestorage.app",
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "19661308499",
+  appId:             import.meta.env.VITE_FIREBASE_APP_ID             || "1:19661308499:web:2ee7127f3fb566472cfca6",
+  measurementId:     import.meta.env.VITE_FIREBASE_MEASUREMENT_ID     || "G-8EX9RN3ZWH",
 };
 
 // Initialize Firebase

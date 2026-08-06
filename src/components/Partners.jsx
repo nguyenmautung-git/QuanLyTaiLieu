@@ -15,7 +15,7 @@ import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import { format } from 'date-fns';
 
-const PAGE_SIZE = 12;
+const PAGE_SIZE = 20;
 
 // ── Options sắp xếp ──────────────────────────────────────────────────────────
 const SORT_OPTIONS = [
@@ -501,49 +501,19 @@ const Partners = () => {
   if (userRole !== ROLES.ADMIN) return <AccessDenied />;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', minHeight: '85vh' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, gap: '1rem', overflow: 'hidden' }}>
       
       {/* ── HEADER GIỐNG TRANG TÀI LIỆU ──────────────────────────────────── */}
-      <div className="card" style={{ padding: '1.25rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-        <div>
+      <div className="card" style={{ padding: '1.25rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', position: 'relative', zIndex: 100 }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: '1rem', flexWrap: 'wrap' }}>
           <h2 style={{ fontSize: '1.5rem', fontWeight: '700', color: 'var(--color-text-main)', margin: 0 }}>Đối tác</h2>
-          <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', margin: '0.25rem 0 0 0' }}>
+          <span style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
             Hiển thị <strong style={{ color: 'var(--color-primary)' }}>{sortedPartners.length}</strong> / {partners.length} đối tác trong hệ thống
-          </p>
+          </span>
         </div>
 
         {/* Nút tác vụ góc phải */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-          
-          {/* Export CSV */}
-          <button
-            onClick={() => exportPartnersToCsv(selectedIds.size > 0 ? selectedPartnersList : sortedPartners)}
-            className="btn"
-            style={{
-              backgroundColor: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.3)',
-              color: '#34d399', fontSize: '0.85rem', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.4rem',
-              padding: '0.5rem 0.875rem', borderRadius: 'var(--radius-md)', cursor: 'pointer', transition: 'all 0.15s'
-            }}
-            title={selectedIds.size > 0 ? `Xuất CSV (${selectedIds.size} đối tác đã chọn)` : 'Xuất danh sách CSV'}
-          >
-            <FileSpreadsheet size={16} />
-            Xuất CSV {selectedIds.size > 0 && `(${selectedIds.size})`}
-          </button>
-
-          {/* Export Excel */}
-          <button
-            onClick={() => exportPartnersToExcel(selectedIds.size > 0 ? selectedPartnersList : sortedPartners)}
-            className="btn"
-            style={{
-              backgroundColor: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.3)',
-              color: '#10b981', fontSize: '0.85rem', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.4rem',
-              padding: '0.5rem 0.875rem', borderRadius: 'var(--radius-md)', cursor: 'pointer', transition: 'all 0.15s'
-            }}
-            title={selectedIds.size > 0 ? `Xuất Excel (${selectedIds.size} đối tác đã chọn)` : 'Xuất danh sách Excel'}
-          >
-            <FileSpreadsheet size={16} />
-            Xuất Excel {selectedIds.size > 0 && `(${selectedIds.size})`}
-          </button>
 
           {/* Menu Sắp xếp */}
           <div style={{ position: 'relative' }} ref={sortMenuRef}>
@@ -565,19 +535,19 @@ const Partners = () => {
 
             {showSortMenu && (
               <div style={{
-                position: 'absolute', right: 0, top: 'calc(100% + 4px)', zIndex: 99,
-                backgroundColor: 'var(--color-bg-surface)',
+                position: 'absolute', right: 0, top: 'calc(100% + 6px)', zIndex: 9999,
+                backgroundColor: '#1e293b',
                 border: '1px solid var(--color-border)',
                 borderRadius: 'var(--radius-md)',
-                boxShadow: 'var(--shadow-lg)', minWidth: '220px', overflow: 'hidden'
+                boxShadow: '0 12px 28px rgba(0,0,0,0.6)', minWidth: '220px', overflow: 'hidden'
               }}>
                 {SORT_OPTIONS.map(opt => (
                   <button
                     key={opt.value}
                     onClick={() => { setSortValueRaw(opt.value); setShowSortMenu(false); }}
                     style={{
-                      width: '100%', textAlign: 'left', padding: '0.6rem 1rem',
-                      background: sortValue === opt.value ? 'rgba(59,130,246,0.15)' : 'transparent',
+                      width: '100%', textAlign: 'left', padding: '0.65rem 1rem',
+                      background: sortValue === opt.value ? 'rgba(59,130,246,0.2)' : 'transparent',
                       color: sortValue === opt.value ? '#60a5fa' : 'var(--color-text-main)',
                       border: 'none', fontSize: '0.85rem', cursor: 'pointer',
                       display: 'flex', alignItems: 'center', justifyContent: 'space-between'
@@ -859,268 +829,295 @@ const Partners = () => {
         </div>
       </div>
 
-      {/* ── DANH SÁCH CARD ĐỐI TÁC ────────────────────────────────────────── */}
-      {pagedPartners.length === 0 ? (
-        <div className="card" style={{ padding: '3rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
-          <Building2 size={48} style={{ opacity: 0.3, marginBottom: '1rem' }} />
-          <h3 style={{ fontSize: '1.1rem', fontWeight: '600', color: 'var(--color-text-main)', marginBottom: '0.5rem' }}>Không tìm thấy đối tác phù hợp</h3>
-          <p style={{ fontSize: '0.875rem' }}>Hãy thử điều chỉnh lại từ khóa hoặc xóa bớt bộ lọc tìm kiếm.</p>
-        </div>
-      ) : viewMode === 'grid' ? (
-        /* GRID VIEW (4 CỘT DẠNG THẺ NHƯ TRANG TÀI LIỆU) */
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.25rem' }}>
-          {pagedPartners.map(partner => {
-            const isSelected = selectedIds.has(partner.id);
-            const types = Array.isArray(partner.type) ? partner.type : (partner.type ? [partner.type] : []);
+      {/* ── KHU VỰC THẺ CÓ SLIDE BAR BÊN PHẢI TRƯỢT XEM CÁC THẺ ────────────────── */}
+      <div 
+        className="custom-scrollbar"
+        style={{ 
+          flex: 1, 
+          overflowY: 'auto', 
+          paddingRight: '6px', 
+          minHeight: 0,
+          marginRight: '-2px'
+        }}
+      >
+        {pagedPartners.length === 0 ? (
+          <div className="card" style={{ padding: '3rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+            <Building2 size={48} style={{ opacity: 0.3, marginBottom: '1rem' }} />
+            <h3 style={{ fontSize: '1.1rem', fontWeight: '600', color: 'var(--color-text-main)', marginBottom: '0.5rem' }}>Không tìm thấy đối tác phù hợp</h3>
+            <p style={{ fontSize: '0.875rem' }}>Hãy thử điều chỉnh lại từ khóa hoặc xóa bớt bộ lọc tìm kiếm.</p>
+          </div>
+        ) : viewMode === 'grid' ? (
+          /* GRID VIEW (4 CỘT DẠNG THẺ NHƯ TRANG TÀI LIỆU) */
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.25rem', paddingBottom: '0.5rem' }}>
+            {pagedPartners.map(partner => {
+              const isSelected = selectedIds.has(partner.id);
+              const types = Array.isArray(partner.type) ? partner.type : (partner.type ? [partner.type] : []);
 
-            return (
-              <div
-                key={partner.id}
-                className="card"
-                style={{
-                  display: 'flex', flexDirection: 'column', height: '100%',
-                  padding: 0, overflow: 'hidden', cursor: 'pointer',
-                  outline: isSelected ? '2px solid rgba(59,130,246,0.6)' : 'none',
-                  backgroundColor: partner.locked ? 'rgba(30, 41, 59, 0.4)' : 'var(--color-bg-surface)',
-                  opacity: partner.locked ? 0.75 : 1,
-                  transition: 'transform 0.2s ease, box-shadow 0.2s ease',
-                }}
-                onClick={() => setViewingPartner(partner)}
-                onMouseOver={e => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 12px 24px rgba(0,0,0,0.2)'; }}
-                onMouseOut={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = 'var(--shadow-sm)'; }}
-              >
-                <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', flex: 1 }}>
-                  
-                  {/* Hang 1: Badges */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.6rem' }}>
-                    <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                      <span className="badge badge-pink" style={{ fontSize: '0.65rem', padding: '0.15rem 0.4rem' }}>MỚI</span>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--color-primary)', fontWeight: '600' }}>
-                        {partner.taxCode ? `MST: ${partner.taxCode}` : `DT_${partner.id.slice(0, 5)}`}
-                      </span>
-                      {types.length > 0 && (
-                        <span className="badge badge-yellow" style={{ fontSize: '0.65rem', padding: '0.15rem 0.4rem' }}>
-                          {types[0]}
+              return (
+                <div
+                  key={partner.id}
+                  className="card"
+                  style={{
+                    display: 'flex', flexDirection: 'column', height: '100%',
+                    padding: 0, overflow: 'hidden', cursor: 'pointer',
+                    outline: isSelected ? '2px solid rgba(59,130,246,0.6)' : 'none',
+                    backgroundColor: partner.locked ? 'rgba(30, 41, 59, 0.4)' : 'var(--color-bg-surface)',
+                    opacity: partner.locked ? 0.75 : 1,
+                    transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+                  }}
+                  onClick={() => setViewingPartner(partner)}
+                  onMouseOver={e => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 12px 24px rgba(0,0,0,0.2)'; }}
+                  onMouseOut={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = 'var(--shadow-sm)'; }}
+                >
+                  <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', flex: 1 }}>
+                    
+                    {/* Hang 1: Badges */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.6rem' }}>
+                      <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                        <span className="badge badge-pink" style={{ fontSize: '0.65rem', padding: '0.15rem 0.4rem' }}>MỚI</span>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--color-primary)', fontWeight: '600' }}>
+                          {partner.taxCode ? `MST: ${partner.taxCode}` : `DT_${partner.id.slice(0, 5)}`}
                         </span>
+                        {types.length > 0 && (
+                          <span className="badge badge-yellow" style={{ fontSize: '0.65rem', padding: '0.15rem 0.4rem' }}>
+                            {types[0]}
+                          </span>
+                        )}
+                      </div>
+                      {partner.locked ? (
+                        <span className="badge" style={{ backgroundColor: 'rgba(239,68,68,0.15)', color: '#ef4444', fontSize: '0.65rem', padding: '0.15rem 0.4rem', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                          <Lock size={10} /> ĐÃ KHÓA
+                        </span>
+                      ) : (
+                        <RatingStars rating={partner.rating} readOnly={true} size={13} />
                       )}
                     </div>
-                    {partner.locked ? (
-                      <span className="badge" style={{ backgroundColor: 'rgba(239,68,68,0.15)', color: '#ef4444', fontSize: '0.65rem', padding: '0.15rem 0.4rem', display: 'flex', alignItems: 'center', gap: '3px' }}>
-                        <Lock size={10} /> ĐÃ KHÓA
-                      </span>
-                    ) : (
-                      <RatingStars rating={partner.rating} readOnly={true} size={13} />
+
+                    {/* Representative pill */}
+                    {partner.representative && (
+                      <div style={{ marginBottom: '0.4rem' }}>
+                        <span className="badge" style={{ backgroundColor: 'rgba(99, 102, 241, 0.15)', color: '#a5b4fc', border: '1px solid rgba(99, 102, 241, 0.3)', fontSize: '0.65rem', padding: '0.15rem 0.4rem' }}>
+                          📌 ĐẠI DIỆN: {partner.representative}
+                        </span>
+                      </div>
                     )}
-                  </div>
 
-                  {/* Representative pill */}
-                  {partner.representative && (
-                    <div style={{ marginBottom: '0.4rem' }}>
-                      <span className="badge" style={{ backgroundColor: 'rgba(99, 102, 241, 0.15)', color: '#a5b4fc', border: '1px solid rgba(99, 102, 241, 0.3)', fontSize: '0.65rem', padding: '0.15rem 0.4rem' }}>
-                        📌 ĐẠI DIỆN: {partner.representative}
-                      </span>
+                    {/* Header title */}
+                    <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
+                      <div style={{ width: '42px', height: '42px', borderRadius: '8px', backgroundColor: '#ffffff', border: '1px solid var(--color-border)', backgroundImage: `url(${partner.logo})`, backgroundSize: 'contain', backgroundPosition: 'center', backgroundRepeat: 'no-repeat', flexShrink: 0, marginTop: '2px' }} />
+                      <div>
+                        <h3 style={{ fontSize: '1.05rem', fontWeight: '700', margin: 0, color: 'var(--color-text-main)', lineHeight: 1.35, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                          {partner.name}
+                        </h3>
+                        {partner.shortName && (
+                          <div style={{ fontSize: '0.8rem', color: '#60a5fa', fontWeight: '600', marginTop: '2px' }}>
+                            ({partner.shortName})
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  )}
 
-                  {/* Header title */}
-                  <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
-                    <div style={{ width: '42px', height: '42px', borderRadius: '8px', backgroundColor: '#ffffff', border: '1px solid var(--color-border)', backgroundImage: `url(${partner.logo})`, backgroundSize: 'contain', backgroundPosition: 'center', backgroundRepeat: 'no-repeat', flexShrink: 0, marginTop: '2px' }} />
-                    <div>
-                      <h3 style={{ fontSize: '1.05rem', fontWeight: '700', margin: 0, color: 'var(--color-text-main)', lineHeight: 1.35, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                        {partner.name}
-                      </h3>
-                      {partner.shortName && (
-                        <div style={{ fontSize: '0.8rem', color: '#60a5fa', fontWeight: '600', marginTop: '2px' }}>
-                          ({partner.shortName})
+                    {/* Summary / Contact details */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', fontSize: '0.8125rem', color: 'var(--color-text-muted)', marginBottom: '1rem', flex: 1 }}>
+                      {partner.phone && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <Phone size={14} style={{ color: 'var(--color-success)', flexShrink: 0 }} />
+                          <span style={{ color: 'var(--color-text-main)' }}>{partner.phone}</span>
+                        </div>
+                      )}
+                      {partner.email && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          <Mail size={14} style={{ color: '#f59e0b', flexShrink: 0 }} />
+                          <span>{partner.email}</span>
+                        </div>
+                      )}
+                      {partner.address && (
+                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                          <MapPin size={14} style={{ color: '#ef4444', flexShrink: 0, marginTop: '2px' }} />
+                          <span>{partner.address}</span>
                         </div>
                       )}
                     </div>
-                  </div>
 
-                  {/* Summary / Contact details */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', fontSize: '0.8125rem', color: 'var(--color-text-muted)', marginBottom: '1rem', flex: 1 }}>
-                    {partner.phone && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <Phone size={14} style={{ color: 'var(--color-success)', flexShrink: 0 }} />
-                        <span style={{ color: 'var(--color-text-main)' }}>{partner.phone}</span>
-                      </div>
-                    )}
-                    {partner.email && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        <Mail size={14} style={{ color: '#f59e0b', flexShrink: 0 }} />
-                        <span>{partner.email}</span>
-                      </div>
-                    )}
-                    {partner.address && (
-                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                        <MapPin size={14} style={{ color: '#ef4444', flexShrink: 0, marginTop: '2px' }} />
-                        <span>{partner.address}</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Bottom bar inside card */}
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', marginTop: 'auto', paddingTop: '0.75rem', borderTop: '1px solid var(--color-border)' }}>
-                    
-                    {/* Attachment Link / File on left */}
-                    <div style={{ display: 'flex', gap: '0.3rem', overflow: 'hidden', flex: 1 }}>
-                      {partner.attachments && partner.attachments.length > 0 ? (
-                        <a
-                          href={partner.attachments[0].url}
-                          target="_blank"
-                          rel="noreferrer"
-                          onClick={e => e.stopPropagation()}
-                          className="badge"
-                          style={{ backgroundColor: 'var(--color-bg-body)', border: '1px solid var(--color-border)', color: 'var(--color-primary)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px', padding: '0.2rem 0.4rem', fontSize: '0.72rem' }}
-                          title={partner.attachments[0].name}
-                        >
-                          <Paperclip size={12} />
-                          <span style={{ maxWidth: '90px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {partner.attachments[0].name}
-                          </span>
-                        </a>
-                      ) : partner.website ? (
-                        <a
-                          href={partner.website}
-                          target="_blank"
-                          rel="noreferrer"
-                          onClick={e => e.stopPropagation()}
-                          className="badge"
-                          style={{ backgroundColor: 'var(--color-bg-body)', border: '1px solid var(--color-border)', color: '#8b5cf6', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px', padding: '0.2rem 0.4rem', fontSize: '0.72rem' }}
-                        >
-                          <Globe size={12} /> Website
-                        </a>
-                      ) : (
-                        <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>Chưa có tệp</span>
-                      )}
-                    </div>
-
-                    {/* Quick action buttons on right */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
-                      <button
-                        className="btn-icon"
-                        style={{ backgroundColor: 'var(--color-bg-surface-hover)', border: '1px solid var(--color-border)', color: '#60a5fa', width: '28px', height: '28px' }}
-                        onClick={e => { e.stopPropagation(); setViewingPartner(partner); }}
-                        title="Xem chi tiết"
-                      >
-                        <Eye size={14} />
-                      </button>
+                    {/* Bottom bar inside card */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', marginTop: 'auto', paddingTop: '0.75rem', borderTop: '1px solid var(--color-border)' }}>
                       
-                      {userRole === ROLES.ADMIN && (
-                        <>
-                          <button
-                            className="btn-icon"
-                            style={{ backgroundColor: 'var(--color-bg-surface-hover)', border: '1px solid var(--color-border)', color: 'var(--color-primary)', width: '28px', height: '28px' }}
-                            onClick={e => handleEditClick(partner, e)}
-                            title="Sửa thông tin"
+                      {/* Attachment Link / File on left */}
+                      <div style={{ display: 'flex', gap: '0.3rem', overflow: 'hidden', flex: 1 }}>
+                        {partner.attachments && partner.attachments.length > 0 ? (
+                          <a
+                            href={partner.attachments[0].url}
+                            target="_blank"
+                            rel="noreferrer"
+                            onClick={e => e.stopPropagation()}
+                            className="badge"
+                            style={{ backgroundColor: 'var(--color-bg-body)', border: '1px solid var(--color-border)', color: 'var(--color-primary)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px', padding: '0.2rem 0.4rem', fontSize: '0.72rem' }}
+                            title={partner.attachments[0].name}
                           >
-                            <Edit size={14} />
-                          </button>
-                          <button
-                            className="btn-icon"
-                            style={{ backgroundColor: 'var(--color-bg-surface-hover)', border: '1px solid var(--color-border)', color: partner.locked ? 'var(--color-success)' : 'var(--color-warning)', width: '28px', height: '28px' }}
-                            onClick={e => handleToggleLock(partner.id, e)}
-                            title={partner.locked ? 'Mở khóa' : 'Khóa'}
+                            <Paperclip size={12} />
+                            <span style={{ maxWidth: '90px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {partner.attachments[0].name}
+                            </span>
+                          </a>
+                        ) : partner.website ? (
+                          <a
+                            href={partner.website}
+                            target="_blank"
+                            rel="noreferrer"
+                            onClick={e => e.stopPropagation()}
+                            className="badge"
+                            style={{ backgroundColor: 'var(--color-bg-body)', border: '1px solid var(--color-border)', color: '#8b5cf6', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px', padding: '0.2rem 0.4rem', fontSize: '0.72rem' }}
                           >
-                            {partner.locked ? <Unlock size={14} /> : <Lock size={14} />}
-                          </button>
-                          <button
-                            className="btn-icon"
-                            style={{ backgroundColor: 'var(--color-bg-surface-hover)', border: '1px solid var(--color-border)', color: 'var(--color-danger)', width: '28px', height: '28px' }}
-                            onClick={e => handleDelete(partner.id, e)}
-                            title="Xóa đối tác"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </>
-                      )}
+                            <Globe size={12} /> Website
+                          </a>
+                        ) : (
+                          <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>Chưa có tệp</span>
+                        )}
+                      </div>
 
-                      <PartnerCheckbox checked={isSelected} onChange={() => toggleSelectPartner(partner.id)} />
+                      {/* Quick action buttons on right */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+                        <button
+                          className="btn-icon"
+                          style={{ backgroundColor: 'var(--color-bg-surface-hover)', border: '1px solid var(--color-border)', color: '#60a5fa', width: '28px', height: '28px' }}
+                          onClick={e => { e.stopPropagation(); setViewingPartner(partner); }}
+                          title="Xem chi tiết"
+                        >
+                          <Eye size={14} />
+                        </button>
+                        
+                        {userRole === ROLES.ADMIN && (
+                          <>
+                            <button
+                              className="btn-icon"
+                              style={{ backgroundColor: 'var(--color-bg-surface-hover)', border: '1px solid var(--color-border)', color: 'var(--color-primary)', width: '28px', height: '28px' }}
+                              onClick={e => handleEditClick(partner, e)}
+                              title="Sửa thông tin"
+                            >
+                              <Edit size={14} />
+                            </button>
+                            <button
+                              className="btn-icon"
+                              style={{ backgroundColor: 'var(--color-bg-surface-hover)', border: '1px solid var(--color-border)', color: partner.locked ? 'var(--color-success)' : 'var(--color-warning)', width: '28px', height: '28px' }}
+                              onClick={e => handleToggleLock(partner.id, e)}
+                              title={partner.locked ? 'Mở khóa' : 'Khóa'}
+                            >
+                              {partner.locked ? <Unlock size={14} /> : <Lock size={14} />}
+                            </button>
+                            <button
+                              className="btn-icon"
+                              style={{ backgroundColor: 'var(--color-bg-surface-hover)', border: '1px solid var(--color-border)', color: 'var(--color-danger)', width: '28px', height: '28px' }}
+                              onClick={e => handleDelete(partner.id, e)}
+                              title="Xóa đối tác"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </>
+                        )}
+
+                        <PartnerCheckbox checked={isSelected} onChange={() => toggleSelectPartner(partner.id)} />
+                      </div>
+
                     </div>
 
                   </div>
-
                 </div>
-              </div>
-            );
-          })}
-        </div>
-      ) : (
-        /* LIST VIEW (DANH SÁCH DẠNG BẢNG/HÀNG) */
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-          {pagedPartners.map(partner => {
-            const isSelected = selectedIds.has(partner.id);
-            const types = Array.isArray(partner.type) ? partner.type : (partner.type ? [partner.type] : []);
+              );
+            })}
+          </div>
+        ) : (
+          /* LIST VIEW (DANH SÁCH DẠNG BẢNG/HÀNG) */
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', paddingBottom: '0.5rem' }}>
+            {pagedPartners.map(partner => {
+              const isSelected = selectedIds.has(partner.id);
+              const types = Array.isArray(partner.type) ? partner.type : (partner.type ? [partner.type] : []);
 
-            return (
-              <div
-                key={partner.id}
-                className="card"
-                style={{
-                  display: 'flex', padding: '1rem', gap: '1.25rem', alignItems: 'center',
-                  outline: isSelected ? '2px solid rgba(59,130,246,0.5)' : 'none',
-                  background: isSelected ? 'rgba(59,130,246,0.05)' : undefined,
-                  opacity: partner.locked ? 0.75 : 1,
-                  transition: 'outline 0.15s, background 0.15s',
-                  cursor: 'pointer'
-                }}
-                onClick={() => setViewingPartner(partner)}
-              >
-                {/* Logo */}
-                <div style={{ width: '60px', height: '60px', borderRadius: 'var(--radius-md)', overflow: 'hidden', flexShrink: 0, backgroundColor: '#fff', border: '1px solid var(--color-border)', backgroundImage: `url(${partner.logo})`, backgroundSize: 'contain', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }} />
+              return (
+                <div
+                  key={partner.id}
+                  className="card"
+                  style={{
+                    display: 'flex', padding: '1rem', gap: '1.25rem', alignItems: 'center',
+                    outline: isSelected ? '2px solid rgba(59,130,246,0.5)' : 'none',
+                    background: isSelected ? 'rgba(59,130,246,0.05)' : undefined,
+                    opacity: partner.locked ? 0.75 : 1,
+                    transition: 'outline 0.15s, background 0.15s',
+                    cursor: 'pointer'
+                  }}
+                  onClick={() => setViewingPartner(partner)}
+                >
+                  {/* Logo */}
+                  <div style={{ width: '60px', height: '60px', borderRadius: 'var(--radius-md)', overflow: 'hidden', flexShrink: 0, backgroundColor: '#fff', border: '1px solid var(--color-border)', backgroundImage: `url(${partner.logo})`, backgroundSize: 'contain', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }} />
 
-                {/* Info */}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem', flexWrap: 'wrap' }}>
-                    <span className="badge badge-blue">MST: {partner.taxCode || 'N/A'}</span>
-                    {types.map(t => <span key={t} className="badge badge-yellow">{t}</span>)}
-                    {partner.locked && <span className="badge" style={{ background: 'rgba(239,68,68,0.2)', color: '#ef4444' }}>Đã khóa</span>}
-                    {partner.representative && <span className="badge" style={{ background: 'rgba(99,102,241,0.15)', color: '#a5b4fc' }}>📌 {partner.representative}</span>}
+                  {/* Info */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem', flexWrap: 'wrap' }}>
+                      <span className="badge badge-blue">MST: {partner.taxCode || 'N/A'}</span>
+                      {types.map(t => <span key={t} className="badge badge-yellow">{t}</span>)}
+                      {partner.locked && <span className="badge" style={{ background: 'rgba(239,68,68,0.2)', color: '#ef4444' }}>Đã khóa</span>}
+                      {partner.representative && <span className="badge" style={{ background: 'rgba(99,102,241,0.15)', color: '#a5b4fc' }}>📌 {partner.representative}</span>}
+                    </div>
+
+                    <h3 style={{ fontSize: '1.05rem', fontWeight: '700', margin: 0, color: 'var(--color-text-main)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      {partner.name}
+                      {partner.shortName && <span style={{ color: '#60a5fa', fontWeight: '600', fontSize: '0.875rem' }}>({partner.shortName})</span>}
+                    </h3>
+
+                    <div style={{ display: 'flex', gap: '1.5rem', color: 'var(--color-text-muted)', fontSize: '0.8rem', marginTop: '0.35rem', flexWrap: 'wrap' }}>
+                      {partner.phone && <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Phone size={13} style={{ color: 'var(--color-success)' }} /> {partner.phone}</span>}
+                      {partner.email && <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Mail size={13} style={{ color: '#f59e0b' }} /> {partner.email}</span>}
+                      {partner.address && <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><MapPin size={13} style={{ color: '#ef4444' }} /> {partner.address}</span>}
+                    </div>
                   </div>
 
-                  <h3 style={{ fontSize: '1.05rem', fontWeight: '700', margin: 0, color: 'var(--color-text-main)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    {partner.name}
-                    {partner.shortName && <span style={{ color: '#60a5fa', fontWeight: '600', fontSize: '0.875rem' }}>({partner.shortName})</span>}
-                  </h3>
+                  {/* Rating */}
+                  <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+                    <RatingStars rating={partner.rating} readOnly={true} size={14} />
+                    <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>Tín nhiệm</span>
+                  </div>
 
-                  <div style={{ display: 'flex', gap: '1.5rem', color: 'var(--color-text-muted)', fontSize: '0.8rem', marginTop: '0.35rem', flexWrap: 'wrap' }}>
-                    {partner.phone && <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Phone size={13} style={{ color: 'var(--color-success)' }} /> {partner.phone}</span>}
-                    {partner.email && <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Mail size={13} style={{ color: '#f59e0b' }} /> {partner.email}</span>}
-                    {partner.address && <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><MapPin size={13} style={{ color: '#ef4444' }} /> {partner.address}</span>}
+                  {/* Actions */}
+                  <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexShrink: 0 }}>
+                    <button className="btn-icon" style={{ backgroundColor: 'rgba(255,255,255,0.1)', border: '1px solid var(--color-border)', color: '#60a5fa', width: '32px', height: '32px' }} onClick={e => { e.stopPropagation(); setViewingPartner(partner); }} title="Xem chi tiết">
+                      <Eye size={16} />
+                    </button>
+                    {userRole === ROLES.ADMIN && (
+                      <>
+                        <button className="btn-icon" style={{ backgroundColor: 'rgba(255,255,255,0.1)', border: '1px solid var(--color-border)', color: 'var(--color-primary)', width: '32px', height: '32px' }} onClick={e => handleEditClick(partner, e)} title="Sửa thông tin">
+                          <Edit size={16} />
+                        </button>
+                        <button className="btn-icon" style={{ backgroundColor: 'rgba(255,255,255,0.1)', border: '1px solid var(--color-border)', color: 'var(--color-danger)', width: '32px', height: '32px' }} onClick={e => handleDelete(partner.id, e)} title="Xóa đối tác">
+                          <Trash2 size={16} />
+                        </button>
+                      </>
+                    )}
+                    <PartnerCheckbox checked={isSelected} onChange={() => toggleSelectPartner(partner.id)} />
                   </div>
                 </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
-                {/* Rating */}
-                <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
-                  <RatingStars rating={partner.rating} readOnly={true} size={14} />
-                  <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>Tín nhiệm</span>
-                </div>
-
-                {/* Actions */}
-                <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexShrink: 0 }}>
-                  <button className="btn-icon" style={{ backgroundColor: 'rgba(255,255,255,0.1)', border: '1px solid var(--color-border)', color: '#60a5fa', width: '32px', height: '32px' }} onClick={e => { e.stopPropagation(); setViewingPartner(partner); }} title="Xem chi tiết">
-                    <Eye size={16} />
-                  </button>
-                  {userRole === ROLES.ADMIN && (
-                    <>
-                      <button className="btn-icon" style={{ backgroundColor: 'rgba(255,255,255,0.1)', border: '1px solid var(--color-border)', color: 'var(--color-primary)', width: '32px', height: '32px' }} onClick={e => handleEditClick(partner, e)} title="Sửa thông tin">
-                        <Edit size={16} />
-                      </button>
-                      <button className="btn-icon" style={{ backgroundColor: 'rgba(255,255,255,0.1)', border: '1px solid var(--color-border)', color: 'var(--color-danger)', width: '32px', height: '32px' }} onClick={e => handleDelete(partner.id, e)} title="Xóa đối tác">
-                        <Trash2 size={16} />
-                      </button>
-                    </>
-                  )}
-                  <PartnerCheckbox checked={isSelected} onChange={() => toggleSelectPartner(partner.id)} />
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* ── THANH PHÂN TRANG BOTTOM BAR ────────────────────────────────────── */}
-      <div className="card" style={{ padding: '0.875rem 1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginTop: 'auto' }}>
+      {/* ── THANH PHÂN TRANG VỊ TRÍ THẤP NHẤT (KHÔNG CHE THẺ CARD) ──────────── */}
+      <div 
+        className="card" 
+        style={{ 
+          padding: '0.75rem 1.25rem', 
+          display: 'flex', 
+          justify: 'space-between', 
+          alignItems: 'center', 
+          flexWrap: 'wrap', 
+          gap: '1rem', 
+          flexShrink: 0,
+          marginTop: 0,
+          backgroundColor: 'var(--color-bg-surface)',
+          border: '1px solid var(--color-border)',
+          boxShadow: 'var(--shadow-md)',
+          borderRadius: 'var(--radius-lg)'
+        }}
+      >
         
         {/* Nut chon tat ca trang */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -1133,86 +1130,118 @@ const Partners = () => {
           </span>
         </div>
 
-        {/* Dieukien Trang */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+        {/* Cum Nut Phan Trang Khung Do */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
           
+          {/* Nut Trang dau */}
           <button
             onClick={() => setCurrentPage(1)}
             disabled={safePage <= 1}
             style={{
-              padding: '0.35rem 0.6rem', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--color-border)',
-              borderRadius: 'var(--radius-sm)', color: safePage <= 1 ? 'var(--color-text-muted)' : 'var(--color-text-main)',
-              cursor: safePage <= 1 ? 'default' : 'pointer', fontSize: '0.85rem'
+              minWidth: '34px', height: '34px', padding: '0 0.5rem', borderRadius: '8px',
+              background: 'none', border: '1px solid var(--color-border)',
+              color: safePage <= 1 ? 'var(--color-text-muted)' : 'var(--color-text-main)',
+              cursor: safePage <= 1 ? 'not-allowed' : 'pointer', fontSize: '0.8rem',
+              opacity: safePage <= 1 ? 0.4 : 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center'
             }}
+            title="Trang đầu"
           >
             «
           </button>
 
+          {/* Nut Trang truoc */}
           <button
             onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
             disabled={safePage <= 1}
             style={{
-              padding: '0.35rem 0.6rem', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--color-border)',
-              borderRadius: 'var(--radius-sm)', color: safePage <= 1 ? 'var(--color-text-muted)' : 'var(--color-text-main)',
-              cursor: safePage <= 1 ? 'default' : 'pointer', fontSize: '0.85rem'
+              minWidth: '34px', height: '34px', padding: '0 0.5rem', borderRadius: '8px',
+              background: 'none', border: '1px solid var(--color-border)',
+              color: safePage <= 1 ? 'var(--color-text-muted)' : 'var(--color-text-main)',
+              cursor: safePage <= 1 ? 'not-allowed' : 'pointer',
+              opacity: safePage <= 1 ? 0.4 : 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center'
             }}
+            title="Trang trước"
           >
             <ChevronLeft size={16} />
           </button>
 
-          {/* Page numbers */}
-          {Array.from({ length: totalPages }, (_, i) => i + 1).map(pg => {
-            if (pg === 1 || pg === totalPages || (pg >= safePage - 1 && pg <= safePage + 1)) {
-              return (
+          {/* Danh sach Trang (Page Numbers) */}
+          {
+            (() => {
+              const pages = [];
+              if (totalPages <= 7) {
+                for (let i = 1; i <= totalPages; i++) pages.push(i);
+              } else {
+                pages.push(1);
+                if (safePage > 3) pages.push('...');
+                const start = Math.max(2, safePage - 1);
+                const end   = Math.min(totalPages - 1, safePage + 1);
+                for (let i = start; i <= end; i++) pages.push(i);
+                if (safePage < totalPages - 2) pages.push('...');
+                pages.push(totalPages);
+              }
+              return pages;
+            })().map((item, idx) =>
+              item === '...' ? (
+                <span key={`dots-${idx}`} style={{ color: 'var(--color-text-muted)', padding: '0 0.25rem', fontSize: '0.85rem' }}>...</span>
+              ) : (
                 <button
-                  key={pg}
-                  onClick={() => setCurrentPage(pg)}
+                  key={item}
+                  onClick={() => setCurrentPage(item)}
                   style={{
-                    padding: '0.35rem 0.75rem',
-                    background: pg === safePage ? 'var(--color-primary)' : 'rgba(255,255,255,0.05)',
-                    border: '1px solid var(--color-border)',
-                    borderRadius: 'var(--radius-sm)',
-                    color: pg === safePage ? 'white' : 'var(--color-text-main)',
-                    fontWeight: pg === safePage ? '700' : 'normal',
-                    cursor: 'pointer', fontSize: '0.85rem'
+                    minWidth: '34px', height: '34px', padding: '0 0.5rem', borderRadius: '8px',
+                    background: safePage === item ? 'var(--color-primary)' : 'none',
+                    border: safePage === item ? 'none' : '1px solid var(--color-border)',
+                    color: safePage === item ? 'white' : 'var(--color-text-main)',
+                    fontWeight: safePage === item ? '700' : '400',
+                    cursor: 'pointer', fontSize: '0.85rem',
+                    boxShadow: safePage === item ? '0 2px 8px rgba(59,130,246,0.4)' : 'none',
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center'
                   }}
                 >
-                  {pg}
+                  {item}
                 </button>
-              );
-            }
-            if (pg === safePage - 2 || pg === safePage + 2) {
-              return <span key={pg} style={{ color: 'var(--color-text-muted)', padding: '0 2px' }}>...</span>;
-            }
-            return null;
-          })}
+              )
+            )
+          }
 
+          {/* Nut Trang sau */}
           <button
             onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
             disabled={safePage >= totalPages}
             style={{
-              padding: '0.35rem 0.6rem', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--color-border)',
-              borderRadius: 'var(--radius-sm)', color: safePage >= totalPages ? 'var(--color-text-muted)' : 'var(--color-text-main)',
-              cursor: safePage >= totalPages ? 'default' : 'pointer', fontSize: '0.85rem'
+              minWidth: '34px', height: '34px', padding: '0 0.5rem', borderRadius: '8px',
+              background: 'none', border: '1px solid var(--color-border)',
+              color: safePage >= totalPages ? 'var(--color-text-muted)' : 'var(--color-text-main)',
+              cursor: safePage >= totalPages ? 'not-allowed' : 'pointer',
+              opacity: safePage >= totalPages ? 0.4 : 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center'
             }}
+            title="Trang sau"
           >
             <ChevronRight size={16} />
           </button>
 
+          {/* Nut Trang cuoi */}
           <button
             onClick={() => setCurrentPage(totalPages)}
             disabled={safePage >= totalPages}
             style={{
-              padding: '0.35rem 0.6rem', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--color-border)',
-              borderRadius: 'var(--radius-sm)', color: safePage >= totalPages ? 'var(--color-text-muted)' : 'var(--color-text-main)',
-              cursor: safePage >= totalPages ? 'default' : 'pointer', fontSize: '0.85rem'
+              minWidth: '34px', height: '34px', padding: '0 0.5rem', borderRadius: '8px',
+              background: 'none', border: '1px solid var(--color-border)',
+              color: safePage >= totalPages ? 'var(--color-text-muted)' : 'var(--color-text-main)',
+              cursor: safePage >= totalPages ? 'not-allowed' : 'pointer', fontSize: '0.8rem',
+              opacity: safePage >= totalPages ? 0.4 : 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center'
             }}
+            title="Trang cuối"
           >
             »
           </button>
 
-          <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginLeft: '0.5rem' }}>
-            Trang <strong>{safePage}</strong> / {totalPages} • {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, sortedPartners.length)} / {sortedPartners.length} đối tác
+          {/* Thong tin phan trang */}
+          <span style={{ marginLeft: '0.5rem', color: 'var(--color-text-muted)', fontSize: '0.825rem' }}>
+            Trang <strong style={{ color: 'var(--color-text-main)' }}>{safePage}</strong> / {totalPages}
+            &nbsp;·&nbsp;
+            {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, sortedPartners.length)} / {sortedPartners.length} đối tác
           </span>
 
         </div>

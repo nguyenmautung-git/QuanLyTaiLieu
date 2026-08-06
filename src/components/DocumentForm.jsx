@@ -1,6 +1,6 @@
 import React, { useState, useContext, useEffect } from 'react';
 import { format } from 'date-fns';
-import { X, Upload, Check, ChevronDown } from 'lucide-react';
+import { X, Upload, Check, ChevronDown, Plus } from 'lucide-react';
 import { DocumentContext } from '../context/DocumentContext';
 import { useToast } from '../context/UIContext';
 import { EMPLOYEE_LEVELS } from '../data';
@@ -10,7 +10,7 @@ import { storage } from '../firebase';
 import { validateFileSize } from '../utils/uploadHelpers';
 
 const DocumentForm = ({ onClose, initialData, previewMode = false }) => {
-  const { addDocument, editDocument, allDocuments: documents, documentTypes, allProjects: projects, legalSteps = [], checkPermission, enableLazy, uniqueAgencies = [] } = useContext(DocumentContext);
+  const { addDocument, editDocument, allDocuments: documents, documentTypes, allProjects: projects, legalSteps = [], checkPermission, enableLazy, uniqueAgencies = [], addPartner } = useContext(DocumentContext);
   const toast = useToast();
 
   useEffect(() => {
@@ -40,6 +40,24 @@ const DocumentForm = ({ onClose, initialData, previewMode = false }) => {
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [isDragging, setIsDragging]     = useState(false);
   const [showAgencyDropdown, setShowAgencyDropdown] = useState(false);
+  const [showAddPartnerModal, setShowAddPartnerModal] = useState(false);
+  const [newPartnerData, setNewPartnerData] = useState({
+    name: '',
+    shortName: '',
+    taxCode: '',
+    type: 'Cơ quan ban hành',
+    representative: '',
+    phone: '',
+    email: '',
+    website: '',
+    address: '',
+    bankAccount: '',
+    bankName: '',
+    rating: 5,
+    logo: 'https://images.unsplash.com/photo-1560179707-f14e90ef3623?w=150&h=150&fit=crop',
+    attachments: [],
+    locked: false
+  });
   
   const [formData, setFormData] = useState(initialData || {
     documentCode: autoCode,
@@ -238,23 +256,101 @@ const DocumentForm = ({ onClose, initialData, previewMode = false }) => {
                     <ChevronDown size={18} />
                   </button>
                 )}
-                {showAgencyDropdown && !previewMode && uniqueAgencies.length > 0 && (
-                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: 'var(--color-bg-surface)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', marginTop: '4px', maxHeight: '200px', overflowY: 'auto', zIndex: 10, boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.5)' }}>
-                    {uniqueAgencies.map((agency, idx) => (
-                      <div 
-                        key={idx}
-                        onMouseDown={(e) => {
-                          e.preventDefault();
-                          setFormData(prev => ({ ...prev, issuingAgency: agency }));
-                          setShowAgencyDropdown(false);
-                        }}
-                        style={{ padding: '0.5rem 1rem', cursor: 'pointer', borderBottom: idx < uniqueAgencies.length - 1 ? '1px solid var(--color-bg-surface-hover)' : 'none', color: 'var(--color-text-main)' }}
-                        onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'var(--color-bg-surface-hover)'}
-                        onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                      >
-                        {agency}
-                      </div>
-                    ))}
+                {showAgencyDropdown && !previewMode && (
+                  <div 
+                    className="custom-scrollbar"
+                    style={{ 
+                      position: 'absolute', 
+                      top: '100%', 
+                      left: 0, 
+                      right: 0, 
+                      backgroundColor: '#1e293b', 
+                      border: '1px solid var(--color-border)', 
+                      borderRadius: 'var(--radius-md)', 
+                      marginTop: '4px', 
+                      maxHeight: '220px', 
+                      overflowY: 'auto', 
+                      zIndex: 9999, 
+                      boxShadow: '0 10px 25px rgba(0, 0, 0, 0.6)' 
+                    }}
+                  >
+                    {/* ── 1. LUÔN CÓ DÒNG TẠO ĐỐI TÁC MỚI Ở ĐẦU DANH SÁCH ─────────────────── */}
+                    <div 
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        const agencyVal = (formData.issuingAgency || '').trim();
+                        setNewPartnerData({
+                          name: agencyVal,
+                          shortName: '',
+                          taxCode: '',
+                          type: 'Cơ quan ban hành',
+                          representative: '',
+                          phone: '',
+                          email: '',
+                          website: '',
+                          address: '',
+                          bankAccount: '',
+                          bankName: '',
+                          rating: 5,
+                          logo: 'https://images.unsplash.com/photo-1560179707-f14e90ef3623?w=150&h=150&fit=crop',
+                          attachments: [],
+                          locked: false
+                        });
+                        setShowAddPartnerModal(true);
+                        setShowAgencyDropdown(false);
+                      }}
+                      style={{ 
+                        padding: '0.65rem 1rem', 
+                        cursor: 'pointer', 
+                        borderBottom: '1px solid rgba(255,255,255,0.15)', 
+                        backgroundColor: 'rgba(59, 130, 246, 0.15)', 
+                        color: '#60a5fa',
+                        fontWeight: '600',
+                        fontSize: '0.875rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem'
+                      }}
+                      onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'rgba(59, 130, 246, 0.28)'}
+                      onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'rgba(59, 130, 246, 0.15)'}
+                    >
+                      <Plus size={16} style={{ color: '#60a5fa', flexShrink: 0 }} />
+                      <span>
+                        {formData.issuingAgency && formData.issuingAgency.trim()
+                          ? `➕ Tạo đối tác mới: "${formData.issuingAgency.trim()}"`
+                          : '➕ Tạo đối tác mới...'}
+                      </span>
+                    </div>
+
+                    {/* ── 2. DANH SÁCH ĐỐI TÁC LỌC THEO TỪ KHÓA TỪ Ô NHẬP ─────────────────── */}
+                    {uniqueAgencies
+                      .filter(agency => {
+                        const kw = (formData.issuingAgency || '').trim().toLowerCase();
+                        if (!kw) return true;
+                        return (agency || '').toLowerCase().includes(kw);
+                      })
+                      .map((agency, idx, arr) => (
+                        <div 
+                          key={idx}
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            setFormData(prev => ({ ...prev, issuingAgency: agency }));
+                            setShowAgencyDropdown(false);
+                          }}
+                          style={{ 
+                            padding: '0.6rem 1rem', 
+                            cursor: 'pointer', 
+                            borderBottom: idx < arr.length - 1 ? '1px solid rgba(255, 255, 255, 0.05)' : 'none', 
+                            color: 'var(--color-text-main)',
+                            fontSize: '0.875rem'
+                          }}
+                          onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'rgba(59, 130, 246, 0.15)'}
+                          onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                        >
+                          {agency}
+                        </div>
+                      ))
+                    }
                   </div>
                 )}
               </div>
@@ -565,6 +661,254 @@ const DocumentForm = ({ onClose, initialData, previewMode = false }) => {
           </div>
         </form>
       </div>
+      {/* ── MODAL THÊM THÔNG TIN ĐỐI TÁC MỚI (KÍCH HOẠT TỪ TRANG TÀI LIỆU) ────── */}
+      {showAddPartnerModal && (
+        <div className="modal-overlay" style={{ zIndex: 10000 }} onClick={() => setShowAddPartnerModal(false)}>
+          <div 
+            className="modal-content" 
+            onClick={e => e.stopPropagation()} 
+            style={{ padding: '2rem', maxWidth: '850px', width: '95%', maxHeight: '90vh', overflowY: 'auto', backgroundColor: '#1e293b', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)' }}
+          >
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid var(--color-border)', paddingBottom: '1rem' }}>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: '700', color: '#60a5fa', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                🏢 Thêm thông tin đối tác mới
+              </h3>
+              <button onClick={() => setShowAddPartnerModal(false)} style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer' }}>
+                <X size={22} />
+              </button>
+            </div>
+
+            {/* Form Fields */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+              
+              {/* Row 1 */}
+              <div className="form-group" style={{ gridColumn: 'span 2', marginBottom: 0 }}>
+                <label className="form-label" style={{ fontWeight: '600', color: 'var(--color-text-main)' }}>Tên công ty (*)</label>
+                <input 
+                  type="text" 
+                  className="input-field" 
+                  placeholder="Công ty CP..." 
+                  value={newPartnerData.name} 
+                  onChange={(e) => setNewPartnerData({ ...newPartnerData, name: e.target.value })} 
+                  required
+                />
+              </div>
+
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">Tên viết tắt</label>
+                <input 
+                  type="text" 
+                  className="input-field" 
+                  placeholder="FPT, Coteccons..." 
+                  value={newPartnerData.shortName} 
+                  onChange={(e) => setNewPartnerData({ ...newPartnerData, shortName: e.target.value })} 
+                />
+              </div>
+
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">Mã số thuế</label>
+                <input 
+                  type="text" 
+                  className="input-field" 
+                  placeholder="0123456789" 
+                  value={newPartnerData.taxCode} 
+                  onChange={(e) => setNewPartnerData({ ...newPartnerData, taxCode: e.target.value })} 
+                />
+              </div>
+
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">Loại hình đối tác</label>
+                <select 
+                  className="input-field" 
+                  value={newPartnerData.type} 
+                  onChange={(e) => setNewPartnerData({ ...newPartnerData, type: e.target.value })}
+                >
+                  <option value="Cơ quan ban hành">Cơ quan ban hành</option>
+                  <option value="Nhà thầu thi công">Nhà thầu thi công</option>
+                  <option value="Nhà thầu tư vấn">Nhà thầu tư vấn</option>
+                  <option value="Chủ đầu tư">Chủ đầu tư</option>
+                  <option value="Đơn vị kiểm định">Đơn vị kiểm định</option>
+                  <option value="Nhà cung cấp">Nhà cung cấp</option>
+                </select>
+              </div>
+
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">Người đại diện</label>
+                <input 
+                  type="text" 
+                  className="input-field" 
+                  placeholder="Nguyễn Văn A" 
+                  value={newPartnerData.representative} 
+                  onChange={(e) => setNewPartnerData({ ...newPartnerData, representative: e.target.value })} 
+                />
+              </div>
+
+              {/* Row 2 */}
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">Số điện thoại</label>
+                <input 
+                  type="text" 
+                  className="input-field" 
+                  placeholder="09..." 
+                  value={newPartnerData.phone} 
+                  onChange={(e) => setNewPartnerData({ ...newPartnerData, phone: e.target.value })} 
+                />
+              </div>
+
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">Email</label>
+                <input 
+                  type="email" 
+                  className="input-field" 
+                  placeholder="contact@company.com" 
+                  value={newPartnerData.email} 
+                  onChange={(e) => setNewPartnerData({ ...newPartnerData, email: e.target.value })} 
+                />
+              </div>
+
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">Website</label>
+                <input 
+                  type="text" 
+                  className="input-field" 
+                  placeholder="https://..." 
+                  value={newPartnerData.website} 
+                  onChange={(e) => setNewPartnerData({ ...newPartnerData, website: e.target.value })} 
+                />
+              </div>
+
+              {/* Row 3 */}
+              <div className="form-group" style={{ gridColumn: '1 / -1', marginBottom: 0 }}>
+                <label className="form-label">Địa chỉ trụ sở</label>
+                <input 
+                  type="text" 
+                  className="input-field" 
+                  placeholder="Số nhà, đường, phường, quận..." 
+                  value={newPartnerData.address} 
+                  onChange={(e) => setNewPartnerData({ ...newPartnerData, address: e.target.value })} 
+                />
+              </div>
+
+              {/* Row 4 */}
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">Số tài khoản</label>
+                <input 
+                  type="text" 
+                  className="input-field" 
+                  placeholder="123456789" 
+                  value={newPartnerData.bankAccount} 
+                  onChange={(e) => setNewPartnerData({ ...newPartnerData, bankAccount: e.target.value })} 
+                />
+              </div>
+
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">Ngân hàng</label>
+                <input 
+                  type="text" 
+                  className="input-field" 
+                  placeholder="Vietcombank, MB Bank..." 
+                  value={newPartnerData.bankName} 
+                  onChange={(e) => setNewPartnerData({ ...newPartnerData, bankName: e.target.value })} 
+                />
+              </div>
+
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">Đánh giá tín nhiệm</label>
+                <div style={{ display: 'flex', gap: '4px', marginTop: '6px', cursor: 'pointer' }}>
+                  {[1, 2, 3, 4, 5].map(star => (
+                    <span
+                      key={star}
+                      onClick={() => setNewPartnerData({ ...newPartnerData, rating: star })}
+                      style={{ fontSize: '1.25rem', color: star <= (newPartnerData.rating || 5) ? '#f59e0b' : 'var(--color-text-muted)', transition: 'color 0.15s' }}
+                    >
+                      ★
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">Ảnh đại diện (Ctrl+V dán ảnh)</label>
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  className="input-field" 
+                  style={{ padding: '0.35rem' }}
+                  onChange={(e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onload = (ev) => setNewPartnerData({ ...newPartnerData, logo: ev.target.result });
+                      reader.readAsDataURL(file);
+                    }
+                  }}
+                />
+              </div>
+
+              {/* Row 5 */}
+              <div className="form-group" style={{ gridColumn: '1 / -1', marginBottom: 0 }}>
+                <label className="form-label">Tệp đính kèm (Profile, Portfolio, Giấy phép...)</label>
+                <input 
+                  type="file" 
+                  multiple 
+                  className="input-field" 
+                  style={{ padding: '0.35rem' }}
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files);
+                    const fileObjs = files.map(f => ({ name: f.name, size: f.size, url: '#' }));
+                    setNewPartnerData(prev => ({ ...prev, attachments: [...(prev.attachments || []), ...fileObjs] }));
+                  }}
+                />
+              </div>
+
+            </div>
+
+            {/* Footer Buttons */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '2rem', paddingTop: '1rem', borderTop: '1px solid var(--color-border)' }}>
+              <button 
+                type="button" 
+                className="btn btn-outline" 
+                onClick={() => setShowAddPartnerModal(false)}
+                style={{ padding: '0.5rem 1.25rem' }}
+              >
+                Hủy bỏ
+              </button>
+
+              <button 
+                type="button" 
+                className="btn btn-primary" 
+                style={{ padding: '0.5rem 1.5rem', backgroundColor: '#3b82f6', color: 'white', borderRadius: '8px', fontWeight: '600' }}
+                onClick={async () => {
+                  if (!newPartnerData.name || !newPartnerData.name.trim()) {
+                    toast.error("Vui lòng nhập tên công ty / đối tác!");
+                    return;
+                  }
+                  try {
+                    const partnerName = newPartnerData.name.trim();
+                    if (addPartner) {
+                      await addPartner({
+                        ...newPartnerData,
+                        name: partnerName,
+                        createdAt: new Date().toISOString()
+                      });
+                    }
+                    setFormData(prev => ({ ...prev, issuingAgency: partnerName }));
+                    setShowAddPartnerModal(false);
+                    toast.success(`Đã lưu đối tác "${partnerName}" và điền vào Cơ quan ban hành!`);
+                  } catch (err) {
+                    console.error("Lỗi khi thêm đối tác mới: ", err);
+                    toast.error("Có lỗi xảy ra khi lưu đối tác mới!");
+                  }
+                }}
+              >
+                Lưu đối tác mới
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
     </div>
   );
 };

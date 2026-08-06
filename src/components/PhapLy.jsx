@@ -34,7 +34,7 @@ const getDeadlineStatus = (targetDate, status) => {
 
 /* ─── Workflow Step Row ─── */
 const StepRow = ({
-  step, index, total, onEdit, onDelete, partners,
+  step, index, total, stepNumber, onEdit, onDelete, partners,
   canEditStep, canReorder,
   isDragging, isDragOver,
   onDragStart, onDragOver, onDrop, onDragEnd,
@@ -92,9 +92,31 @@ const StepRow = ({
       <div style={{ flex: 1, paddingBottom: isLast ? 0 : '0.75rem' }}>
         {/* Hàng 1: Tên bước + Badge hạn chót (Rộng hết cỡ) */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '4px' }}>
-          <span style={{ fontWeight: '600', fontSize: '0.875rem', color: 'var(--color-text-main)', lineHeight: '1.3' }}>
-            {step.name}
-          </span>
+          {(() => {
+            const displayStepNum = stepNumber !== undefined ? stepNumber : (index + 1);
+            const cleanName = (step.name || '').replace(/^(Bước\s*\d+[\s:.-]*|\d+[\s:.-]+)/i, '').trim();
+            return (
+              <span style={{ fontWeight: '600', fontSize: '0.875rem', color: 'var(--color-text-main)', lineHeight: '1.3', display: 'inline-flex', alignItems: 'center' }}>
+                <span style={{ 
+                  display: 'inline-flex', 
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: 'rgba(59, 130, 246, 0.15)', 
+                  color: '#60a5fa', 
+                  padding: '2px 8px', 
+                  borderRadius: '6px', 
+                  marginRight: '8px', 
+                  fontSize: '0.78rem', 
+                  fontWeight: '700',
+                  border: '1px solid rgba(59, 130, 246, 0.3)',
+                  whiteSpace: 'nowrap'
+                }}>
+                  Bước {displayStepNum}
+                </span>
+                <span>{cleanName}</span>
+              </span>
+            );
+          })()}
 
           {(() => {
             const dl = getDeadlineStatus(step.targetDate, step.status);
@@ -447,6 +469,7 @@ const ProjectWorkflowDetail = ({
                           key={step.id}
                           step={step}
                           index={idx}
+                          stepNumber={globalIdx >= 0 ? globalIdx + 1 : idx + 1}
                           total={phaseSteps.length}
                           canEditStep={canEditStep}
                           canReorder={canReorder}
@@ -538,9 +561,32 @@ const ProjectWorkflowDetail = ({
                         onMouseEnter={e => e.currentTarget.style.borderColor = col.color}
                         onMouseLeave={e => e.currentTarget.style.borderColor = dl && dl.type === 'overdue' ? '#ef4444' : 'var(--color-border)'}
                       >
-                        <div style={{ fontWeight: '600', marginBottom: '6px', color: 'var(--color-text-main)', lineHeight: '1.3' }}>
-                          {step.name}
-                        </div>
+                        {(() => {
+                          const globalIdx = sorted.findIndex(s => s.id === step.id);
+                          const stepNum = globalIdx >= 0 ? globalIdx + 1 : 1;
+                          const cleanName = (step.name || '').replace(/^(Bước\s*\d+[\s:.-]*|\d+[\s:.-]+)/i, '').trim();
+                          return (
+                            <div style={{ fontWeight: '600', marginBottom: '6px', color: 'var(--color-text-main)', lineHeight: '1.3', display: 'flex', alignItems: 'center' }}>
+                              <span style={{ 
+                                display: 'inline-flex', 
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                backgroundColor: 'rgba(59, 130, 246, 0.15)', 
+                                color: '#60a5fa', 
+                                padding: '1px 6px', 
+                                borderRadius: '4px', 
+                                marginRight: '6px', 
+                                fontSize: '0.72rem', 
+                                fontWeight: '700',
+                                border: '1px solid rgba(59, 130, 246, 0.3)',
+                                whiteSpace: 'nowrap'
+                              }}>
+                                Bước {stepNum}
+                              </span>
+                              <span>{cleanName}</span>
+                            </div>
+                          );
+                        })()}
 
                         {dl && (
                           <div style={{

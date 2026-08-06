@@ -69,7 +69,7 @@ const AppMain = () => {
   const renderContent = () => {
     switch (currentView) {
       case 'overview':           return <Overview />;
-      case 'dashboard':          return <Dashboard />;
+      case 'dashboard':          return <Dashboard onOpenForm={() => setIsFormOpen(true)} />;
       case 'projects':           return <Projects focusProjectId={searchFocus?.type === 'project' ? searchFocus.data?.id : null} onFocusCleared={() => setSearchFocus(null)} />;
       case 'members':            return <Members />;
       case 'partners':           return <Partners />;

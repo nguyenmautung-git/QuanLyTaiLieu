@@ -5,7 +5,7 @@ import FilterPanel from './FilterPanel';
 import DocumentCard from './DocumentCard';
 import {
   LayoutGrid, List, Download, X, CheckSquare,
-  ChevronLeft, ChevronRight, ArrowUpDown, FileSpreadsheet,
+  ChevronLeft, ChevronRight, ArrowUpDown, FileSpreadsheet, Plus,
 } from 'lucide-react';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
@@ -13,6 +13,7 @@ import { format } from 'date-fns';
 import { ref as storageRef, getBlob } from 'firebase/storage';
 import { storage } from '../firebase';
 import * as XLSX from 'xlsx';
+import { ROLES } from '../constants';
 
 
 const EMPTY_FILTERS = { keyword: '', project: [], agency: '', documentType: '', dateFrom: '', dateTo: '' };
@@ -82,8 +83,8 @@ const exportToExcel = (docs) => {
   XLSX.writeFile(wb, `DanhSachTaiLieu_${format(new Date(), 'yyyyMMdd_HHmm')}.xlsx`);
 };
 
-const Dashboard = () => {
-  const { allDocuments: documents, isDocNew, logDownload } = useContext(DocumentContext);
+const Dashboard = ({ onOpenForm }) => {
+  const { allDocuments: documents, isDocNew, logDownload, userRole, canAddDocument } = useContext(DocumentContext);
   const toast = useToast();
 
   const [viewMode, setViewModeRaw]               = useLS('doc_viewMode', 'grid');
@@ -248,53 +249,35 @@ const Dashboard = () => {
       <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '1.5rem', paddingBottom: '1rem' }}>
 
       {/* ── Tiêu đề + toolbar ── */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '0.75rem' }}>
-        <div>
-          <h1 style={{ fontSize: '1.5rem', fontWeight: '700', color: 'var(--color-text-main)', marginBottom: '0.25rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: '1rem', flexWrap: 'wrap' }}>
+          <h1 style={{ fontSize: '1.5rem', fontWeight: '700', color: 'var(--color-text-main)', margin: 0 }}>
             Tài liệu
           </h1>
-          <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
+          <span style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
             Hiển thị <strong style={{ color: 'var(--color-text-main)' }}>{sortedDocs.length}</strong> / {documents.length} tài liệu trong hệ thống
-          </p>
+          </span>
         </div>
 
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
 
-          {/* ── Nút xuất CSV ── */}
-          <button
-            onClick={() => exportToCsv(sortedDocs)}
-            title={`Xuất ${sortedDocs.length} tài liệu hiện tại ra CSV`}
-            style={{
-              display: 'flex', alignItems: 'center', gap: '0.4rem',
-              padding: '0.45rem 0.9rem',
-              background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.35)',
-              borderRadius: 'var(--radius-md)', color: '#10b981',
-              fontSize: '0.82rem', fontWeight: '600', cursor: 'pointer', transition: 'all 0.15s', whiteSpace: 'nowrap',
-            }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(16,185,129,0.18)'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(16,185,129,0.1)'; }}
-          >
-            <FileSpreadsheet size={15} />
-            CSV
-          </button>
-
-          {/* ── Nút xuất Excel ── */}
-          <button
-            onClick={() => exportToExcel(sortedDocs)}
-            title={`Xuất ${sortedDocs.length} tài liệu hiện tại ra Excel`}
-            style={{
-              display: 'flex', alignItems: 'center', gap: '0.4rem',
-              padding: '0.45rem 0.9rem',
-              background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.35)',
-              borderRadius: 'var(--radius-md)', color: '#22c55e',
-              fontSize: '0.82rem', fontWeight: '600', cursor: 'pointer', transition: 'all 0.15s', whiteSpace: 'nowrap',
-            }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(34,197,94,0.18)'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(34,197,94,0.1)'; }}
-          >
-            <FileSpreadsheet size={15} />
-            Excel
-          </button>
+          {/* ── Nút Tải lên tài liệu ── */}
+          {(userRole === ROLES.ADMIN || (canAddDocument && canAddDocument()) || onOpenForm) && (
+            <button
+              className="btn btn-primary"
+              onClick={onOpenForm}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '0.4rem',
+                padding: '0.45rem 0.95rem', borderRadius: 'var(--radius-md)',
+                backgroundColor: '#3b82f6', color: 'white', fontWeight: '600',
+                fontSize: '0.85rem', cursor: 'pointer', boxShadow: '0 2px 8px rgba(59,130,246,0.35)',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              <Plus size={16} />
+              <span>Tải lên tài liệu</span>
+            </button>
+          )}
 
           {/* ── Sắp xếp dropdown ── */}
           <div style={{ position: 'relative' }} ref={sortMenuRef}>
@@ -316,11 +299,11 @@ const Dashboard = () => {
 
             {showSortMenu && (
               <div style={{
-                position: 'absolute', top: 'calc(100% + 6px)', right: 0, zIndex: 200,
-                background: 'var(--color-bg-surface)',
+                position: 'absolute', top: 'calc(100% + 6px)', right: 0, zIndex: 9999,
+                background: '#1e293b',
                 border: '1px solid var(--color-border)',
                 borderRadius: '12px', overflow: 'hidden',
-                boxShadow: '0 12px 32px rgba(0,0,0,0.4)',
+                boxShadow: '0 12px 32px rgba(0,0,0,0.6)',
                 minWidth: '220px',
               }}>
                 {SORT_OPTIONS.map(opt => (
