@@ -5,17 +5,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 
     <!-- ── Favicon ─────────────────────────────────────────────────────── -->
-    <link rel="icon" type="image/png" sizes="64x64" href="./favicon.png" />
-    <link rel="icon" type="image/svg+xml" href="./fdi-logo.svg" />
+    <link rel="icon" type="image/png" sizes="64x64" href="/QuanLyTaiLieu/favicon.png" />
+    <link rel="icon" type="image/svg+xml" href="/QuanLyTaiLieu/fdi-logo.svg" />
 
     <!-- ── PWA Manifest ─────────────────────────────────────────────────── -->
-    <link rel="manifest" href="./manifest.json" />
+    <link rel="manifest" href="/QuanLyTaiLieu/manifest.json" />
 
     <!-- ── PWA: iOS Safari (Apple) ──────────────────────────────────────── -->
+    <!-- Kích hoạt chế độ standalone (fullscreen như app native) -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
+    <!-- Tên app hiển thị dưới icon trên Home Screen -->
     <meta name="apple-mobile-web-app-title" content="FDI PM" />
+    <!-- Màu thanh status bar: black-translucent = trong suốt, nội dung extend lên dưới notch -->
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <link rel="apple-touch-icon" sizes="180x180" href="./icons/icon-192.png" />
+
+    <!-- Icon cho iOS Home Screen (Apple không đọc manifest icon) -->
+    <link rel="apple-touch-icon" sizes="180x180" href="/QuanLyTaiLieu/icons/icon-192.png" />
 
     <!-- ── PWA: Android / Windows ───────────────────────────────────────── -->
     <meta name="theme-color" content="#1e293b" />
@@ -32,9 +37,7 @@
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', function() {
-          var swUrl = location.pathname.startsWith('/QuanLyTaiLieu') ? '/QuanLyTaiLieu/sw.js' : '/sw.js';
-          var swScope = location.pathname.startsWith('/QuanLyTaiLieu') ? '/QuanLyTaiLieu/' : '/';
-          navigator.serviceWorker.register(swUrl, { scope: swScope })
+          navigator.serviceWorker.register('/QuanLyTaiLieu/sw.js', { scope: '/QuanLyTaiLieu/' })
             .then(function(reg) {
               console.log('[PWA] Service Worker registered, scope:', reg.scope);
             })
@@ -44,18 +47,19 @@
         });
       }
     </script>
-    <script type="module" crossorigin src="/QuanLyTaiLieu/assets/index-DDVLF1Jy.js"></script>
+    <script type="module" crossorigin src="/QuanLyTaiLieu/assets/index-CDPKUh3D.js"></script>
     <link rel="modulepreload" crossorigin href="/QuanLyTaiLieu/assets/rolldown-runtime-DWdDZTNf.js">
     <link rel="modulepreload" crossorigin href="/QuanLyTaiLieu/assets/vendor-react-select-D3ccvh8o.js">
     <link rel="modulepreload" crossorigin href="/QuanLyTaiLieu/assets/vendor-firebase-Bi8K_X3j.js">
-    <link rel="modulepreload" crossorigin href="/QuanLyTaiLieu/assets/createLucideIcon-QSg3fJvT.js">
-    <link rel="modulepreload" crossorigin href="/QuanLyTaiLieu/assets/preload-helper-BBHMemP6.js">
+    <link rel="modulepreload" crossorigin href="/QuanLyTaiLieu/assets/createLucideIcon-CnUgCp0x.js">
+    <link rel="modulepreload" crossorigin href="/QuanLyTaiLieu/assets/preload-helper-CAKjconc.js">
     <link rel="modulepreload" crossorigin href="/QuanLyTaiLieu/assets/vendor-recharts-BVQ87SYr.js">
     <link rel="modulepreload" crossorigin href="/QuanLyTaiLieu/assets/vendor-zip-CZ327o61.js">
-    <link rel="modulepreload" crossorigin href="/QuanLyTaiLieu/assets/pen-BDNcryBG.js">
-    <link rel="stylesheet" crossorigin href="/QuanLyTaiLieu/assets/index-pyTBy21f.css">
+    <link rel="modulepreload" crossorigin href="/QuanLyTaiLieu/assets/pen-CyMwF8w4.js">
+    <link rel="stylesheet" crossorigin href="/QuanLyTaiLieu/assets/index-BN1NivoJ.css">
   </head>
   <body>
     <div id="root"></div>
   </body>
 </html>
+

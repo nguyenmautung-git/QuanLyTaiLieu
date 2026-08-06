@@ -1,8 +1,8 @@
 // ── Service Worker cho PWA QuanLyDuAn ────────────────────────────────────
 // Chiến lược: Cache-First cho static assets, Network-First cho API/Firebase
 
-const CACHE_NAME = 'qlda-fdi-v4';
-const BASE = location.pathname.startsWith('/QuanLyTaiLieu') ? '/QuanLyTaiLieu' : '';
+const CACHE_NAME = 'qlda-fdi-v1';
+const BASE = '/QuanLyTaiLieu';
 
 // Các file cần cache ngay khi SW install (App Shell)
 const PRECACHE_URLS = [
